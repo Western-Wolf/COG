@@ -1,9 +1,9 @@
 {
 	"icons": [
-		{ "path": "Temperature/thermometer-empty.svg", "min": 0 },
-		{ "path": "Temperature/thermometer-quarter.svg", "min": 25 },
-		{ "path": "Temperature/thermometer-half.svg", "min": 50 },
-		{ "path": "Temperature/thermometer-threequarter.svg", "min": 75 },
-		{ "path": "Temperature/thermometer-full.svg", "min": 100 }
+		{ "path": "Temperature/thermometer-0.svg", "min": 0 },
+		{ "path": "Temperature/thermometer-25.svg", "min": 25 },
+		{ "path": "Temperature/thermometer-50.svg", "min": 50 },
+		{ "path": "Temperature/thermometer-75.svg", "min": 75 },
+		{ "path": "Temperature/thermometer-100.svg", "min": 100 }
 	]
 }
