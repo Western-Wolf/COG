@@ -18,6 +18,18 @@ namespace
 	{
 		return CogIWant::IsReady();
 	}
+
+	std::string WriteIconPack(
+		RE::StaticFunctionTag*,
+		std::string sourceMod,
+		std::string iconName,
+		std::string cogPathsJoined)
+	{
+		return CogIWant::WriteIconPack(
+			std::move(sourceMod),
+			std::move(iconName),
+			std::move(cogPathsJoined));
+	}
 }
 
 bool CogIWantPapyrus::Bind(RE::BSScript::IVirtualMachine* vm)
@@ -28,5 +40,6 @@ bool CogIWantPapyrus::Bind(RE::BSScript::IVirtualMachine* vm)
 	vm->RegisterFunction("MapWidgetsLibraryIcon", "COG_iWant", MapWidgetsLibraryIcon);
 	vm->RegisterFunction("ResolveExportedIconPath", "COG_iWant", ResolveExportedIconPath);
 	vm->RegisterFunction("IsReady", "COG_iWant", IsReady);
+	vm->RegisterFunction("WriteIconPack", "COG_iWant", WriteIconPack);
 	return true;
 }

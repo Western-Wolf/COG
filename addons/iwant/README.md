@@ -24,9 +24,9 @@ Do **not** run real Status Bars alongside this pack — same EditorIDs / script 
 
 - Stub plugins are flagged ESL (`HeaderFlag.Small`). Status Bars is **`.esp` flagged Small** so it can still be moved in load order; Widgets is a true **`.esl`** placeholder. If StartGameEnabled quests do not start, generate SEQ with the CK or xEdit for those plugin names.
 - Status Bars fires `iWantStatusBarsReady` after a short delay on init / player load (alias script).
-- `loadIcon` waits for `COG_API.IsReady()`, then `COG_iWant.ImportIcon`: Widgets library stems → shipped COG SVGs; otherwise resolves `Interface/exported/...` (PreferSibling) and calls **`COG_API.ImportIcon`** (copy/convert + index). Registers a COG percent gear (category **iWant Integration**, `hideAt <0.01`), and maps `setIconStatus` onto `UpdatePercent` (0.1%…100%). Empty or missing icons become `COG/cog.svg`.
+- `loadIcon` waits for `COG_API.IsReady()`, then `COG_iWant.ImportIconPack`: imports each state file (Widgets library stems → shipped COG SVGs; otherwise `Interface/exported/...` via PreferSibling + **`COG_API.ImportIcon`**), **dedupes** identical assets, writes a multi-icon `.json` pack under `assets/imports/icons/<Mod>/<Name>.json` (consecutive duplicate paths collapsed into `min`/`max` bands), and registers a COG percent gear whose `icon` is that pack (category **iWant Integration**, `hideAt <0.01`). `setIconStatus` still maps onto `UpdatePercent` (0.1%…100%). Single-state widgets keep a plain icon path. Empty or missing icons become `COG/cog.svg`.
 - On player load the bridge clears its saved icon slots so consumers re-`loadIcon` and COG re-registers sources for the session (COG sources are not save-persisted). Returning `-2` (already loaded) still refreshes the COG `Register` call.
-- Icon picker catalog = live scan of `assets/icons/` + `assets/imports/icons/` (each snapshot); `SKSE/Plugins/COG/imported-icons.json` records import paths for bridges.
+- Icon picker catalog = live scan of `assets/icons/` + `assets/imports/icons/` (each snapshot), including `.json` packs; `SKSE/Plugins/COG/imported-icons.json` records import paths for bridges.
 - Put imported gears on a COG group; optional **Fill from Hidden** matches iWant-style soft appear:
   - `alpha` — fade opacity
   - `up` / `down` — greyscale icon fills with colour (GIF/WebP keep native colours when icon ends are blank)

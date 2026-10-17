@@ -6,6 +6,8 @@
 #include <cctype>
 #include <filesystem>
 #include <fstream>
+#include <sstream>
+#include <vector>
 
 #ifndef WIN32_LEAN_AND_MEAN
 #	define WIN32_LEAN_AND_MEAN
@@ -51,6 +53,61 @@ namespace
 		}
 		return rel.generic_string();
 	}
+
+	std::string SanitizeToken(std::string_view in)
+	{
+		std::string out;
+		out.reserve(in.size());
+		for (unsigned char c : in) {
+			if (std::isalnum(c) || c == '-' || c == '_' || c == '.') {
+				out.push_back(static_cast<char>(c));
+			} else if (c == ' ') {
+				out.push_back('_');
+			} else {
+				out.push_back('_');
+			}
+		}
+		if (out.empty()) {
+			out = "_";
+		}
+		return out;
+	}
+
+	std::string JsonEscape(std::string_view in)
+	{
+		std::string out;
+		out.reserve(in.size() + 8);
+		for (unsigned char c : in) {
+			switch (c) {
+			case '\\':
+				out += "\\\\";
+				break;
+			case '"':
+				out += "\\\"";
+				break;
+			case '\n':
+				out += "\\n";
+				break;
+			case '\r':
+				out += "\\r";
+				break;
+			case '\t':
+				out += "\\t";
+				break;
+			default:
+				out.push_back(static_cast<char>(c));
+				break;
+			}
+		}
+		return out;
+	}
+
+	struct PackFrame
+	{
+		std::string path;
+		double min = 0;
+		double max = 100;
+	};
 }
 
 namespace CogIWant
@@ -139,5 +196,94 @@ namespace CogIWant
 		}
 		std::replace(dataRel.begin(), dataRel.end(), '\\', '/');
 		return dataRel;
+	}
+
+	std::string WriteIconPack(
+		std::string sourceMod,
+		std::string iconName,
+		std::string cogPathsJoined)
+	{
+		if (!g_ready) {
+			logger::warn("COG_iWant WriteIconPack failed: called before data ready");
+			return {};
+		}
+		std::vector<std::string> paths;
+		{
+			std::stringstream ss(cogPathsJoined);
+			std::string line;
+			while (std::getline(ss, line)) {
+				while (!line.empty() && (line.back() == '\r' || line.back() == ' ' || line.back() == '\t')) {
+					line.pop_back();
+				}
+				while (!line.empty() && (line.front() == ' ' || line.front() == '\t')) {
+					line.erase(line.begin());
+				}
+				std::replace(line.begin(), line.end(), '\\', '/');
+				if (!line.empty()) {
+					paths.push_back(std::move(line));
+				}
+			}
+		}
+		if (paths.empty()) {
+			logger::warn("COG_iWant WriteIconPack failed: no paths (mod='{}' icon='{}')", sourceMod, iconName);
+			return {};
+		}
+
+		const std::size_t n = paths.size();
+		const double denom = static_cast<double>(n > 1 ? n - 1 : 1);
+		std::vector<PackFrame> bands;
+		bands.reserve(n);
+		for (std::size_t i = 0; i < n; ++i) {
+			const double lo = (static_cast<double>(i) * 100.0) / denom;
+			const double hi = i + 1 < n ? (static_cast<double>(i + 1) * 100.0) / denom : 100.0;
+			bands.push_back(PackFrame{ paths[i], lo, hi });
+		}
+
+		std::vector<PackFrame> collapsed;
+		collapsed.reserve(bands.size());
+		for (const auto& band : bands) {
+			if (!collapsed.empty() && collapsed.back().path == band.path) {
+				collapsed.back().max = band.max;
+			} else {
+				collapsed.push_back(band);
+			}
+		}
+
+		const auto modTok = SanitizeToken(sourceMod);
+		const auto nameTok = SanitizeToken(iconName);
+		const auto rel = modTok + "/" + nameTok + ".json";
+		const auto abs =
+			DataRoot() / "PrismaUI" / "views" / "COG" / "assets" / "imports" / "icons" / modTok /
+			(nameTok + ".json");
+
+		std::error_code ec;
+		std::filesystem::create_directories(abs.parent_path(), ec);
+		{
+			std::ofstream out(abs, std::ios::binary | std::ios::trunc);
+			if (!out) {
+				logger::warn("COG_iWant WriteIconPack failed: open {} (mod='{}' icon='{}')", abs.string(), sourceMod, iconName);
+				return {};
+			}
+			out << "{\n\t\"icons\": [\n";
+			for (std::size_t i = 0; i < collapsed.size(); ++i) {
+				const auto& f = collapsed[i];
+				out << "\t\t{ \"path\": \"" << JsonEscape(f.path) << "\", \"min\": " << f.min
+					<< ", \"max\": " << f.max << " }";
+				if (i + 1 < collapsed.size()) {
+					out << ",";
+				}
+				out << "\n";
+			}
+			out << "\t]\n}\n";
+		}
+
+		logger::info(
+			"COG_iWant WriteIconPack -> {} ({} states -> {} bands, mod='{}' icon='{}')",
+			rel,
+			n,
+			collapsed.size(),
+			sourceMod,
+			iconName);
+		return rel;
 	}
 }

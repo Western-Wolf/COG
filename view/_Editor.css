@@ -645,6 +645,19 @@ body.is-focused #editor {
 	flex: 0 0 auto;
 }
 
+/* Multi-icon .json packs — distinct chrome so changers read as packs even when slow. */
+#editor-panel .icon-swatch.is-icon-pack,
+.cog-icon-picker .icon-swatch.is-icon-pack {
+	background: linear-gradient(145deg, rgba(70, 90, 110, 0.55), rgba(20, 28, 36, 0.75));
+	border-color: rgba(140, 190, 220, 0.65);
+}
+
+.cog-icon-picker .icon-swatch.is-icon-pack.is-selected,
+#editor-panel .icon-swatch.is-icon-pack.is-selected {
+	background: linear-gradient(145deg, rgba(90, 120, 150, 0.55), rgba(40, 55, 70, 0.8));
+	border-color: var(--cog-ctrl-selected-border, #c4a35a);
+}
+
 .icon-swatch img {
 	display: block;
 	width: 100%;
@@ -652,6 +665,10 @@ body.is-focused #editor {
 	object-fit: contain;
 	filter: brightness(0) invert(1);
 	pointer-events: none;
+}
+
+.icon-swatch.is-raster-preview img {
+	filter: none;
 }
 
 #editor-panel .icon-swatch.is-empty,

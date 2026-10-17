@@ -185,7 +185,11 @@ Int Function _registerWithCog(String sourceMod, String asIconName, String[] file
 	EndIf
 
 	String displayName = asIconName
-	String iconPath = COG_iWant.ImportIcon(sourceMod, asIconName, files[last])
+	; Multi-state widgets → icon pack JSON (deduped assets, consecutive paths collapsed).
+	String iconPath = COG_iWant.ImportIconPack(sourceMod, asIconName, files)
+	If iconPath == ""
+		iconPath = COG_iWant.ImportIcon(sourceMod, asIconName, files[last])
+	EndIf
 	String startHex = "#FFFFFF"
 	String endHex = "#FFFFFF"
 	If r && g && b && r.Length > 0
@@ -197,8 +201,7 @@ Int Function _registerWithCog(String sourceMod, String asIconName, String[] file
 		EndIf
 	EndIf
 
-	; ImportIcon (via COG_iWant → COG_API) already indexes real imports; remapped
-	; library paths point at shipped assets/icons and need no RegisterImportedIcon.
+	; ImportIcon / ImportIconPack already index imports; remapped library paths need no RegisterImportedIcon.
 
 	COG_API.BeginRegister(sourceMod, "")
 	; Category is fixed so all bridge gears group together; mod stays as sourceMod.

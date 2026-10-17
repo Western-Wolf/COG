@@ -406,7 +406,7 @@ std::string CogRegistry::BuildSnapshotJson()
 					}
 					auto ext = Lower(it->path().extension().string());
 					if (ext != ".svg" && ext != ".png" && ext != ".jpg" && ext != ".jpeg" && ext != ".gif" &&
-						ext != ".webp" && ext != ".bmp") {
+						ext != ".webp" && ext != ".bmp" && ext != ".json") {
 						continue;
 					}
 					std::error_code relEc;

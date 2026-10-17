@@ -15,4 +15,14 @@ namespace CogIWant
 	 * (e.g. "Interface/exported/foo/bar.png"), applying PreferSibling. "" if missing.
 	 */
 	[[nodiscard]] std::string ResolveExportedIconPath(std::string exportedRelPath);
+
+	/**
+	 * Write a multi-icon pack JSON under PrismaUI/views/COG/assets/imports/icons/<Mod>/<Name>.json.
+	 * `cogPathsJoined` is one COG-relative icon path per line (repeats allowed). Consecutive
+	 * duplicate paths are collapsed into min/max bands. Returns the pack rel path, or "".
+	 */
+	[[nodiscard]] std::string WriteIconPack(
+		std::string sourceMod,
+		std::string iconName,
+		std::string cogPathsJoined);
 }

@@ -113,12 +113,299 @@ function safeCall(where, fn, fallback) {
 }
 window.safeCall = safeCall;
 
+function sourceIconRel(src, gear) {
+	const raw = appearanceOf(gear, src).icon;
+	const pct =
+		typeof barPercent === "function"
+			? barPercent(src)
+			: Math.max(0, Math.min(100, Number(src && src.value) || 0));
+	return resolveActiveIconRel(raw, pct);
+}
+
 function sourceIconPath(src, gear) {
-	return resolveDisplayIconHref(appearanceOf(gear, src).icon);
+	return resolveDisplayIconHref(sourceIconRel(src, gear));
 }
 
 function normalizeIconRelPath(raw) {
 	return String(raw || "").trim().replace(/\\/g, "/");
+}
+
+function iconRelBasename(rel) {
+	const n = normalizeIconRelPath(rel);
+	const slash = n.lastIndexOf("/");
+	return slash >= 0 ? n.slice(slash + 1) : n;
+}
+
+function isIconPackPath(raw) {
+	return /\.json$/i.test(iconRelBasename(raw));
+}
+
+/** Parsed pack cache: lowercased rel path → { frames: [{ path, min, max }], href } */
+const iconPackCache = new Map();
+const iconPackFetchInflight = new Map();
+
+function stripIconRootPrefixes(rel) {
+	let out = normalizeIconRelPath(rel);
+	while (out.startsWith("./") || out.startsWith("/")) {
+		out = out.replace(/^\.\//, "").replace(/^\//, "");
+	}
+	if (/^assets\/imports\/icons\//i.test(out)) {
+		out = out.slice("assets/imports/icons/".length);
+	} else if (/^imports\/icons\//i.test(out)) {
+		out = out.slice("imports/icons/".length);
+	} else if (/^assets\/icons\//i.test(out)) {
+		out = out.slice("assets/icons/".length);
+	} else if (/^icons\//i.test(out)) {
+		out = out.slice("icons/".length);
+	}
+	return out;
+}
+
+function clampIconPercent(pct) {
+	const n = Number(pct);
+	if (!Number.isFinite(n)) {
+		return 0;
+	}
+	return Math.max(0, Math.min(100, n));
+}
+
+/**
+ * Expand pack JSON into frames with concrete min/max.
+ * Bare packs (no min/max on any row) get equal-step bands.
+ */
+function expandIconPackFrames(rawIcons) {
+	const list = Array.isArray(rawIcons) ? rawIcons : [];
+	const staged = [];
+	for (const item of list) {
+		if (typeof item === "string") {
+			const path = stripIconRootPrefixes(item);
+			if (path) {
+				staged.push({ path, min: null, max: null });
+			}
+			continue;
+		}
+		if (!item || typeof item !== "object") {
+			continue;
+		}
+		const path = stripIconRootPrefixes(item.path || item.icon || "");
+		if (!path) {
+			continue;
+		}
+		const hasMin = item.min != null && item.min !== "" && Number.isFinite(Number(item.min));
+		const hasMax = item.max != null && item.max !== "" && Number.isFinite(Number(item.max));
+		staged.push({
+			path,
+			min: hasMin ? clampIconPercent(item.min) : null,
+			max: hasMax ? clampIconPercent(item.max) : null
+		});
+	}
+	if (!staged.length) {
+		return [];
+	}
+	const anyBound = staged.some((f) => f.min != null || f.max != null);
+	const n = staged.length;
+	const denom = Math.max(n - 1, 1);
+	if (!anyBound) {
+		for (let i = 0; i < n; i += 1) {
+			const lo = (i * 100) / denom;
+			const hi = i + 1 < n ? ((i + 1) * 100) / denom : 100;
+			staged[i].min = lo;
+			staged[i].max = hi;
+		}
+		return staged;
+	}
+	for (const f of staged) {
+		if (f.min == null && f.max == null) {
+			f.min = 0;
+			f.max = 100;
+		} else if (f.min == null) {
+			f.min = 0;
+		} else if (f.max == null) {
+			f.max = 100;
+		}
+		if (f.min > f.max) {
+			const t = f.min;
+			f.min = f.max;
+			f.max = t;
+		}
+	}
+	return staged;
+}
+
+function pickIconPackFrame(frames, percent) {
+	const pct = clampIconPercent(percent);
+	if (!frames || !frames.length) {
+		return "";
+	}
+	const hits = [];
+	for (let i = 0; i < frames.length; i += 1) {
+		const f = frames[i];
+		if (pct + 1e-9 >= f.min && pct - 1e-9 <= f.max) {
+			hits.push({ i, f, width: f.max - f.min });
+		}
+	}
+	if (hits.length) {
+		hits.sort((a, b) => {
+			if (a.width !== b.width) {
+				return a.width - b.width;
+			}
+			return a.i - b.i;
+		});
+		return hits[hits.length - 1].f.path;
+	}
+	let best = frames[0];
+	let bestDist = Infinity;
+	for (const f of frames) {
+		const dist = pct < f.min ? f.min - pct : pct > f.max ? pct - f.max : 0;
+		if (dist < bestDist) {
+			bestDist = dist;
+			best = f;
+		}
+	}
+	return best.path || "";
+}
+
+function getCachedIconPack(rel) {
+	const key = stripIconRootPrefixes(rel).toLowerCase();
+	return iconPackCache.get(key) || null;
+}
+
+function ensureIconPackLoaded(rel) {
+	const cleaned = stripIconRootPrefixes(rel);
+	if (!cleaned || !isIconPackPath(cleaned)) {
+		return null;
+	}
+	const key = cleaned.toLowerCase();
+	const hit = iconPackCache.get(key);
+	if (hit) {
+		return hit;
+	}
+	if (iconPackFetchInflight.has(key)) {
+		return null;
+	}
+	const href = resolveIconHref(cleaned);
+	if (!href) {
+		return null;
+	}
+	const fetchPromise = fetch(href, { cache: "no-cache" })
+		.then((res) => (res.ok ? res.json() : Promise.reject(new Error("pack fetch failed"))))
+		.then((data) => {
+			const frames = expandIconPackFrames(data && data.icons);
+			const entry = { frames, href, path: cleaned };
+			iconPackCache.set(key, entry);
+			iconPackFetchInflight.delete(key);
+			if (typeof renderGears === "function") {
+				try {
+					renderGears();
+				} catch (_) {
+					/* ignore */
+				}
+			}
+			return entry;
+		})
+		.catch(() => {
+			iconPackCache.set(key, { frames: [], href, path: cleaned, failed: true });
+			iconPackFetchInflight.delete(key);
+			return null;
+		});
+	iconPackFetchInflight.set(key, fetchPromise);
+	return null;
+}
+
+/** Active frame rel path for a pack (or passthrough for normal icons). */
+function resolveActiveIconRel(raw, percent) {
+	const cleaned = stripIconRootPrefixes(raw);
+	if (!cleaned) {
+		return "";
+	}
+	if (!isIconPackPath(cleaned)) {
+		return cleaned;
+	}
+	const pack = getCachedIconPack(cleaned) || ensureIconPackLoaded(cleaned);
+	if (!pack || !pack.frames || !pack.frames.length) {
+		return FALLBACK_ICON_REL;
+	}
+	return pickIconPackFrame(pack.frames, percent) || FALLBACK_ICON_REL;
+}
+
+function prefetchIconPacksFromCatalog() {
+	const list = Array.isArray(snapshot.icons) ? snapshot.icons : [];
+	for (const item of list) {
+		const path = String((item && item.path) || item || "")
+			.trim()
+			.replace(/\\/g, "/");
+		if (isIconPackPath(path)) {
+			ensureIconPackLoaded(path);
+		}
+	}
+	const imported = Array.isArray(snapshot.importedIcons) ? snapshot.importedIcons : [];
+	for (const item of imported) {
+		const path = String((item && item.path) || item || "")
+			.trim()
+			.replace(/\\/g, "/");
+		if (isIconPackPath(path)) {
+			ensureIconPackLoaded(path);
+		}
+	}
+}
+
+/** Stop 0–100% pack preview timers on a button (or all under root). */
+function stopIconPackPreview(root) {
+	const nodes = [];
+	if (!root) {
+		return;
+	}
+	if (root.classList && root.classList.contains("icon-swatch")) {
+		nodes.push(root);
+	} else if (root.querySelectorAll) {
+		nodes.push(...root.querySelectorAll(".icon-swatch.is-icon-pack"));
+	}
+	for (const btn of nodes) {
+		if (btn._cogPackTimer) {
+			clearInterval(btn._cogPackTimer);
+			btn._cogPackTimer = null;
+		}
+	}
+}
+
+function paintIconPackPreview(btn, packRel, resolveHref = resolveIconHref) {
+	if (!btn) {
+		return;
+	}
+	stopIconPackPreview(btn);
+	btn.classList.add("is-icon-pack");
+	btn.classList.remove("is-empty", "has-name");
+	const name = iconDisplayName(packRel);
+	setIconButtonTip(btn, name || "Icon pack");
+	let img = btn.querySelector("img");
+	if (!img) {
+		btn.innerHTML = "";
+		img = document.createElement("img");
+		img.alt = "";
+		btn.appendChild(img);
+	}
+	const applyPct = (pct) => {
+		const frameRel = resolveActiveIconRel(packRel, pct);
+		const href = resolveDisplayIconHref(frameRel);
+		const animated =
+			typeof iconHrefIsAnimated === "function"
+				? iconHrefIsAnimated(href)
+				: /\.(gif|webp)(\?|#|$)/i.test(href);
+		btn.classList.toggle("is-raster-preview", !!animated);
+		if (img.getAttribute("src") !== href) {
+			img.src = href;
+		}
+	};
+	ensureIconPackLoaded(packRel);
+	applyPct(0);
+	let t = 0;
+	btn._cogPackTimer = setInterval(() => {
+		t = (t + 2) % 101;
+		if (t === 0) {
+			ensureIconPackLoaded(packRel);
+		}
+		applyPct(t);
+	}, 50);
 }
 
 function iconHrefForRoot(rel, root) {
@@ -372,6 +659,7 @@ function rebuildIconRootMap() {
 			iconRootByPath.set(key, "imports/icons");
 		}
 	}
+	prefetchIconPacksFromCatalog();
 }
 
 /** Normalize endcap art paths under Endcaps/. */
@@ -1438,8 +1726,11 @@ function iconSections(folder) {
 
 function closeIconPicker() {
 	const id = iconPickerState && iconPickerState.popupId;
-	if (iconPickerState && iconPickerState.el && iconPickerState.el.parentNode) {
-		iconPickerState.el.parentNode.removeChild(iconPickerState.el);
+	if (iconPickerState && iconPickerState.el) {
+		stopIconPackPreview(iconPickerState.el);
+		if (iconPickerState.el.parentNode) {
+			iconPickerState.el.parentNode.removeChild(iconPickerState.el);
+		}
 	}
 	iconPickerState = null;
 	unregisterEditorPopup(id);
@@ -1447,10 +1738,16 @@ function closeIconPicker() {
 }
 
 function paintIconSwatch(btn, rel, _showName, resolveHref = resolveIconHref) {
+	stopIconPackPreview(btn);
 	btn.innerHTML = "";
-	const href = resolveHref(rel);
-	const name = iconDisplayName(rel);
-	btn.classList.remove("has-name");
+	btn.classList.remove("is-icon-pack", "is-raster-preview", "has-name");
+	const cleaned = stripIconRootPrefixes(rel);
+	if (isIconPackPath(cleaned)) {
+		paintIconPackPreview(btn, cleaned, resolveHref);
+		return;
+	}
+	const href = resolveHref(cleaned || rel);
+	const name = iconDisplayName(cleaned || rel);
 	if (!href) {
 		btn.classList.add("is-empty");
 		setIconButtonTip(btn, "Choose icon");
@@ -1458,6 +1755,11 @@ function paintIconSwatch(btn, rel, _showName, resolveHref = resolveIconHref) {
 	}
 	btn.classList.remove("is-empty");
 	setIconButtonTip(btn, name || "Choose icon");
+	const animated =
+		typeof iconHrefIsAnimated === "function"
+			? iconHrefIsAnimated(href)
+			: /\.(gif|webp)(\?|#|$)/i.test(href);
+	btn.classList.toggle("is-raster-preview", !!animated);
 	const img = document.createElement("img");
 	img.src = href;
 	img.alt = "";
@@ -1466,7 +1768,7 @@ function paintIconSwatch(btn, rel, _showName, resolveHref = resolveIconHref) {
 		() => {
 			const importTry =
 				resolveHref === resolveIconHref && !href.startsWith(ICON_IMPORT_ROOT)
-					? ICON_IMPORT_ROOT + normalizeIconRelPath(rel)
+					? ICON_IMPORT_ROOT + normalizeIconRelPath(cleaned || rel)
 					: "";
 			if (importTry && img.getAttribute("src") !== importTry) {
 				img.src = importTry;
@@ -1485,11 +1787,11 @@ function paintIconSwatch(btn, rel, _showName, resolveHref = resolveIconHref) {
 
 /** Friendly icon label for tooltips (folder/stem, no extension). */
 function iconDisplayName(rel) {
-	const normalized = normalizeIconRelPath(rel);
+	const normalized = stripIconRootPrefixes(rel);
 	if (!normalized) {
 		return "";
 	}
-	return normalized.replace(/\.svg$/i, "");
+	return normalized.replace(/\.(svg|json|png|gif|webp|jpg|jpeg|bmp)$/i, "");
 }
 
 function setIconButtonTip(btn, tip) {
@@ -1626,12 +1928,25 @@ function openIconPicker(anchor, opts) {
 			for (const path of section.paths) {
 				const cell = document.createElement("button");
 				cell.type = "button";
-				cell.className = "icon-swatch" + (path === opts.value ? " is-selected" : "");
+				const pack = isIconPackPath(path);
+				cell.className =
+					"icon-swatch" +
+					(pack ? " is-icon-pack" : "") +
+					(path === opts.value ? " is-selected" : "");
 				setIconButtonTip(cell, iconDisplayName(path) || path);
-				const img = document.createElement("img");
-				img.src = resolvePathHref(path);
-				img.alt = "";
-				cell.appendChild(img);
+				if (pack) {
+					paintIconPackPreview(cell, path, resolvePathHref);
+				} else {
+					const img = document.createElement("img");
+					img.src = resolvePathHref(path);
+					img.alt = "";
+					const animated =
+						typeof iconHrefIsAnimated === "function"
+							? iconHrefIsAnimated(img.src)
+							: /\.(gif|webp)(\?|#|$)/i.test(img.src);
+					cell.classList.toggle("is-raster-preview", !!animated);
+					cell.appendChild(img);
+				}
 				cell.addEventListener("click", (ev) => {
 					ev.preventDefault();
 					ev.stopPropagation();
