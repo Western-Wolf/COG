@@ -245,13 +245,14 @@ function pickIconPackFrame(frames, percent) {
 		}
 	}
 	if (hits.length) {
+		// Narrowest interval wins; tie-break = last in file order.
 		hits.sort((a, b) => {
 			if (a.width !== b.width) {
 				return a.width - b.width;
 			}
-			return a.i - b.i;
+			return b.i - a.i;
 		});
-		return hits[hits.length - 1].f.path;
+		return hits[0].f.path;
 	}
 	let best = frames[0];
 	let bestDist = Infinity;
