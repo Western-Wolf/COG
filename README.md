@@ -28,7 +28,7 @@ COG links against [CommonLibSSE-NG](https://github.com/alandtse/CommonLibSSE-NG)
 | `plugin/` | Generated light-flagged ESP |
 | `addons/default/iwant/` | Optional iWant Widgets / Status Bars bridge |
 | `addons/default/example/` | Optional Papyrus `COG_API` example pack |
-| `docs/` | Author API notes and published Nexus BBCode |
+| `docs/` | Public API (`api.md`) and published Nexus BBCode |
 
 ## Building
 
