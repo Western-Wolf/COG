@@ -2,6 +2,8 @@
 
 Prisma UI HUD toolkit for Skyrim Special Edition / Anniversary Edition.
 
+**Public source:** <https://github.com/Western-Wolf/COG> · tagged from **v1.01**
+
 This tree is the **product source** for GPL-3.0 compliance (core plugin, Prisma view, Papyrus, optional iWant + Example addons). Internal reviews, media, FOMOD packaging, and local build tooling live in the private monorepo that contains this folder.
 
 ## License
