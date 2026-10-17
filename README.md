@@ -28,15 +28,3 @@ COG links against [CommonLibSSE-NG](https://github.com/alandtse/CommonLibSSE-NG)
 | `plugin/` | Generated light-flagged ESP |
 | `addons/iwant/` | Optional iWant Widgets / Status Bars bridge |
 | `addons/example/` | Optional Papyrus `COG_API` example pack |
-
-## Building
-
-Build from the monorepo root (sibling `lib/commonlibsse-ng`, `tools/`, and root `xmake.lua`), not from this folder alone:
-
-```text
-xmake build COG
-xmake build COG_iWant
-xmake build COG_Example
-```
-
-Or run `tools/release.ps1` for Papyrus compile + deploy + FOMOD.
