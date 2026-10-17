@@ -1,0 +1,238 @@
+.gear {
+	position: relative;
+	display: flex;
+	flex: 0 0 auto;
+	align-items: flex-start;
+	width: auto;
+	max-width: none;
+	transform: rotate(var(--counter-rot));
+	font-family: var(--cog-font-gadget);
+	color: #ffffff;
+	/* Same absolute pixel shadow on text, icons, and bars — not scaled to element size. */
+	--cog-gear-shadow: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+	text-align: left;
+	overflow: visible;
+	gap: 0.3em;
+}
+
+.gear.no-icon {
+	height: var(--gear-size);
+}
+
+.gear.has-icon.stack-right {
+	flex-direction: row;
+	align-items: stretch;
+}
+
+.gear.has-icon.stack-left {
+	flex-direction: row-reverse;
+	align-items: stretch;
+}
+
+.gear.has-icon.stack-below {
+	flex-direction: column;
+	align-items: center;
+}
+
+.gear.has-icon.stack-above {
+	flex-direction: column-reverse;
+	align-items: center;
+}
+
+.gear-icon {
+	flex: 0 0 var(--gear-size);
+	width: var(--gear-size);
+	height: var(--gear-size);
+	box-sizing: border-box;
+	border: 0;
+	background: transparent;
+}
+
+.gear-icon img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+	filter: brightness(0) invert(1);
+}
+
+.gear-icon.is-painted {
+	background: #ffffff;
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+	-webkit-mask-position: center;
+	mask-position: center;
+	-webkit-mask-size: contain;
+	mask-size: contain;
+}
+
+.gear-icon.is-painted img {
+	opacity: 0;
+	filter: none;
+}
+
+.gear-stack {
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-start;
+	gap: 0.08em;
+	min-width: 0;
+}
+
+.gear.no-icon .gear-stack {
+	height: 100%;
+	width: auto;
+}
+
+.gear.has-icon.stack-right .gear-stack,
+.gear.has-icon.stack-left .gear-stack {
+	height: var(--gear-size);
+	width: auto;
+	max-width: calc(var(--gear-size) * 2);
+}
+
+.gear.has-icon.stack-left .gear-stack {
+	text-align: right;
+}
+
+.gear.has-icon.stack-above .gear-stack,
+.gear.has-icon.stack-below .gear-stack {
+	width: var(--gear-size);
+	height: auto;
+	min-height: var(--gear-size);
+	text-align: center;
+}
+
+.gear.has-icon.stack-above .gear-stack {
+	flex-direction: column-reverse;
+}
+
+.gear.is-preview {
+	opacity: 0.55;
+}
+
+.gear.is-fading-in {
+	animation: cog-fade-in 0.25s ease-out both;
+}
+
+.gear.is-fading-out {
+	opacity: 0;
+	transition: opacity 0.25s ease-out;
+}
+
+.gear-label,
+.gear-value {
+	flex: 0 0 auto;
+	font-size: 1em;
+	line-height: 1.05;
+	letter-spacing: 0.04em;
+	text-transform: none;
+}
+
+.gear-label {
+	opacity: 0.55;
+	white-space: normal;
+	overflow-wrap: normal;
+	word-break: normal;
+	hyphens: none;
+}
+
+.gear-value {
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.gear-bar {
+	position: relative;
+	flex: 0 0 1em;
+	align-self: stretch;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 1em;
+	min-width: 2.4em;
+	min-height: 1em;
+	max-height: 1em;
+	background: transparent;
+	border: 0;
+	border-radius: 1px;
+	overflow: visible;
+	/* Shadow lives on the fill (or the trough unit). A filter here breaks
+	   Ultralight overflow clipping, so the full-width sheen bleeds into empty space. */
+	filter: none;
+}
+
+.gear-bar-clip {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	border-radius: inherit;
+	pointer-events: none;
+}
+
+.gear-bar.has-trough {
+	background: transparent;
+	border: 0;
+	border-radius: 2px;
+	filter: var(--cog-gear-shadow);
+}
+
+.gear-bar.has-trough .gear-bar-clip {
+	background: rgba(12, 10, 8, 0.55);
+	border: 1px solid var(--cog-border, #e8d2a0);
+	border-radius: 2px;
+	box-sizing: border-box;
+}
+
+.gear-bar-fill {
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	height: 100%;
+	overflow: hidden;
+	/* Belt-and-suspenders: keep the full-trough sheen clipped to the fill. */
+	clip-path: inset(0);
+	background-color: var(--cog-fill, #c4a35a);
+	width: 0%;
+	transition: width 70ms linear;
+	filter: var(--cog-gear-shadow);
+}
+
+.gear-bar.has-trough .gear-bar-fill {
+	/* Parent .gear-bar already shadows the trough + fill as one unit. */
+	filter: none;
+}
+
+.gear-bar-fill.is-bow {
+	transition: none;
+}
+
+.gear-bar-sheen {
+	position: absolute;
+	left: 0;
+	top: 0;
+	height: 100%;
+	pointer-events: none;
+	background-image: linear-gradient(to bottom,
+		rgba(255, 255, 255, 0.72) 0%,
+		rgba(255, 255, 255, 0.28) 16%,
+		rgba(255, 255, 255, 0.05) 38%,
+		rgba(0, 0, 0, 0.18) 70%,
+		rgba(0, 0, 0, 0.52) 100%);
+	border-top: 2px solid rgba(255, 255, 255, 0.78);
+	border-bottom: 2px solid rgba(0, 0, 0, 0.42);
+	box-sizing: border-box;
+}
+
+.gear-bar.has-value .gear-value {
+	position: relative;
+	z-index: 1;
+	font-size: 0.68em;
+	line-height: 1;
+	padding: 0 0.22em;
+	white-space: nowrap;
+	overflow-wrap: normal;
+}

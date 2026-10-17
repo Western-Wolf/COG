@@ -1,0 +1,231 @@
+.hud-gauge-frame {
+	transform: none;
+	overflow: visible;
+}
+
+.gauge-frame-chrome {
+	position: absolute;
+	inset: 0;
+	transform: rotate(var(--gauge-frame-rot, 0deg));
+	transform-origin: 50% 50%;
+	pointer-events: none;
+	z-index: 0;
+	overflow: visible;
+	filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
+}
+
+/* Same rotation as the bezel; sized from the layout box (not rotated AABB). */
+.gauge-frame-handle-layer {
+	position: absolute;
+	inset: 0;
+	transform: rotate(var(--gauge-frame-rot, 0deg));
+	transform-origin: 50% 50%;
+	pointer-events: none;
+	z-index: 3;
+	overflow: visible;
+}
+
+.gauge-frame-handle-layer .hud-handle {
+	pointer-events: auto;
+}
+
+.gauge-frame-border,
+.gauge-frame-fill {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+}
+
+.gauge-frame-border-face,
+.gauge-frame-fill-face {
+	position: absolute;
+	inset: 0;
+	background-repeat: no-repeat;
+	background-position: center center;
+	background-size: 100% 100%;
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+	-webkit-mask-position: center center;
+	mask-position: center center;
+	-webkit-mask-size: 100% 100%;
+	mask-size: 100% 100%;
+}
+
+.gauge-frame-pic-face {
+	position: absolute;
+	inset: 0;
+	background-repeat: no-repeat;
+	background-position: center center;
+	background-size: contain;
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+	-webkit-mask-position: center center;
+	mask-position: center center;
+	-webkit-mask-size: contain;
+	mask-size: contain;
+}
+
+.gauge-frame-fill {
+	z-index: 1;
+	inset: 0;
+}
+
+.gauge-frame-content {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 2;
+	pointer-events: none;
+	overflow: visible;
+}
+
+.gauge-frame-gear {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	width: auto;
+	height: auto;
+	max-width: none;
+	max-height: none;
+	font-size: var(--frame-gear-font, 12px);
+	overflow: hidden;
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+	-webkit-mask-position: center center;
+	mask-position: center center;
+	-webkit-mask-size: 100% 100%;
+	mask-size: 100% 100%;
+}
+
+.gauge-frame-gear-inner {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
+	gap: 0.25em;
+	min-width: 0;
+	min-height: 0;
+}
+
+.gauge-frame-gear-empty {
+	opacity: 0.55;
+	font-size: 0.85em;
+}
+
+.gauge-frame-gear-slot {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 0;
+	max-width: 100%;
+}
+
+.gauge-frame-gear-icon {
+	position: relative;
+	flex: 0 0 auto;
+	width: var(--frame-gear-icon-size, 28px) !important;
+	height: var(--frame-gear-icon-size, 28px) !important;
+	max-width: 100%;
+	max-height: 100%;
+	box-sizing: border-box;
+	background: transparent !important;
+	-webkit-mask-image: none !important;
+	mask-image: none !important;
+	filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
+}
+
+.gauge-frame-gear-icon .gear-icon-face {
+	position: absolute;
+	inset: 0;
+	box-sizing: border-box;
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+	-webkit-mask-position: center;
+	mask-position: center;
+	-webkit-mask-size: contain;
+	mask-size: contain;
+	pointer-events: none;
+}
+
+.gauge-frame-gear-icon img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+	filter: none;
+}
+
+.gauge-frame-gear-number {
+	flex-direction: column;
+	width: auto;
+	max-width: 100%;
+}
+
+.gauge-frame-gear .gear-label {
+	text-align: center;
+	white-space: nowrap;
+	max-width: 100%;
+}
+
+.gauge-frame-gear .gear-bar {
+	width: var(--frame-gear-bar-width, 4em);
+	min-width: 0;
+	max-width: 100%;
+	height: var(--frame-gear-bar-height, 1em);
+	min-height: var(--frame-gear-bar-height, 1em);
+	max-height: var(--frame-gear-bar-height, 1em);
+	flex: 0 0 var(--frame-gear-bar-height, 1em);
+	align-self: center;
+}
+
+.gauge-frame-gear .gear-value {
+	font-size: 1em;
+}
+
+.gauge-frame-picture {
+	position: absolute;
+	inset: 0;
+	display: block;
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+	-webkit-mask-position: center center;
+	mask-position: center center;
+	-webkit-mask-size: 100% 100%;
+	mask-size: 100% 100%;
+	overflow: visible;
+}
+
+.gauge-frame-picture-rot {
+	position: absolute;
+	inset: 0;
+	width: auto;
+	height: auto;
+	transform: none;
+	transform-origin: center center;
+	transform-box: border-box;
+}
+
+.gauge-frame-pic-layer {
+	position: absolute;
+	inset: 0;
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+	-webkit-mask-position: center center;
+	mask-position: center center;
+	-webkit-mask-size: contain;
+	mask-size: contain;
+	-webkit-mask-mode: alpha;
+	mask-mode: alpha;
+}
+
+.gauge-frame-pic-layer.is-progress {
+	z-index: 1;
+}

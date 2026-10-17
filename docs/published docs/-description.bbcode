@@ -1,0 +1,158 @@
+[size=3]COG is designed to allow users to replace traditional Flash HUD elements with PrismaUI-based displays, and to customize those while playing, all while saving to your drive in a way that does not impact your save. Your HUD layout persists across sessions and saves, and you can change it any time.[/size]
+
+[size=3]COG's Gadgets come in three flavours: Groups, Gauges, and Gizmos. All three can display Gears, individual trackers for things like health, carry weight, oxygen, and so on. [/size]
+
+[size=3]Reading over this, it may sound complex, so here's a video of just how simple it can be:[/size]
+
+[youtube]16CoPfG7QHs[/youtube]
+
+
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Definitions[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]Gears[/size][/color]
+
+These will be familiar to those who have used mods like iWant Status Bars, STB widgets, and so on. You might be one of the tens of people who know me as the author of iWant Themes, and COG very much grew out of that idea.
+
+In COG's lingo, a "widget" becomes a "Gear": a tracker that displays some sort of vital info[b]*[/b]. COG comes equipped with a plethora of displayable Gears, but also with an API where mods can register their own Gears. It also comes with an optional iWant integration that will turn widgets into Gears for display with COG. While patches will be developed for a variety of mods, this was a quick way to ensure you can try COG without waiting on a remake of something already out there. 
+
+COG also comes wired with the ability for users to create "Inventory Gears", allowing them to track how many of any item they have on hand. Two Inventory Gears, "Stones of Barenziah" and "Septims", come pre-made; the first is because you can't drop quest items by default and therefore can't create it on your own and the second is for convenience.
+
+[size=2][b]*IMPORTANT NOTE:[/b] COG was never intended to be a 1:1 replacement of iWant Themes, nor any other "iWant" title. It does things differently, and that's intentional. That means that imported iWant widgets will look a little different as Gears. Much of that is configurable in the Gear itself or the Group that you add your Gear to.[/size]
+
+[color=#bf9000][size=5]Groups[/size][/color]
+
+Groups are collections of Gears. Think the Resistances list from STB or the status bars from iWant Status Bars. Gears can be placed and rotated, layout for a gear's information can be controlled, and colours (themes) can be applied. You can also use the Gear's default colours either across the Group or as individual exceptions to the Group rules.
+
+Mod-added Gears will display on first load in the Default Group if you haven't already assigned them somewhere else. List authors can prevent this by ensuring they package a premade json file for that Gear, showing COG that it's already been "seen".
+
+[color=#bf9000][size=5]Gauges[/size][/color]
+
+A Gauge is designed to display a single Gear, in a number of different ways: as a framed image or gear, or a meter in the form of an arc/bar. Like with Groups, the gear's built-in info and settings can be shown, hidden, or even overwritten in a variety of ways.
+
+A Gauge might be a Shout Cooldown tracker shaped like a celtic knot, a Health bar, a Werewolf Transformation timer, or any number of other elements tracking a single stat.
+
+[color=#bf9000][size=5]Gizmos[/size][/color]
+
+A Gizmo is exactly as complicated as it sounds. Unlike Groups, which track several Gears individually, or Gauges, which expose a single Gear, a Gizmo may or may not use Gears at all. A Gizmo is a bespoke HUD element that uses COG for display, positioning, and rotation. It's a way for mod authors to register and control their own creations through COG. Users can add as many copies of each as they like, each with their own configuration.
+
+COG comes with a few built-in Gizmos at launch: A Shout Meter, a Clock, a Feed, and a "Suppressor". More will be added, and those will be added to, as time goes on.
+
+[b]Gizmo: Clock[/b]
+[spoiler]The Clock Gizmo shows Tamrielic time, date and day of the week. It can show season through an icon that can be toggled on or off. It can also show celestial bodies, specifically Magnus (the sun), as well as Masser and Secunda (the moons.)
+
+You can choose between celestial mode (tracks the sun and the moons in an arc) or a text/icon only mode, and you can alter the order of date elements.
+
+At launch, these are all based on vanilla tracking. The season changes based on the month and day, not based on other mods like Seasons of Skyrim, etc. A clock management system is planned for future development, but at some point you just have to say, "it's good enough to release."[/spoiler]
+
+[b]Gizmo: Feed[/b]
+[spoiler]The Feed is a multipurpose Gizmo that can replace one or several pieces of the default HUD. It can handle active effects, inventory changes, notifications, skill and leveling messages, location and location discovery. Each section you enable will suppress or divert the vanilla HUD elements it replaces[/spoiler]
+
+[b]Gizmo: Shout Meter [/b]
+[spoiler]The Shout Meter is exactly what it sounds like: it displays your shout warm-up and cooldown in a fun, cinematic way. The default colours are meant to emulate the cooldown glow on the vanilla compass, but you can of course change them. Maybe you like the nice, brassy sheen of Dwemer metal. I do.
+
+The Shout Meter displays your currently-equipped shout in Dovahzul (the dragon language) as a transparent carving that fills as you shout, then slowly empties. It uses the spelling of the words in the game code, rather than the transliteration, so that they are spelled correctly in the dragon tongue.  
+
+Fun fact: if you delete the Dragon-Script font, the shout gizmo falls back to Roboto, and you can see the dragon language words in our alphabet, including where the game authors used numbers in place of special letters unique to the Dovahzul language. In short, [i]don't delete that font[/i]. Otherwise, WULD NAH KEST will show up as  WULD N4 KEST. Nobody wants that.[/spoiler]
+
+[b]Gizmo: Suppressor[/b]
+[spoiler]COG's "killer app" is its built-in ability to suppress native HUD elements. Add a health bar, the vanilla one is gone. It's how we can suppress and replace mod-added Flash elements without ever editing the mod code. That said, maybe you hid something you didn't intend to, or maybe you want to hide that annoying "You have 16 arrows left" display without needing to replace it. Enter the Suppressor. 
+
+The Suppressor is an override for any HUD element you know the name of. You can add as many "hide" or "show" settings to it as you like, and the "show" options will override anything that might be hiding your favourite HUD elements. Together with the Suppressions tab of the help menu, it can be a powerful ally in getting your layout [i]just so[/i].
+
+The Suppressor is invisible when playing, but it will show a small hand image when in the COG menu, to let you know that a Suppressor has been added. Like other Gizmos, you [i]can [/i]position, rotate, and resize the hand. You can even have more than one, but, well... [i]why[/i]? [/spoiler]
+
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]For Mod Authors[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]API[/size][/color]
+
+COG comes with an API for mods to register and update their own Gears and Gizmos with. Documentation on using it is under Docs. 
+
+The Feed Gizmo also has its own notification system within the API. It mimics and accepts coloured notification requests from SkyUILib, but can also function independently and accept both colour and icon arguments. Documentation is under Docs for this as well.
+
+Mods (and players, via General → [b]Toggle UI[/b]) can hide the whole COG play HUD for a clear view this session without changing the saved layout ([font=Courier New]SetUiHidden[/font] / [font=Courier New]ToggleUiHidden[/font]). Optionally that also alpha-hides Flash HUD menus. It does not undo suppressions or restore a "vanilla HUD mode."
+
+[color=#bf9000][size=5]Suppression[/size][/color]
+
+Gears and Gizmos can both access COG's HUD-suppression functionality, by passing on the name of the element they want hidden in one of two formats: an alias (see "? > Suppressions > Alias Index") or a CanonicalKey (the full address of the menu in game.) This allows mod authors or users to replace or hide elements they don't want on the screen.
+
+[color=#bf9000][size=5]Feed Icons[/size][/color]
+
+The Feed Gizmo has several sections, each of which will replace an equivalent built-in HUD section. Each of those sections has icon and colour settings, but also has icon maps, allowing users to assign specific icons to things like locations, specific notifications, and so on.
+
+[color=#bf9000][size=5]Adding Files[/size][/color]
+
+COG's files are intentionally loose: no BSAs, all exposed and alterable. You can drop extra icons or fonts directly into the file structure, add them via a mod with the same file paths, or import icons directly at runtime using the API. Imports are kept in a separate folder to keep them from breaking MO2's VFS paths, but any change you make prior to VFS initiation should not need import.
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Future Plans[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+Some of these plans may shift in priority, but here's the map so far:
+
+[color=#bf9000][size=5]Bug Hunt[/size][/color]
+
+COG has been tested in versions 1.6.1170, 1.6.1179, and 1.7.104.0.8 of Skyrim (Anniversary Edition) prior to release, and worked in all of them. It has not been tested in Skyrim 1.4.x (VR) or Skyrim 1.5.x (SSE). For either of those, you'll need to ensure you've added backwards compatibility for ESP-FE/ESL if you want to try it out. Feel free to report errors from those older versions if you can get it working there, but know that I don't have them available to test on right now.
+
+Out of box, COG has a robust logging system to help identify errors, but nothing is perfect. Please report your issues, with logs and how to replicate them, and I'll be happy to check them out.
+
+[color=#bf9000][size=5]Translation[/size][/color]
+
+COG has [i]not[/i] been released with translation integrated, or even easily doable. That doesn't mean it wasn't on my mind.
+
+The next major release will be built with a translation system under the hood. If you want to translate it at that point, or help with translation, it would be most welcome. I speak English, and remember only a smattering of French from my school days.
+
+Hold off trying to translate v 1.00, though. It's not designed for it... yet.
+
+[color=#bf9000][size=5]Icon Replacement[/size][/color]
+
+Icons and fonts included in COG are those from open resources with permissive licensing. That said, I'm missing important Skyrim-created assets like city logos, and some of the built-in icons are just nicer. Pulling apart the Flash and transcribing those icons to SVG, however, is a whole separate project. I do plan to use a lot more vanilla resources eventually, though, and to create more of my own, so you can expect some icons to change as the project progresses.
+
+[color=#bf9000][size=5]Patch Hub[/size][/color]
+
+Feel free to build patches for COG right away. You do you. That said, I will be working on an [i]official[/i] patch hub on the Nexus where I can create a number of patches. This isn't to discourage other modders. COG is [i]designed[/i] for modders. This is mostly because I personally hate going to fifty different mod pages just to make something work how I'd like.
+
+[color=#bf9000][size=5]Longer-Term: Celestial and Seasonal API for Clock[/size][/color]
+
+This is to get the Clock working with mods like Seasons of Skyrim, as well as to be able to register new celestial objects. Got a mod that adds in the Necromancer's Moon? This is for you. Just... not yet. Like with the compass below, the goal will be to allow "controllers" to take over aspects of the clock.
+
+[color=#bf9000][size=5]Even Longer-Term: Compass[/size][/color]
+
+You know what I love? Immersion. Helps to Have a Map and its companion, Helps to Have a Compass, are mainstays in my load order. Skills of the Wild hiding my compass until I learn how to track is actually something I enjoy. COG's compass, if and when I finally get around to making it, will have survival and immersion in mind. It will allow controlling integrations, so your world can behave in a way that makes sense to you.
+
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Credits[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]AI Usage Disclosure[/size][/color]
+
+I am an okay programmer, but I'm a web-head. I know HTML, CSS, and Javascript. I'm just sort of "okay" with Papyrus, and until this project, I had never touched C++. As such, I have been using an AI programming assistant for this project. The project would not be here without it.
+
+As much as possible, I try to use local AI models, taking advantage of my computer's graphics card. That said, I cannot claim to be a purist here. Local models are not where they need to be when it comes to a large codebase, and even at launch, COG has a [i]large[/i] codebase.
+
+[color=#bf9000][size=5]Image and Font Sourcing[/size][/color]
+
+Most icons used throughout COG were pulled from [url=https://opensvg.dev]OpenSVG[/url] and [url=https://www.vecteezy.com/]Vecteezy[/url]. I've kept to icons with permissive licenses when I've pulled these, but I will likely replace these as time goes on. Some were made using offline AI (I have a project I'm building for that as well.) Still others were made by me, by hand, in Inkscape.
+
+Banners, logos, and images on this page that are not directly from the game were made by me in Gimp.
+
+Fonts were sourced from [url=https://www.fontspace.com]FontSpace[/url]. Again, I went with fonts with permissive licenses, like Google's free Roboto family. The one exception to this is the Dragon Language font used by the Shout Meter Gizmo. That I got from [url=https://en.uesp.net/wiki/File:SR-Dragon_script.zip]the Unofficial Elder Scrolls Pages[/url]. That font is under a Creative Commons Attribution-ShareAlike 2.5 license, and distributed here under the same. 
+
+[color=#bf9000][size=5]Similarities to Other Mods[/size][/color]
+
+COG's elements and some of its Gears and Gizmos were inspired by other mods, but the code to make them work is entirely unique. None of those mods are required or modified by COG. Shout outs go to strong influences like Oxygen Meter, Casting Bar, A Matter of Time, iWant Widgets, and iWant Status Bars, among others.
+
+While none of the above mods are used by COG, it should be noted that the optional iWant integration overwrites and completely replaces iWant Widgets and iWant Status Bars. They cannot be run together. You can run COG [i]without [/i]the iWant integration if you want to keep both.
+
+[color=#bf9000][size=5]Credits and Thanks[/size][/color]
+[left][list]
+[*]Thanks to [url=https://en.uesp.net/wiki/File:SR-Dragon_script.zip]the UESP[/url], and specifically user [url=https://en.uesp.net/w/index.php?title=User:Daedra233&action=edit&redlink=1]Daedra233[/url] for the most recent version of the Dragon Script font, as well as [url=https://creativecommons.org/licenses/by-sa/2.5/]the license[/url] that allows me to package it with COG.[/*]
+[*]Thanks to [url=https://www.nexusmods.com/profile/DaemonPrime?gameId=1704]DaemonPrime[/url] for [url=https://www.nexusmods.com/skyrimspecialedition/mods/36457]iWant Widgets[/url] and [url=https://www.nexusmods.com/skyrimspecialedition/mods/36460]iWant Status Bars[/url], and for the open permissions that allowed me to build my integration for them![/*]
+[*]Thanks to [url=https://www.nexusmods.com/profile/mrpwn?gameId=110]mrpwn[/url] for [url=https://www.nexusmods.com/skyrim/mods/57308]SkyUILib[/url], which was the inspiration for my coloured notification system, and whose own coloured notification system I made sure will work with COG's during testing.[/*]
+[*]Thanks to [url=https://www.nexusmods.com/profile/StarkMP]StarkMP[/url] for [url=https://www.nexusmods.com/skyrimspecialedition/mods/148718]PrismaUI[/url], without which this could not exist![/*]
+[*]Thanks to [url=https://www.nexusmods.com/profile/z4x]zax[/url] for [url=https://www.nexusmods.com/skyrimspecialedition/mods/80455]Casting Bar[/url] — both as inspiration for COG's charge gears and as a guide to the math behind bow draw, which had me completely stumped![/*]
+[*]Thank you to the authors of the many HUD mods whose ideas inspired aspects of this one: [url=https://www.nexusmods.com/skyrimspecialedition/mods/57452]Oxygen Meter[/url], [url=https://www.nexusmods.com/skyrimspecialedition/mods/47032]Horse Stamina Widget[/url], [url=https://www.nexusmods.com/skyrimspecialedition/mods/62117]Ultimate Immersion Toggle[/url], [url=https://www.nexusmods.com/skyrimspecialedition/mods/62775]TrueHUD[/url] by [url=https://www.nexusmods.com/profile/Ershin]Ershin[/url], and [url=https://www.nexusmods.com/skyrimspecialedition/mods/164162]SL Widgets[/url] 
+[color=#444444][size=2](note: COG is not flagged as adult and does not have anything SL-related integrated by default. SL Widgets served as inspiration for the multiple icon-fill options I added.)[/size][/color][/*]
+[/list]
+[list]
+[*]And thanks to you for trying out my mod, and for any feedback you have![/*]
+[/list]
+[/left]

@@ -1,0 +1,93 @@
+[size=2]Also see: [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12533]Mod Author: HUD Suppression[/url][/b] (wiring hide into [font=Courier New]RegisterGear[/font]).[/size]
+
+[size=3]COG can soft-hide Flash HUD pieces so your Prisma gadgets are not stacking on top of the same information twice. That is how it can replace aspects of TrueHUD or Casting Bar elements without touching those mods' files.[/size]
+
+Gears do this with a linked HUD element (editable on the [color=#b45f06]Gears[/color] tab), Feed sections do it (or divert messages) when you turn them on, and the Suppressor gizmo is the override panel for "always hide" / "never hide." 
+
+Live status lives in the editor under [color=#b45f06]?[/color] → [color=#b45f06]Suppressions[/color] (Active Suppressions + Alias Index).
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Naming a Target[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]Aliases (and When to Copy a Full Address)[/size][/color]
+
+When you use a Suppressor or edit a Gear's HUD link, you can use:
+
+[list]
+[*]An [b]alias[/b] such as [font=Courier New]hud.health[/font], [font=Courier New]hud.notifications[/font], [font=Courier New]hud.inventory[/font]: see [color=#b45f06]?[/color] → [color=#b45f06]Suppressions[/color] → [color=#b45f06]Alias Index[/color] for the full list and what each one points at.[/*]
+[*]A [b]full address[/b] when something is not in that list — for example [font=Courier New]HUD Menu|HUDMovieBaseInstance.Health[/font], a whole menu name like [font=Courier New]CastingBar[/font] / [font=Courier New]oxygenMeter2[/font], or a clip path you copied from Help.[/*]
+[/list]
+
+Missing menus or clips are ignored: while aliases exist for them, TrueHUD Recent Loot ([font=Courier New]hud.inventory[/font]), Oxygen Meter 2 ([font=Courier New]hud.oxygen[/font]), Casting Bar ([font=Courier New]hud.casting[/font]), and SkyUI Active Effects ([font=Courier New]hud.activeEffects[/font]) only hide when those UIs actually exist. 
+
+Most of the time, you'll want COG [i]or[/i] the one-element mods above, but the aliases give you the option to switch back and forth to try each one out.
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Gears[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]HUD Link on the Gears Tab[/size][/color]
+
+Many builtin gears already link to the vanilla meter they replace. On the [color=#b45f06]Gears[/color] tab you can change or clear that link, and toggle whether the linked Flash element should hide while the gear is [b]on the HUD[/b] (enabled on a visible group, or bound to a visible gauge). 
+
+[color=#b45f06]Show Default Group[/color] counts for the Default Group: if it's off, then anything that would be hidden as a result of it is re-exposed.
+
+[color=#b45f06]Reset[/color] on that gear restores whatever the mod registered as the default link.
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Feed and Divert[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]Soft-Hide vs Divert[/size][/color]
+
+Several Feed sections both show COG UI and suppress / divert vanilla traffic when enabled on a Feed that is visible in play:
+
+[list]
+[*][color=#b45f06]Notifications[/color]: soft-hides the vanilla notification tray ([font=Courier New]hud.notifications[/font]) and can divert those toasts into the Feed (mod authors: [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12531]Mod Author: Feed Notifications[/url][/b]).[/*]
+[*][color=#b45f06]Inventory[/color]: soft-hides TrueHUD Recent Loot ([font=Courier New]hud.inventory[/font]) when present.[/*]
+[*][color=#b45f06]Current location[/color]: soft-hides [font=Courier New]hud.currentLocation[/font] when that sub-option is on.[/*]
+[*][color=#b45f06]Active Effects[/color]: soft-hides [font=Courier New]hud.activeEffects[/font] (SkyUI widget path).[/*]
+[/list]
+
+[color=#b45f06]Location discovery[/color] and [b]skills / level-up banners[/b] do [b]not[/b] have their own suppress aliases. Feed diverts those messages from the shared quest-update clip ([font=Courier New]hud.questUpdates[/font]) when the matching Feed section is on. Do not expect [font=Courier New]hud.skills[/font] or [font=Courier New]hud.locationDiscovery[/font] to soft-hide a dedicated widget: in vanilla those banners already share [font=Courier New]hud.questUpdates[/font], so the section simply diverts the relevant notifications from there.
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Suppressor Gizmo[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]Always Hide / Never Hide[/size][/color]
+
+Place a [color=#b45f06]Suppressor[/color] from the [color=#b45f06]Gizmos[/color] gallery. It is invisible in play (the editor shows a small stop/hand marker). Add aliases or full addresses to:
+
+[list]
+[*][color=#b45f06]Always Hide[/color]: force soft-hide without needing a replacement.[/*]
+[*][color=#b45f06]Never Hide[/color]: exempt something from being hidden; wins over hide sources.[/*]
+[/list]
+
+The Suppressor still applies even though its visibility is "none" (editor-only marker). The marker is just there so you know one is active.
+
+You can have more than one Suppressor, but there's really no need. A single Suppressor can hide or show as many elements as you like.
+
+[color=#bf9000][size=5]Who Wins?[/size][/color]
+
+[list]
+[*]Any active [color=#b45f06]Never Hide[/color] (exempt) beats hide → the element stays visible.[/*]
+[*]Otherwise, any active hide → hidden.[/*]
+[*]Among controllers on the winning side, priority is [b]Suppressor > other Gizmos (including Feed) > Gauges > Groups[/b]. The Help table marks the primary one as [b](winning)[/b].[/*]
+[/list]
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Quick Reference[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]Suppressions Quick Reference[/size][/color]
+
+The Suppressions Tab in the Help menu ([color=#b45f06]?[/color] → [color=#b45f06]Suppressions[/color]) functions as a quick reference for both what's suppressed and why, and for aliases of elements you might want to hide/show. 
+
+[list]
+[*][color=#b45f06]Active Suppressions[/color]: Serves as a list of anything that is force-hidden or force-shown because of COG. If other mods are hiding an element, those won't show here. This is meant to help you troubleshoot if you find something is missing (or showing) when you think it should not be.[/*]
+[*][color=#b45f06]Alias Index[/color]: This is your guide to "aliases", the short forms COG assigns to many, much longer, menu names. If you want to ensure an element is either hidden or shown, but don't know the name, this section tells you what to add to your Suppressor.[/*]
+[/list]
+Both sections are searchable and sortable. You can double-click an area to highlight it for copying.
+
+[color=#bf9000][size=5]Common Pitfalls[/size][/color]
+
+[list]
+[*]Linking [font=Courier New]hud.health[/font] but never placing / enabling the gear: nothing is on the HUD, so nothing hides.[/*]
+[*]Expecting discovery / skills aliases to soft-hide: these are all inside a single movie, so you can't just hide one. Use Feed sections (divert) to replace them instead.[/*]
+[*]Fighting a Suppressor [color=#b45f06]Never Hide[/color] entry you forgot you added: check [color=#b45f06]?[/color] → [color=#b45f06]Suppressions[/color] → [color=#b45f06]Active Suppressions[/color].[/*]
+[*]Expecting [color=#b45f06]Toggle UI[/color] to restore vanilla Flash: it is a clear-view hide, not a mode switch. Soft-hides from gears / Feed / Suppressor stay in force; Toggle does not appear under Active Suppressions.[/*]
+[/list]
+
+Mod authors wiring hide into [font=Courier New]Register[/font]: [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12533]Mod Author: HUD Suppression[/url][/b] and [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12502]Mod Author: Creating Gears[/url][/b].

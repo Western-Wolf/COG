@@ -1,0 +1,46 @@
+[size=3]COG can stand in for [b]iWant Widgets[/b] and [b]iWant Status Bars[/b] so your old iWant addons keep working while the meters actually draw as COG gears. That's the optional [b]iWant Integration[/b] in the FOMOD, not part of base COG.[/size]
+
+[size=3]If you only want native COG gears, you do not need this integration at all.[/size]
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Switching or Installing[/size][img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]Order of Operations[/size][/color]
+
+[list=1]
+[*][b]Enable the iWant Integration during install.[/b] Doing this before uninstalling the original iWant mods will maintain your load order. [/*]
+[*][b]Disable or ideally remove the real iWant Widgets and iWant Status Bars.[/b] COG's integration ships replacements ([font=Courier New]iWant Widgets.esl[/font] + [font=Courier New]iWant Status Bars.esp[/font]). Shared library filenames (chickenleg.dds, thermometer-*.dds, and friends) are remapped to COG SVGs inside the bridge: you do not need the original iWant Widgets installed for those.[/*]
+[*][b]Install an iWant-using mod of your choice.[/b] During testing, I used iWant Stress & Fear Widgets, Last Seed, and iWant Frostfall Widgets. All worked.[/*]
+[/list]
+
+
+[b]Do not[/b] run real iWant Widgets / iWant Widgets NG and iWant Status Bars alongside this integration: identical EditorIDs / script names will fight.
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]What You Will See[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]Gears Under iWant Integration[/size][/color]
+
+Load a save with the pack and an iWant-using mod enabled. Gears should show up under the category [b]iWant Integration[/b]. The original mod still drives the meter. Below 1% fill, imported iWant Gears hides so you are not taking up unneeded real estate. If you want these always visible, change the Gear's "Hide At" setting.
+
+[color=#bf9000][size=5]iWant in Groups[/size][/color]
+
+On first load, imported Gears from iWant will land in the [b]Default Group;[/b] rearrange them, move them to another Group, or tweak Group settings to taste. iWant is icon-only; COG groups show a percentage bar by default. If you want numbers to appear differently (or not at all), edit the group's [color=#b45f06]Number Format[/color] and [color=#b45f06]Show Number[/color] settings.
+
+[color=#b45f06]Fill from Hidden[/color] can approximate iWant-style soft appear, or fill the icon from the top or bottom for multi-icon widget looks (inspired by SL Widgets' "fill-up" style). While COG does not support multi-icon Gears, most multi-icon widgets were used to create a fill effect anyway, so you can basically do the same thing.
+
+[color=#bf9000][size=5]iWant as Gauges[/size][/color]
+
+Only the Gears are imported from iWant. What you do with them is up to you. This means that, even though they appear in your [b]Default Group[/b], they don't need to stay there. You can add them to a new group, remove those you don't want, or even connect them to gauges and have them on your screen as a bar, arc, or frame.
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Without the Integration[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]Keeping Real iWant with COG[/size][/color]
+
+You can run COG [i]without[/i] the integration and keep real iWant Widgets / Status Bars. They will not talk to each other. The integration is only for "I want those addons, but I want COG to draw them."
+
+[color=#bf9000][size=5]I Don't Use iWant[/size][/color]
+
+No problem! Native COG gears, gauges, and gizmos never require iWant. You only need this integration if you decide you want to have the two play together.
+
+
+
+More on dropping icons: [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12506]Intermediate: Fonts and Icons[/url][/b]. Placement basics: [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12509]Beginner: Player Quickstart[/url][/b].

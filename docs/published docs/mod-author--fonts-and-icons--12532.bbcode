@@ -1,0 +1,110 @@
+[size=2]Also see: [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12506]Intermediate: Fonts and Icons[/url][/b] (dropping or shipping files, no scripting).[/size]
+
+[size=3]This page is for mod authors who need icon paths in [font=Courier New]RegisterGear[/font] / [font=Courier New]RegisterGizmo[/font] / [font=Courier New]Notify[/font], or who import icons at runtime with [font=Courier New]ImportIcon[/font].[/size]
+
+[size=3]Quick map:[/size]
+[list]
+[*][size=3][b]Shipped layout[/b] → [font=Courier New]PrismaUI/views/COG/assets/icons/[/font] and [font=Courier New].../assets/fonts/[/font].[/size][/*]
+[*][size=3][b]Runtime icon imports[/b] → [font=Courier New].../assets/imports/icons/[/font] (via [font=Courier New]ImportIcon[/font]).[/size][/*]
+[/list]
+[size=3]Icon imports stay in their own tree so MO2's virtual file system does not get confused when plugins write files after the game has already started. There is no font-import API yet — ship fonts under [font=Courier New]assets/fonts/[/font].[/size]
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Shipping Icons With Your Mod[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]assets/icons + RegisterGear[/size][/color]
+
+Put icons at the same paths your players will see under [font=Courier New]Data[/font] after install. Example:
+
+[code]
+PrismaUI/
+views/
+COG/
+assets/
+icons/
+MyMod/
+stress.svg
+calm.svg[/code]
+
+When you [font=Courier New]RegisterGear[/font] a gear, pass the path relative to the icons root:
+
+[code]
+COG_API.BeginRegister("MyMod", "MyMod.esp")
+Int receipt = COG_API.RegisterGear("MyMod", "Stress", "percent", "Stress", "My Mod", "MyMod/stress.svg")
+COG_API.EndRegister("MyMod")[/code]
+
+No import call is needed for files that already live under [font=Courier New]assets/icons/[/font]. The editor rescans that tree when the catalog refreshes.
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Runtime Icon Imports[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]ImportIcon[/size][/color]
+
+When the file lives [b]outside[/b] COG's asset trees (for example under [font=Courier New]Interface/exported/...[/font] or [font=Courier New]Textures/...[/font]), call [font=Courier New]ImportIcon[/font]. COG copies or converts it into [font=Courier New]assets/imports/icons/[/font], indexes it, and returns the imports-relative path in one step:
+
+[font=Courier New]String Function ImportIcon(String sourceMod, String iconName, String sourcePath) Global Native[/font]
+
+[font=Courier New]sourcePath[/font] is [b]Data-relative[/b] (no absolute paths, and no [font=Courier New]Data/[/font] prefix) — for example [font=Courier New]"Interface/exported/MyMod/icon.dds"[/font]. Supported copy-as-is: [font=Courier New].svg[/font] [font=Courier New].png[/font] [font=Courier New].gif[/font] [font=Courier New].webp[/font] [font=Courier New].jpg[/font] / [font=Courier New].jpeg[/font]. [font=Courier New].dds[/font] and many other formats are converted to PNG. Returns [font=Courier New]""[/font] on failure (missing file, path escape, decode error).
+
+The optional Example API addon ships its icon outside COG on purpose, then imports it on load. If import fails it falls back to a shipped cog so gears still register:
+
+[code]
+String Property SourceIconPath = "Interface/exported/COG_Example/example.svg" AutoReadOnly
+
+Function COGRegisterExamples()
+If !COG_API.IsReady()
+Return
+EndIf
+
+String iconPath = COG_API.ImportIcon("COG_Example", "example", SourceIconPath)
+If iconPath == ""
+iconPath = "COG/cog.svg"
+EndIf
+
+COG_API.BeginRegister("COG_Example", "COG - Example.esp")
+COG_API.RegisterGear("COG_Example", "count", "count", "Example Count", "Example", iconPath)
+COG_API.EndRegister("COG_Example")
+EndFunction[/code]
+
+The optional iWant Integration does the same for real export files: it remaps known Widgets library stems to shipped COG SVGs, otherwise resolves [font=Courier New]Interface/exported/...[/font] and calls [font=Courier New]COG_API.ImportIcon[/font].
+
+You can also hand an imported icon path to Feed toasts:
+
+[code]
+COG_API.Notify("Something happened", "#E8D2A0", "MyMod/runtime.png")[/code]
+
+That only paints an icon when a play-visible Feed has [color=#b45f06]Notifications[/color] (and [color=#b45f06]Show icons[/color]) enabled. More toast detail: [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12531]Mod Author: Feed Notifications[/url][/b].
+
+[color=#bf9000][size=5]Using Icons in Gear Registration[/size][/color]
+
+Whether the file came from [font=Courier New]assets/icons/[/font] or from [font=Courier New]ImportIcon[/font], [font=Courier New]RegisterGear[/font] (and [font=Courier New]RegisterGizmo[/font]'s gallery icon) takes the same kind of relative path:
+
+[code]
+; Relative to assets/icons/ OR imports-relative path returned by ImportIcon
+Int r = COG_API.RegisterGear("MyMod", "Focus", "percent", "Focus", "My Mod", "MyMod/focus.svg", "#DF2020", "#20DF20", "#C4A35A")[/code]
+
+Backslashes are fine; COG normalizes them to forward slashes. If you omit the extension, [font=Courier New].svg[/font] is assumed. Pass [font=Courier New]""[/font] when the gear has no default icon.
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Fonts[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]No Font Import API (Yet)[/size][/color]
+
+There is no Papyrus font-import call today. Ship or drop [font=Courier New].ttf[/font] / [font=Courier New].otf[/font] / [font=Courier New].woff[/font] / [font=Courier New].woff2[/font] directly in [font=Courier New]assets/fonts/[/font] (not nested in subfolders). [font=Courier New]assets/imports/fonts/[/font] exists only for parity with icons, and may be used later if there is demand — it is far less important than icon imports. Players pick the family under [color=#b45f06]General[/color] → [color=#b45f06]Default gadget font[/color]. The Shout Meter always uses Dragon Script for the Dovahzul carving.
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Quick Reference[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+[color=#bf9000][size=5]Which Path Should I Use?[/size][/color]
+
+[list]
+[*][b]Icon ships with the mod, known at install time[/b] → [font=Courier New]assets/icons/SectionName/...[/font]. No import API.[/*]
+[*][b]Icon lives outside COG assets[/b] → [font=Courier New]COG_API.ImportIcon(sourceMod, iconName, "Interface/exported/...")[/font]. Source stays put; COG writes under [font=Courier New]assets/imports/icons/[/font].[/*]
+[*][b]Font ships with the mod or is a user drop[/b] → [font=Courier New]assets/fonts/[/font]. Pick it in the editor. No API call.[/*]
+[/list]
+
+[color=#bf9000][size=5]Common Pitfalls[/size][/color]
+
+[list]
+[*]Passing a path with a [font=Courier New]Data/[/font] prefix or an absolute disk path to [font=Courier New]ImportIcon[/font]: use a Data-relative path such as [font=Courier New]"Interface/exported/MyMod/icon.dds"[/font].[/*]
+[*]Putting runtime writes into [font=Courier New]assets/icons/[/font] instead of [font=Courier New]assets/imports/icons/[/font]: that's how you fight MO2's VFS and lose. [font=Courier New]ImportIcon[/font] always targets the imports tree.[/*]
+[*]Forgetting that the first folder is the picker section. A flat [font=Courier New]assets/icons/myicon.svg[/font] works, but a section folder keeps the picker tidy.[/*]
+[*]Expecting the Shout Meter to honour the gadget font: it will not. Dragon Script stays.[/*]
+[/list]
+
+When in doubt, look at the optional [b]COG - Example API[/b] files in the installer: they ship an icon under [font=Courier New]Interface/exported/[/font], call [font=Courier New]ImportIcon[/font], and wire the returned path into [font=Courier New]RegisterGear[/font], [font=Courier New]RegisterGizmo[/font], and [font=Courier New]Notify[/font]. Copy that pattern, swap the names, and you are in business.

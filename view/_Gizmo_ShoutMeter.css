@@ -1,0 +1,125 @@
+.hud-gizmo-shout-meter .shout-meter-body {
+	display: flex;
+	width: 100%;
+	height: 100%;
+	min-width: 0;
+	align-items: center;
+	overflow: visible;
+}
+
+.hud-gizmo-shout-meter .shout-meter-body.is-align-center {
+	justify-content: center;
+}
+
+.hud-gizmo-shout-meter .shout-meter-body.is-align-left {
+	justify-content: flex-start;
+}
+
+.hud-gizmo-shout-meter .shout-meter-body.is-align-right {
+	justify-content: flex-end;
+}
+
+.hud-gizmo-shout-meter .shout-meter-text {
+	font-family: var(--cog-font-shout);
+	line-height: 1;
+	white-space: nowrap;
+	position: relative;
+	display: grid;
+	overflow: visible;
+}
+
+.hud-gizmo-shout-meter .shout-meter-words,
+.hud-gizmo-shout-meter .shout-meter-line {
+	grid-area: 1 / 1;
+}
+
+.hud-gizmo-shout-meter .shout-meter-words {
+	white-space: nowrap;
+}
+
+.hud-gizmo-shout-meter .shout-meter-line {
+	position: relative;
+	display: inline-block;
+	white-space: nowrap;
+	overflow: visible;
+}
+
+.hud-gizmo-shout-meter .shout-meter-line::before {
+	content: attr(data-text);
+	color: #000;
+	opacity: var(--shout-trough-a, 0.2);
+	text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.62);
+}
+
+.hud-gizmo-shout-meter .shout-meter-fill-clip {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	overflow: visible;
+}
+
+.hud-gizmo-shout-meter.is-cooldown .shout-meter-fill-clip {
+	filter:
+		drop-shadow(0 0 1px var(--shout-glow-primary, rgba(255, 255, 255, 0.9)))
+		drop-shadow(0 0 3px var(--shout-glow-primary, rgba(255, 255, 255, 0.65)))
+		drop-shadow(0 0 7px var(--shout-glow-secondary, rgba(91, 164, 249, 0.55)))
+		drop-shadow(0 0 12px var(--shout-glow-secondary, rgba(91, 164, 249, 0.35)));
+}
+
+.hud-gizmo-shout-meter .shout-meter-fill-layer::before {
+	content: attr(data-text);
+	display: block;
+	white-space: nowrap;
+	color: var(--shout-primary, #ffffff);
+}
+
+.hud-gizmo-shout-meter .shout-meter-fill-layer.is-gradient.is-cooldown::before {
+	color: transparent;
+	background-image: var(--shout-cooldown-gradient);
+	-webkit-background-clip: text;
+	background-clip: text;
+}
+
+.hud-gizmo-shout-meter .shout-word {
+	position: relative;
+	display: inline-block;
+}
+
+.hud-gizmo-shout-meter .shout-word::before {
+	content: attr(data-word);
+	color: #000;
+	opacity: var(--shout-trough-a, 0.2);
+	text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.62);
+}
+
+.hud-gizmo-shout-meter .shout-word.is-filled::after {
+	content: attr(data-word);
+	position: absolute;
+	left: 0;
+	top: 0;
+	color: var(--shout-primary, #ffffff);
+	white-space: nowrap;
+}
+
+@keyframes cog-shout-meter-deny {
+	0%,
+	100% {
+		transform: translateX(0);
+	}
+	20% {
+		transform: translateX(-3px);
+	}
+	40% {
+		transform: translateX(3px);
+	}
+	60% {
+		transform: translateX(-2px);
+	}
+	80% {
+		transform: translateX(2px);
+	}
+}
+
+.hud-gizmo-shout-meter .shout-meter-text.is-deny-vibrate {
+	animation: cog-shout-meter-deny 0.38s ease-in-out;
+}

@@ -1,0 +1,17 @@
+# COG notification feed icon rules
+# Location: Data/SKSE/Plugins/COG/gizmos/feed/notifications/
+# Last wins: later-named *.txt files and later lines override earlier matches.
+#
+# Grammar (base kinds name + form; all four operators):
+#   <kind> <op> `<needle>` [<op> `<needle>` ...] = Section/icon.svg
+# Ops: equals, notequals, contains, notcontains
+#
+# Resolve order for each toast:
+#   1. Icon from the Notify / divert API (if set) — always wins; rules are skipped
+#   2. Matching rule below (name = translated toast text)
+#   3. Feed gizmo Notification Defaults icon
+#
+# name matches the toast text after translation (what you see in the feed).
+
+# Vanilla werewolf corpse feed
+name equals `Bloodlust Extended` = Werewolf/wolf.svg

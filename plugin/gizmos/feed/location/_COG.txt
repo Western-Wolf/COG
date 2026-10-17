@@ -1,0 +1,19 @@
+# COG location feed icon rules
+# Location: Data/SKSE/Plugins/COG/gizmos/feed/location/
+# Last wins: later-named *.txt files and later lines override earlier matches.
+#
+# Grammar (base kinds name + form, plus section extra `kind`):
+#   <kind> <op> `<needle>` [<op> `<needle>` ...] = Section/icon.svg
+# Ops: equals, notequals, contains, notcontains
+#
+# Candidates:
+#   name — discovered / current place text (after translation)
+#   kind — `discovery` or `current`
+#   form — allowed for overrides (rarely used for places)
+#
+# Resolve: matching rule → feed gizmo discovery/current default icons when Show Icons is on.
+
+# Examples (commented — enable or add overrides as needed):
+# name contains `Whiterun` = Camping/map.svg
+# kind equals `current` = Camping/compass.svg
+# kind equals `discovery` = Camping/map.svg

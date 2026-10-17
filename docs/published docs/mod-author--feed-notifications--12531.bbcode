@@ -1,0 +1,100 @@
+[size=2]Also see: [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12503]Intermediate: Feed Icon Maps[/url][/b] (disk rules for toast text → icons, no Papyrus).[/size]
+
+This page is for mod authors who want their messages in that stack instead of (or as well as) the old Flash tray.
+
+COG's Feed can own coloured toasts: either from your mod via COG_API.Notify, or by diverting SkyUILib / vanilla notification traffic when the Feed's Notifications section is on. Treat COG_API.Notify as an extra option. COG is already designed to understand coloured messages sent using SkyUILib's system or inline HTML colour rules.
+
+[size=3]For icon paths and [font=Courier New]ImportIcon[/font], see [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12532]Mod Author: Fonts and Icons[/url][/b]. For matching toast text to icons on disk (no Papyrus), see [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12503]Intermediate: Feed Icon Maps[/url][/b].[/size]
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]What You Need On Screen[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]A Live Feed With Notifications[/size][/color]
+
+In most cases, using Skyrim's default notification system is the safer bet for mods since COG's own [font=Courier New]Notify[/font] only does something when there is a [b]play-visible[/b] Feed gizmo with [color=#b45f06]Notifications[/color] enabled. If nothing qualifies, the call is a quiet failure (COG logs that it dropped the toast).
+
+If you know your user will have a COG feed active (Wabbajack or Nexus list authors), you can use COG's richer system to define both colour and icon. Alternately, you can get the best of both worlds by defining rules for icon selection, in case the user has an active feed.
+
+Checklist for testers:
+
+[list=1]
+[*]Place a [color=#b45f06]Feed[/color] from the [color=#b45f06]Gizmos[/color] gallery.[/*]
+[*]Turn [color=#b45f06]Notifications[/color] on in that Feed's settings.[/*]
+[*]Leave the Feed visible in play (not stuck on editor-only visibility that never shows in-game).[/*]
+[*]Optionally leave [color=#b45f06]Show icons[/color] on if you care about icons.[/*]
+[/list]
+
+While Notifications are on, COG soft-hides vanilla [font=Courier New]MessagesBlock[/font] ([font=Courier New]hud.notifications[/font]) and can divert SkyUILib-style notification calls into the same stack.
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]COG_API.Notify[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]Signature[/size][/color]
+
+[code]
+Function Notify(String asMessage, String asColor = "#FFFFFF", String asIcon = "") Global Native[/code]
+
+[list]
+[*][b]Argument:[/b] [font=Courier New]asMessage[/font]. [b]Notes:[/b] Toast text (after any translation you apply yourself)[/*]
+[*][b]Argument:[/b] [font=Courier New]asColor[/font]. [b]Notes:[/b] Optional [font=Courier New]#RRGGBB[/font]. Empty / default white is fine[/*]
+[*][b]Argument:[/b] [font=Courier New]asIcon[/font]. [b]Notes:[/b] Optional path under [font=Courier New]assets/icons/[/font] or a registered import, e.g. [font=Courier New]"Actions/speak.svg"[/font] or [font=Courier New]"MyMod/alert.png"[/font][/*]
+[/list]
+
+Prefer this (or SkyUILib into a diverting Feed) over [font=Courier New]Debug.Notification[/font] when you want COG to own colour and icons.
+
+[color=#bf9000][size=5]Examples[/size][/color]
+
+[code]
+; Plain toast
+COG_API.Notify("The ritual is complete.")
+
+; Coloured
+COG_API.Notify("Something went wrong.", "#E8A0A0")
+
+; Colour + icon (API icon always wins over disk notification iconrules)
+COG_API.Notify("Example countdown finished", "#E8D2A0", "COG_Example/example.svg")[/code]
+
+Wait until COG is ready ([font=Courier New]COG_API.IsReady()[/font] / [font=Courier New]COG_Ready[/font]) before relying on the built-in option in early load scripts: same rule as gears.
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]SkyUILib and Diverted Toasts[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]Compatibility[/size][/color]
+
+When a Feed is showing Notifications, COG can divert SkyUILib [font=Courier New]ShowNotification[/font] / [font=Courier New]ShowNotificationIcon[/font] style traffic for [b]text and colour[/b]. Scaleform icon frames from those APIs are ignored, since COG works with on-disk icons. Messages will still either pick an icon from [b]notification rules on disk[/b], or fall back to the Feed's Notification Defaults icon when [color=#b45f06]Show icons[/color] is on.
+
+You do not need to rewrite every mod: if players run a Notifications Feed, most existing ways of colouring notifications already land in COG without issue.
+
+[color=#bf9000][size=5]Inline Markup[/size][/color]
+
+On diverted HUD / SkyUILib text (and similar paths), COG understands a small Scaleform-ish subset:
+
+[list]
+[*][font=Courier New]<font color='#RRGGBB'>[/font] or [font=Courier New]#AARRGGBB[/font] (alpha dropped) can set colour when no valid explicit colour was passed: the tags themselves are stripped.[/*]
+[*][font=Courier New]<b>[/font], [font=Courier New]<i>[/font], [font=Courier New]<u>[/font] become bold / italic / underline.[/*]
+[*]Other tags are stripped.[/*]
+[/list]
+
+An explicit [font=Courier New]asColor[/font] (or SkyUILib colour argument) wins over inline [font=Courier New]<font color>[/font].
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Icons and Overrides[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]Who Wins?[/size][/color]
+
+For each message:
+
+[list=1]
+[*]Non-empty icon from [font=Courier New]Notify[/font] / the divert caller: [b]disk rules never override this[/b].[/*]
+[*]Otherwise, a matching rule in [font=Courier New]SKSE/Plugins/COG/gizmos/feed/notifications/*.txt[/font].[/*]
+[*]Else the Feed's Notification Defaults icon, when [color=#b45f06]Show icons[/color] is on.[/*]
+[/list]
+
+Feed settings also include [color=#b45f06]Allow mod notification icon[/color] (on by default). When it is on, the toast's own icon path (from [font=Courier New]Notify[/font] or a divert) is preferred in the UI over the Feed default. When it is off, the UI falls back to the Feed Notification Defaults icon even if a mod path was supplied. 
+
+[color=#bf9000][size=5]Common Pitfalls[/size][/color]
+
+[list]
+[*]Calling [font=Courier New]Notify[/font] with no Notifications Feed on screen: nothing appears; check the log.[/*]
+[*]Expecting SkyUILib's Scaleform icon frame to show: COG uses COG icon paths instead.[/*]
+[*]Forgetting [color=#b45f06]Show icons[/color] when debugging "where's my icon?"[/*]
+[*]Putting the icon under the wrong tree: see [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12532]Mod Author: Fonts and Icons[/url][/b].[/*]
+[/list]
+
+The optional [b]COG - Example API[/b] pack fires a Notify when its demo countdown hits zero. Enable a Notifications Feed and watch that if you want a known-good baseline.

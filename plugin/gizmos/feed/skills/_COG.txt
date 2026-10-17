@@ -1,0 +1,55 @@
+# COG skills feed icon rules
+# Location: Data/SKSE/Plugins/COG/gizmos/feed/skills/
+# Last wins: later-named *.txt files and later lines override earlier matches.
+#
+# Grammar (name and form only for this section):
+#   <kind> <op> `<needle>` [<op> `<needle>` ...] = Section/icon.svg
+# Kinds: name, form
+# Ops: equals, notequals, contains, notcontains (case-insensitive; spaces in ` ` matter)
+#
+# Candidates: skill display name from the HUD banner, ActorValue string (OneHanded),
+# and localized AV name when available. Character level-up toasts use the gizmo
+# Level Icon (no rule match required).
+
+# --- Vanilla skills (AV editor-style names) ---
+name equals `OneHanded` = Weapons/broadsword.svg
+name equals `One-Handed` = Weapons/broadsword.svg
+name contains `One-Handed` = Weapons/broadsword.svg
+name equals `TwoHanded` = Weapons/battleaxe.svg
+name equals `Two-Handed` = Weapons/battleaxe.svg
+name contains `Two-Handed` = Weapons/battleaxe.svg
+name equals `Archery` = Weapons/bow.svg
+name contains `Archery` = Weapons/bow.svg
+name equals `Block` = Armour/breastplate-male.svg
+name contains `Block` = Armour/breastplate-male.svg
+name equals `Smithing` = Crafting/anvil.svg
+name contains `Smithing` = Crafting/anvil.svg
+name equals `HeavyArmor` = Armour/helm-heavy.svg
+name equals `Heavy Armor` = Armour/helm-heavy.svg
+name contains `Heavy Armor` = Armour/helm-heavy.svg
+name equals `LightArmor` = Armour/helm-light.svg
+name equals `Light Armor` = Armour/helm-light.svg
+name contains `Light Armor` = Armour/helm-light.svg
+name equals `Pickpocket` = Treasure/bag.svg
+name contains `Pickpocket` = Treasure/bag.svg
+name equals `Lockpicking` = Treasure/key.svg
+name contains `Lockpicking` = Treasure/key.svg
+name equals `Sneak` = Clothing/hood.svg
+name contains `Sneak` = Clothing/hood.svg
+name equals `Alchemy` = Alchemy/potion.svg
+name contains `Alchemy` = Alchemy/potion.svg
+name equals `Speech` = Actions/speak.svg
+name contains `Speech` = Actions/speak.svg
+name equals `Speechcraft` = Actions/speak.svg
+name equals `Alteration` = Magic/sparkles.svg
+name contains `Alteration` = Magic/sparkles.svg
+name equals `Conjuration` = Magic/sparkles.svg
+name contains `Conjuration` = Magic/sparkles.svg
+name equals `Destruction` = Magic/sparkles.svg
+name contains `Destruction` = Magic/sparkles.svg
+name equals `Illusion` = Magic/sparkles.svg
+name contains `Illusion` = Magic/sparkles.svg
+name equals `Restoration` = Magic/sparkles.svg
+name contains `Restoration` = Magic/sparkles.svg
+name equals `Enchanting` = Magic/sparkles.svg
+name contains `Enchanting` = Magic/sparkles.svg

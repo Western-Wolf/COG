@@ -1,0 +1,168 @@
+# COG inventory feed icon rules
+# Location: Data/SKSE/Plugins/COG/gizmos/feed/inventory/
+# Last wins: later-named *.txt files and later lines override earlier matches.
+# Put broad rules above; specific equals / form pins below.
+# Armor weight/slots are listed after material name heuristics so clothing/armor
+# types beat contains `hide` / `leather` / `pelt` (e.g. Hide Armor → armor icon).
+#
+# Grammar (all kinds):
+#   <kind> <op> `<needle>` [<op> `<needle>` ...] = Section/icon.svg
+# Kinds: form, name, keyword, formtype, weapontype, armortype, armorslot
+# Ops: equals, notequals, contains, notcontains (case-insensitive; spaces in ` ` matter)
+# formtype uses engine 4-char codes (weap, armo, alch, …). weapontype: onehandsword, bow, …
+# Icon paths are lowercased on load (Windows).
+
+# --- Broad form types (early / low priority) ---
+formtype equals `misc` = Treasure/bag.svg
+formtype equals `alch` = Alchemy/potion.svg
+formtype equals `ingr` = Food and Drink/wheat.svg
+formtype equals `book` = Scribe/book-closed.svg
+formtype equals `scrl` = Scribe/scroll.svg
+formtype equals `keym` = Treasure/key.svg
+formtype equals `slgm` = Treasure/crystal.svg
+formtype equals `ammo` = Weapons/quiver.svg
+formtype equals `weap` = Weapons/broadsword.svg
+formtype equals `armo` = Armour/breastplate-male.svg
+
+# --- Keywords ---
+keyword equals `VendorItemIngot` = Crafting/ingot.svg
+keyword equals `VendorItemOreIngot` = Crafting/ore.svg
+keyword equals `VendorItemAnimalHide` = Crafting/leather.svg
+keyword equals `WeapTypeSword` = Weapons/broadsword.svg
+keyword equals `WeapTypeDagger` = Weapons/dagger-right.svg
+keyword equals `WeapTypeWarAxe` = Camping/axe.svg
+keyword equals `WeapTypeBattleaxe` = Weapons/battleaxe.svg
+keyword equals `WeapTypeMace` = Weapons/mace.svg
+keyword equals `WeapTypeWarhammer` = Weapons/warhammer.svg
+keyword equals `WeapTypeGreatsword` = Weapons/broadsword.svg
+keyword equals `WeapTypeBow` = Weapons/bow.svg
+keyword equals `WeapTypeStaff` = Weapons/wizard-staff.svg
+keyword equals `WeapTypeCrossbow` = Weapons/crossbow.svg
+
+# --- Weapon types ---
+weapontype equals `onehandsword` = Weapons/broadsword.svg
+weapontype equals `onehanddagger` = Weapons/dagger-right.svg
+weapontype equals `onehandaxe` = Camping/axe.svg
+weapontype equals `onehandmace` = Weapons/mace.svg
+weapontype equals `twohandsword` = Weapons/broadsword.svg
+weapontype equals `twohandaxe` = Weapons/battleaxe.svg
+weapontype equals `bow` = Weapons/bow.svg
+weapontype equals `staff` = Weapons/wizard-staff.svg
+weapontype equals `crossbow` = Weapons/crossbow.svg
+
+# --- Name heuristics (food / misc / ammo / materials) ---
+# Armor weight/slots come after material names so "Hide Armor" keeps an armor icon,
+# not Crafting/leather from contains `hide`.
+name contains `bolt` = Weapons/quiver.svg
+name contains `arrow` = Weapons/arrows.svg
+
+name contains `wine` = Food and Drink/bottle.svg
+name contains `mead` = Food and Drink/bottle.svg
+name contains `ale` = Food and Drink/bottle.svg
+name contains `beer` = Food and Drink/bottle.svg
+name contains `lager` = Food and Drink/bottle.svg
+name contains `milk` = Food and Drink/bottle.svg
+name contains `juice` = Food and Drink/bottle.svg
+name contains `tea` = Food and Drink/bottle.svg
+name contains `coffee` = Food and Drink/bottle.svg
+name contains `argonian blood` = Food and Drink/bottle.svg
+name contains `waterskin` = Food and Drink/bottle.svg
+name contains `flagon` = Food and Drink/bottle.svg
+name contains `bottle of` = Food and Drink/bottle.svg
+
+name contains `chicken` = Food and Drink/chicken-leg.svg
+name contains `pheasant` = Food and Drink/chicken-leg.svg
+name contains ` haunch` = Food and Drink/chicken-leg.svg
+name contains `rabbit leg` = Food and Drink/chicken-leg.svg
+name contains `steak` = Food and Drink/steak.svg
+name contains `venison` = Food and Drink/steak.svg
+name contains `beef` = Food and Drink/steak.svg
+name contains `fish` = Food and Drink/fish.svg
+name contains `salmon` = Food and Drink/fish.svg
+name contains `meat` = Food and Drink/steak.svg
+name contains `roast` = Food and Drink/steak.svg
+name contains `charred` = Food and Drink/steak.svg
+name contains `seared` = Food and Drink/steak.svg
+name contains `chop` = Food and Drink/steak.svg
+name contains `horker` = Food and Drink/steak.svg
+name contains `mammoth snout` = Food and Drink/steak.svg
+name contains `goat leg` = Food and Drink/steak.svg
+name contains `leg of goat` = Food and Drink/steak.svg
+
+name contains `cheese` = Food and Drink/cheese.svg
+name contains `eidar` = Food and Drink/cheese.svg
+name contains `bread` = Food and Drink/bread.svg
+name contains `dumpling` = Food and Drink/bread.svg
+name contains `sweetroll` = Food and Drink/pie.svg
+name contains `sweet roll` = Food and Drink/pie.svg
+name contains `pie` = Food and Drink/pie.svg
+name contains `cake` = Food and Drink/pie.svg
+name contains `honey nut` = Food and Drink/pie.svg
+name contains `taffy` = Food and Drink/pie.svg
+name contains `creme treat` = Food and Drink/pie.svg
+name contains `soup` = Food and Drink/soup.svg
+name contains `stew` = Food and Drink/soup.svg
+name contains `broth` = Food and Drink/soup.svg
+name contains `chowder` = Food and Drink/soup.svg
+name contains `apple` = Food and Drink/apple.svg
+name contains `cabbage` = Food and Drink/apple.svg
+name contains `potato` = Food and Drink/apple.svg
+name contains `carrot` = Food and Drink/apple.svg
+name contains `tomato` = Food and Drink/tomato.svg
+name contains `leek` = Food and Drink/apple.svg
+name contains `gourd` = Food and Drink/apple.svg
+name contains `ash yam` = Food and Drink/apple.svg
+name contains `flour` = Food and Drink/wheat.svg
+
+name contains `poison` = Alchemy/skull-and-bones.svg
+
+name contains ` ore` = Crafting/ore.svg
+name contains `ingot` = Crafting/ingot.svg
+name contains `pelt` = Crafting/leather.svg
+name contains `hide` = Crafting/leather.svg
+name contains `leather` = Crafting/leather.svg
+
+name contains `knife` notcontains `dagger` = Food and Drink/fork-and-knife.svg
+name contains `bowl` = Food and Drink/fork-and-knife.svg
+name contains `plate` = Food and Drink/fork-and-knife.svg
+name contains `fork` = Food and Drink/fork-and-knife.svg
+name contains `spoon` = Food and Drink/fork-and-knife.svg
+name contains `jug` = Food and Drink/fork-and-knife.svg
+name contains `goblet` = Food and Drink/fork-and-knife.svg
+name contains `cup` = Food and Drink/fork-and-knife.svg
+name contains `tankard` = Food and Drink/fork-and-knife.svg
+name contains `kettle` = Food and Drink/fork-and-knife.svg
+name contains `ladle` = Food and Drink/fork-and-knife.svg
+
+# --- Armor weight / slots (after material names; slots later so they win over weight) ---
+armortype equals `clothing` = Clothing/robe.svg
+armortype equals `lightarmor` = Armour/breastplate-male.svg
+armortype equals `heavyarmor` = Armour/breastplate-male.svg
+armorslot equals `shield` = Weapons/shield-simple.svg
+armorslot equals `ring` = Jewellery/ring.svg
+armorslot equals `amulet` = Jewellery/amulet.svg
+armorslot equals `circlet` = Jewellery/coronet.svg
+armorslot equals `hands` = Armour/gauntlets.svg
+armorslot equals `forearms` = Armour/gauntlets.svg
+armorslot equals `feet` = Armour/boots.svg
+armorslot equals `calves` = Armour/greaves.svg
+armorslot equals `body` = Armour/breastplate-male.svg
+armorslot equals `head` = Armour/helm-light.svg
+armorslot equals `hair` = Armour/helm-light.svg
+
+# --- Clothing name heuristics (after armortype so hood/hat beat generic clothing) ---
+name contains `hood` notcontains `hat` = Clothing/hood.svg
+name contains `hat` notcontains `hood` = Clothing/hat.svg
+name contains `cowl` = Clothing/hood.svg
+name contains ` Clothing` = Clothing/shirt.svg
+name contains ` Shirt` = Clothing/shirt.svg
+name contains ` Tunic` = Clothing/shirt.svg
+
+# --- Exact pins (highest priority within this file) ---
+form equals `Skyrim.esm:00000F` = Treasure/coins.svg
+form equals `Skyrim.esm:0001BCA7` = Clothing/hat-chef.svg
+name equals `Chef's Hat` = Clothing/hat-chef.svg
+
+# Example user overrides (later-named *.txt recommended):
+# form equals `Skyrim.esm:0001397D` = Weapons/broadsword.svg
+# name equals `Dragonbone Arrow` = Weapons/arrows.svg

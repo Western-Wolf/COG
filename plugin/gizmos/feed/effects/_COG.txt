@@ -1,0 +1,101 @@
+# COG active-effects feed icon rules
+# Location: Data/SKSE/Plugins/COG/gizmos/feed/effects/
+# Last wins: later-named *.txt files and later lines override earlier matches.
+# Put broad rules above; specific equals / form pins below.
+#
+# Grammar: <kind> <op> `<needle>` [<op> `<needle>` ...] = Section/icon.svg
+# Kinds: form, name, keyword, formtype, av, archetype
+# Ops: equals, notequals, contains, notcontains
+# archetype uses EffectSetting::GetArchetypeAsString (e.g. ValueMod, NightEye, SlowTime).
+# form matches the MGEF. Icon paths lowercased on load.
+
+formtype equals `mgef` = Magic/sparkles.svg
+
+av contains `Resist` = Weapons/shield-reinforced.svg
+av equals `Health` = Alchemy/potion.svg
+av equals `Magicka` = Magic/crystal-ball-shiny.svg
+av equals `MagickaRate` = Magic/crystal-ball-shiny.svg
+av equals `MagickaRateMult` = Magic/crystal-ball-shiny.svg
+av equals `Stamina` = Food and Drink/chicken-leg.svg
+av equals `StaminaRate` = Food and Drink/chicken-leg.svg
+av equals `StaminaRateMult` = Food and Drink/chicken-leg.svg
+av equals `Alteration` = Magic/magic-wand.svg
+av equals `AlterationModifier` = Magic/magic-wand.svg
+av equals `AlterationPowerModifier` = Magic/magic-wand.svg
+av equals `Conjuration` = Magic/pentacle.svg
+av equals `ConjurationModifier` = Magic/pentacle.svg
+av equals `ConjurationPowerModifier` = Magic/pentacle.svg
+av equals `Destruction` = Survival/fire.svg
+av equals `DestructionModifier` = Survival/fire.svg
+av equals `DestructionPowerModifier` = Survival/fire.svg
+av equals `Illusion` = Magic/sparkles.svg
+av equals `IllusionModifier` = Magic/sparkles.svg
+av equals `IllusionPowerModifier` = Magic/sparkles.svg
+av equals `Restoration` = Alchemy/potion.svg
+av equals `RestorationModifier` = Alchemy/potion.svg
+av equals `RestorationPowerModifier` = Alchemy/potion.svg
+
+archetype equals `ValueMod` = Magic/sparkles.svg
+archetype equals `DualValueMod` = Magic/sparkles.svg
+archetype equals `PeakValueMod` = Magic/sparkles.svg
+archetype equals `AccumulateMagnitude` = Magic/sparkles.svg
+archetype equals `ValueAndParts` = Magic/sparkles.svg
+archetype equals `Invisibility` = Magic/sparkles.svg
+archetype equals `Light` = Celestial/sun.svg
+archetype equals `Paralysis` = Alchemy/skull.svg
+archetype equals `Cloak` = Magic/pentacle.svg
+archetype equals `SlowTime` = Actions/wait.svg
+archetype equals `Etherealize` = Magic/sparkles.svg
+archetype equals `Absorb` = Alchemy/water-drops.svg
+archetype equals `Calm` = Magic/sparkles.svg
+archetype equals `Demoralize` = Alchemy/skull-and-bones.svg
+archetype equals `Frenzy` = Alchemy/skull-and-bones.svg
+archetype equals `Rally` = Magic/pentagram.svg
+archetype equals `BoundWeapon` = Weapons/broadsword.svg
+archetype equals `SummonCreature` = Magic/pentacle.svg
+archetype equals `DetectLife` = Magic/crystal-ball.svg
+archetype equals `Telekinesis` = Magic/magic-wand.svg
+archetype equals `Reanimate` = Alchemy/skull.svg
+archetype equals `SoulTrap` = Treasure/crystal.svg
+archetype equals `TurnUndead` = Alchemy/skull-and-bones.svg
+archetype equals `Werewolf` = Werewolf/wolf.svg
+archetype equals `WerewolfFeed` = Werewolf/wolf.svg
+archetype equals `VampireLord` = Vampire/fangs.svg
+archetype equals `EnhanceWeapon` = Weapons/broadsword.svg
+archetype equals `Banish` = Magic/pentagram.svg
+archetype equals `CureDisease` = Alchemy/potion.svg
+archetype equals `CureParalysis` = Alchemy/potion.svg
+archetype equals `CureAddiction` = Alchemy/potion.svg
+archetype equals `CurePoison` = Alchemy/potion.svg
+archetype equals `Dispel` = Magic/sparkles.svg
+
+name contains `fortify` = Magic/pentagram.svg
+name contains `restore` = Alchemy/potion.svg
+name contains `resist` = Weapons/shield-reinforced.svg
+name contains `weakness` = Alchemy/skull-and-bones.svg
+name contains `damage` = Alchemy/skull-and-bones.svg
+name contains `drain` = Alchemy/skull-and-bones.svg
+name contains `bleed` = Alchemy/water-drops.svg
+name contains `waterbreath` = Alchemy/water-drops.svg
+name contains `water walking` = Alchemy/water-drops.svg
+name contains `invisib` = Magic/sparkles.svg
+name contains `paralys` = Alchemy/skull.svg
+name contains `paralyze` = Alchemy/skull.svg
+name contains `slow time` = Actions/wait.svg
+name contains `slowtime` = Actions/wait.svg
+name contains `night eye` = Celestial/moon-and-stars.svg
+name contains `nighteye` = Celestial/moon-and-stars.svg
+name contains `detect life` = Magic/crystal-ball.svg
+name contains `detectlife` = Magic/crystal-ball.svg
+name contains `beast form` = Werewolf/wolf.svg
+name contains `werewolf` = Werewolf/wolf.svg
+name contains `vampire lord` = Vampire/fangs.svg
+name contains `darkness` = Celestial/moon-and-stars.svg
+
+form equals `Skyrim.esm:00092C45` = Werewolf/wolf.svg
+form equals `Skyrim.esm:000F8209` = Werewolf/wolf.svg
+name equals `Beast Form` = Werewolf/wolf.svg
+form equals `Skyrim.esm:000F4578` = Alchemy/water-drops.svg
+form equals `Skyrim.esm:000C367A` = Alchemy/water-drops.svg
+name equals `Bleeding` = Alchemy/water-drops.svg
+name equals `Bleeding Damage` = Alchemy/water-drops.svg

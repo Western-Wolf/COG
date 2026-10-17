@@ -1,0 +1,87 @@
+[size=2]Also see: [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12507]Beginner: HUD Suppression[/url][/b] (Suppressor, Feed toggles, Alias Index in-game).[/size]
+
+[size=3]This page is for mod authors who want their gears (or gizmos) to soft-hide Flash HUD clips when the player places them.[/size]
+
+[size=3]COG can soft-hide Flash HUD clips so Prisma gadgets are not stacking on top of the same information twice. Gears do this with a linked element on [font=Courier New]RegisterGear[/font]. Custom gizmo types have no Papyrus HUD-link args — they soft-hide via a companion gear, a builtin (Feed / Shout Meter), or the player-facing Suppressor.[/size]
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Two Ways to Name a Target[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]Alias or CanonicalKey[/size][/color]
+
+When coding a Gear or Gizmo (or documenting what players should type into a Suppressor), you can use either:
+
+[list]
+[*]An [b]alias[/b] such as [font=Courier New]hud.health[/font], [font=Courier New]hud.notifications[/font], [font=Courier New]hud.inventory[/font]: see [color=#b45f06]?[/color] → [color=#b45f06]Suppressions[/color] → [color=#b45f06]Alias Index[/color] in-game for the full list and the address each resolves to.[/*]
+[*]A [b]CanonicalKey[/b] (full address), for example [font=Courier New]HUD Menu|HUDMovieBaseInstance.Health[/font], a whole menu name like [font=Courier New]CastingBar[/font] / [font=Courier New]oxygenMeter2[/font], or a HUD clip path that COG will prefix with the HUD menu.[/*]
+[/list]
+
+Missing menus or clips are ignored (soft dependency). TrueHUD Recent Loot ([font=Courier New]hud.inventory[/font]), Oxygen Meter 2 ([font=Courier New]hud.oxygen[/font]), Casting Bar ([font=Courier New]hud.casting[/font]), and SkyUI Active Effects ([font=Courier New]hud.activeEffects[/font]) only hide when those UIs actually exist.
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Gears[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]HUDLinkedElement + HUDHideDuplicate[/size][/color]
+
+On [font=Courier New]COG_API.RegisterGear[/font]:
+
+[code]
+Int r = COG_API.RegisterGear("MyMod", "HealthLike", "percent", "My Health", "My Mod", "Survival/health.svg", "", "", "#DF2020", "", "hud.health", true)[/code]
+
+[list]
+[*][b]Field:[/b] [font=Courier New]HUDLinkedElement[/font]. [b]Meaning:[/b] Alias or CanonicalKey to soft-hide (above, this is "hud.health")[/*]
+[*][b]Field:[/b] [font=Courier New]HUDHideDuplicate[/font]. [b]Meaning:[/b] [font=Courier New]true[/font] to hide that target while this source is [b]exposed[/b].[/*]
+[/list]
+
+[b]Exposed[/b] means: an enabled gear on a visible group ([color=#b45f06]Default Group[/color] respects [color=#b45f06]Show Default Group[/color]), or a visible gauge bound to that gear. A [font=Courier New]hideAt[/font] rule can hide the COG widget itself without clearing that exposure: the linked Flash element can stay suppressed while the gear remains placed and enabled.
+
+Re-registering the same [font=Courier New]sourceMod[/font] + [font=Courier New]varName[/font] replaces the receipt. Empty optional strings leave previous defaults; [b][font=Courier New]HUDHideDuplicate[/font] is always taken from the latest call[/b], so pass [font=Courier New]true[/font] every time if you rely on it.
+
+Players can still edit or reset the link on the [color=#b45f06]Gears[/color] tab (Reset restores Register defaults).
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Gizmos[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]No HUD Link on RegisterGizmo (Yet)[/size][/color]
+
+[font=Courier New]RegisterGizmo[/font] does [b]not[/b] take [font=Courier New]HUDLinkedElement[/font] / [font=Courier New]HUDHideDuplicate[/font]. Soft-hide for a gizmo product works one of these ways:
+
+[list]
+[*][b]Gear-backed gizmo (preferred for authors):[/b] put the HUD link on [font=Courier New]RegisterGear[/font] in the [b]same[/b] [font=Courier New]BeginRegister[/font] / [font=Courier New]EndRegister[/font] batch. When that gear is exposed, Flash hides; your view script can still paint with [font=Courier New]sourceFor[/font] (see [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12501]Mod Author: Creating Gizmos[/url][/b]).[/*]
+[*][b]Builtin gizmos:[/b] a play-visible [color=#b45f06]Shout Meter[/color] soft-hides [font=Courier New]hud.casting[/font]. [color=#b45f06]Feed[/color] section toggles soft-hide their matching aliases (next section).[/*]
+[*][b]Pure custom gizmo (no companion gear):[/b] there is no type-level auto-suppress API today. Document the alias or CanonicalKey for players and have them add it under Suppressor [color=#b45f06]Always Hide[/color], or register a thin companion gear solely for the HUD link.[/*]
+[/list]
+
+Gear-backed example (same batch as the gizmo type):
+
+[code]
+COG_API.BeginRegister("MyMod", "MyMod.esp")
+Int gear = COG_API.RegisterGear("MyMod", "Heading", "count", "Heading", "My Mod", "Camping/compass.svg", "", "", "", "", "hud.compass", true)
+Int gizmo = COG_API.RegisterGizmo("MyMod", "my-compass", "My Compass", "Camping/compass.svg", 120.0, 120.0, "MyMod/compass.js", "[]")
+COG_API.EndRegister("MyMod")[/code]
+
+The gizmo does not need its own hide call: exposure of [font=Courier New]Heading[/font] drives [font=Courier New]hud.compass[/font].
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Feed, Divert, and Suppressor[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]What Players Control[/size][/color]
+
+Feed sections and the Suppressor gizmo are player tools; you usually do not need to touch them from Papyrus. Worth knowing when you test:
+
+[list]
+[*][color=#b45f06]Notifications[/color] on a play-visible Feed soft-hides [font=Courier New]hud.notifications[/font] and can divert toasts ([b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12531]Mod Author: Feed Notifications[/url][/b]).[/*]
+[*][color=#b45f06]Inventory[/color], [color=#b45f06]Current location[/color], and [color=#b45f06]Active Effects[/color] soft-hide their matching aliases when enabled.[/*]
+[*]Location discovery and skills divert from [font=Courier New]hud.questUpdates[/font] — they do not have dedicated suppress aliases.[/*]
+[*]Suppressor [color=#b45f06]Never Hide[/color] beats every hide source. Priority among hiders: [b]Suppressor > other Gizmos (including Feed) > Gauges > Groups[/b].[/*]
+[/list]
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Quick Reference[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]Common Pitfalls[/size][/color]
+
+[list]
+[*]Linking [font=Courier New]hud.health[/font] but the player never places / enables the gear: nothing is exposed, so nothing hides.[/*]
+[*]Forgetting [font=Courier New]HUDHideDuplicate = true[/font] on every [font=Courier New]RegisterGear[/font].[/*]
+[*]Expecting [font=Courier New]RegisterGizmo[/font] to take a HUD link: it does not — wire a companion gear, use a builtin, or document Suppressor [color=#b45f06]Always Hide[/color].[/*]
+[*]Expecting discovery / skills aliases to soft-hide: document Feed sections (divert) instead.[/*]
+[*]Fighting a Suppressor [color=#b45f06]Never Hide[/color] the player added: check [color=#b45f06]?[/color] → [color=#b45f06]Suppressions[/color] → [color=#b45f06]Active Suppressions[/color].[/*]
+[/list]
+
+More Register detail: [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12502]Mod Author: Creating Gears[/url][/b] · [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12501]Mod Author: Creating Gizmos[/url][/b].

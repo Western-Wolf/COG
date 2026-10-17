@@ -1,0 +1,210 @@
+[size=3]A [b]Gizmo[/b] is a bespoke HUD product. Unlike Groups (many Gears) or Gauges (one Gear, all dressed up), a Gizmo may use Gears, ignore Gears entirely, or invent its own live data. [/size]
+
+[list]
+[*][size=3]COG owns placement, size, rotation, and visibility. [/size][/*]
+[*][size=3][b]You[/b] own what it looks like and what its settings mean.[/size][/*]
+[/list]
+
+[size=3]This page is about registering [b]your own[/b] Gizmo type: Papyrus product registration, a view script under [font=Courier New]PrismaUI/views/[/font], optional editor settings, and live updates. For Gears that feed a Gizmo, see [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12502]Mod Author: Creating Gears[/url][/b]. For icons (including runtime imports), see [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12532]Mod Author: Fonts and Icons[/url][/b].[/size]
+
+[color=#cc4125][b][i]** Important Note as of v 1.00: Gizmo creation will be changing and evolving as COG does, especially to accommodate translations. This process may change as that work is done. I will endeavour to keep old gizmos compatible as I do this, but you might want to either wait a few versions or keep an eye on updates in case breaking changes are introduced.[/i][/b][/color]
+
+
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]The Pieces[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+[color=#bf9000][size=5]Type vs Instance[/size][/color]
+
+[list]
+[*]A [b]type[/b] is the gallery product ([font=Courier New]RegisterGizmo[/font]): name, default size, default visibility, icon, view script, settings schema. Types persist under [font=Courier New]SKSE/Plugins/COG/gizmoTypes/[/font] and load [b]before[/b] placed instances. Players place [b]instances[/b] from the gallery.[/*]
+[*]An [b]instance[/b] is what the player places from the [color=#b45f06]Gizmos[/color] tab. Each has its own [font=Courier New]id[/font], transform, and [font=Courier New]settings[/font] JSON under [font=Courier New]SKSE/Plugins/COG/gizmos/[/font].[/*]
+[/list]
+
+Your Papyrus registers the type after every load. Your JavaScript paints every instance COG asks for. Missing instance fields fall back to the type record (schema defaults, [font=Courier New]defaultVisibility[/font], default size), and then to COG's universal defaults if you don't include those settings.
+
+[color=#bf9000][size=5]File Layout[/size][/color]
+
+[code]Scripts/
+  MyMod_COG.pex
+  PrismaUI/
+    views/
+      MyMod/
+        compass.js          ← viewScript: "MyMod/compass.js"
+    COG/
+      assets/
+        icons/
+          MyMod/
+            compass.svg   ← gallery + paint art[/code]
+
+COG loads [font=Courier New]viewScript[/font] as a path under [font=Courier New]PrismaUI/views/[/font] (from the overlay that might look like [font=Courier New]../MyMod/compass.js[/font]). 
+
+[color=#bf9000][size=5]Registration Flow[/size][/color]
+
+Same readiness rules as gears: wait for [font=Courier New]COG_API.IsReady()[/font] / [font=Courier New]COG_Ready[/font], then use the [b]same[/b] batch as gears ([font=Courier New]BeginRegister[/font] / [font=Courier New]EndRegister[/font]):
+
+[code]COG_API.BeginRegister(sourceMod, pluginFile)
+COG_API.RegisterGear(...)   ; optional, same batch
+COG_API.RegisterGizmo(...)  ; returns a session receipt
+COG_API.EndRegister(sourceMod)[/code]
+
+Gizmo types are [b]sticky[/b]: omitting a type from a later batch does [b]not[/b] remove it. You can manually drop one with [font=Courier New]Unregister(receipt)[/font] from [font=Courier New]RegisterGizmo[/font], or it will auto-drop when your plugin / sender is gone (same absent-sender rules as gears).
+
+[b]Reserved prefix:[/b] anything starting with [font=Courier New]cog-[/font] belongs to COG; [font=Courier New]RegisterGizmo[/font] will reject it for other mods. As hygiene, give your own types a short prefix ([font=Courier New]mymod-[/font], [font=Courier New]skooma-[/font], etc.) It is not required, but it helps avoid two authors shipping the same bare name and one registration losing.
+
+
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Papyrus[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+[color=#bf9000][size=5]RegisterGizmo[/size][/color]
+
+[code]Int Function RegisterGizmo(String sourceMod, String typeId, String displayName, String galleryIcon, Float defaultWidth, Float defaultHeight, String viewScript, String settingsSchemaJson = "[]", String defaultVisibility = "hud") Global Native[/code]
+
+Like [font=Courier New]RegisterGear[/font], [font=Courier New]RegisterGizmo[/font] must run after [font=Courier New]BeginRegister[/font] and before [font=Courier New]EndRegister[/font].  [font=Courier New]RegisterGizmo[/font] returns a session receipt ([font=Courier New]0[/font] on failure). Use [font=Courier New]Unregister(receipt)[/font] to drop the type (and placed instances of that type).
+
+[list]
+[*][b]Argument:[/b] [font=Courier New]typeId[/font]. [b]Notes:[/b] Stable id; must match [font=Courier New]CogRegisterGizmoRenderer("typeId", ...)[/font] in JS. A short mod prefix is recommended to ensure your type name is unique and does not overlap with other mod authors. Do not use the [font=Courier New]cog-[/font] prefix, as it is reserved for Gizmos built into COG.[/*]
+[*][b]Argument:[/b] [font=Courier New]displayName[/font]. [b]Notes:[/b] Gallery label (what shows up under [color=#b45f06]Mod-added Gizmos[/color])[/*]
+[*][b]Argument:[/b] [font=Courier New]galleryIcon[/font]. [b]Notes:[/b] Relative icon path like a gear ([font=Courier New]"MyMod/compass.svg"[/font])[/*]
+[*][b]Argument:[/b] [font=Courier New]defaultWidth[/font] / [font=Courier New]defaultHeight[/font]. [b]Notes:[/b] Initial size in pixels when placed[/*]
+[*][b]Argument:[/b] [font=Courier New]viewScript[/font]. [b]Notes:[/b] Path under [font=Courier New]PrismaUI/views/[/font], e.g. [font=Courier New]"MyMod/compass.js"[/font][/*]
+[*][b]Argument:[/b] [font=Courier New]settingsSchemaJson[/font]. [b]Notes:[/b] JSON array of editor fields (see below), or [font=Courier New]"[]"[/font][/*]
+[*][b]Argument:[/b] [font=Courier New]defaultVisibility[/font]. [b]Notes:[/b] [font=Courier New]"hud"[/font] (default), [font=Courier New]"ui"[/font], or [font=Courier New]"none"[/font]. Used to control what the Gizmo can appear alongside.[/*]
+[/list]
+
+[color=#bf9000][size=5]Settings Schema[/size][/color]
+
+Schema fields become per-instance [font=Courier New]gizmo.settings[/font] keys the player can edit. Supported kinds: [font=Courier New]string[/font], [font=Courier New]int[/font], [font=Courier New]float[/font], [font=Courier New]bool[/font], [font=Courier New]enum[/font], [font=Courier New]color[/font]. Enums need an [font=Courier New]"options"[/font] array.
+
+[code]String schema = "[{\"key\":\"textColor\",\"kind\":\"color\",\"label\":\"Text\",\"default\":\"#e8d2a0\"},{\"key\":\"showLabel\",\"kind\":\"bool\",\"label\":\"Show label\",\"default\":true},{\"key\":\"mode\",\"kind\":\"enum\",\"label\":\"Mode\",\"default\":\"arc\",\"options\":[\"arc\",\"text\"]}]"
+
+COG_API.BeginRegister("MyMod", "MyMod.esp")
+Int gizmoReceipt = COG_API.RegisterGizmo("MyMod", "my-compass", "My Compass", "MyMod/compass.svg", 120.0, 120.0, "MyMod/compass.js", schema)
+COG_API.EndRegister("MyMod")[/code]
+
+Schema [font=Courier New]"default"[/font] values fill missing keys on placed instances. Complex defaults that do not fit neat scalars can stay in your view script (the builtins do this for things like clock display lines). Schema is for what you want exposed in the editor.
+
+[color=#bf9000][size=5]Example API Registration[/size][/color]
+
+The optional Example pack registers two peer tinted countdown gizmos next to its three demo gears — same look, different live-data paths:
+
+[code]String Property SourceMod = "COG_Example" AutoReadOnly
+String Property PluginFile = "COG - Example.esp" AutoReadOnly
+String Property IconPath = "COG_Example/example.svg" AutoReadOnly
+
+Function RegisterExampleGizmos()
+String schema = "[{\"key\":\"zeroColor\",\"kind\":\"color\",\"label\":\"Zero colour\",\"default\":\"#DF2020\"},{\"key\":\"tenColor\",\"kind\":\"color\",\"label\":\"Ten colour\",\"default\":\"#20DF20\"}]"
+
+COG_API.BeginRegister(SourceMod, PluginFile)
+; … RegisterGear calls for the demo count/percent/timer …
+Int gearGizmo = COG_API.RegisterGizmo(SourceMod, "xmp-gearupdated", "Example (Gear Updated)", IconPath, 100.0, 100.0, "Example/example.js", schema)
+Int pushGizmo = COG_API.RegisterGizmo(SourceMod, "xmp-pushupdated", "Example (Push Updated)", IconPath, 100.0, 100.0, "Example/example_push.js", schema)
+COG_API.EndRegister(SourceMod)
+EndFunction[/code]
+
+
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]View Script[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+[color=#bf9000][size=5]CogRegisterGizmoRenderer[/size][/color]
+
+Your script must call this once when it loads. COG then invokes your hooks for each placed instance:
+
+[code]window.CogRegisterGizmoRenderer("my-compass", {
+mount(host, gizmo) {
+// Build DOM under host (the inner .gizmo-custom-host box)
+},
+update(host, gizmo) {
+// Apply gizmo.settings and any live data
+},
+unmount(host) {
+// Optional cleanup
+}
+});[/code]
+
+COG owns the outer frame. You only paint inside [font=Courier New]host[/font].
+
+Minimal sketch:
+
+[code](function () {
+const TYPE_ID = "my-compass";
+
+function paint(host, gizmo) {
+if (!host) {
+return;
+}
+host.classList.remove("is-placeholder");
+host.textContent = "";
+const el = document.createElement("div");
+el.textContent = (gizmo.settings && gizmo.settings.label) || "Compass";
+el.style.color = (gizmo.settings && gizmo.settings.textColor) || "#e8d2a0";
+el.style.width = "100%";
+el.style.height = "100%";
+el.style.display = "flex";
+el.style.alignItems = "center";
+el.style.justifyContent = "center";
+host.appendChild(el);
+}
+
+window.CogRegisterGizmoRenderer(TYPE_ID, {
+mount(host, gizmo) { paint(host, gizmo); },
+update(host, gizmo) { paint(host, gizmo); },
+unmount(host) {
+if (host) {
+host.textContent = "";
+}
+}
+});
+})();[/code]
+
+[color=#bf9000][size=5]Reading Live Data[/size][/color]
+
+You have two common patterns (the Example pack ships one of each):
+
+[b]1. Read a gear you already update[/b] — push the gear with [font=Courier New]Update*[/font], then read it from the view with the overlay helper [font=Courier New]sourceFor(sourceMod, varName)[/font]. No [font=Courier New]UpdateGizmo[/font] required. [b]Example (Gear Updated)[/b] does this with its count gear.
+
+[code]; Same UpdateCount / UpdatePercent / UpdateTimer you already use for gears
+COG_API.UpdateCount(CountReceipt, remaining)[/code]
+
+[code]update(host, gizmo) {
+const src = sourceFor("MyMod", "count"); // sourceMod + varName from RegisterGear
+const n = Number(src && src.value);      // count → integer; percent → 0–100 fill
+// paint from n ...
+}[/code]
+
+[b]2. Push JSON at the type[/b] — call [font=Courier New]COG_API.UpdateGizmo(receipt, payloadJson)[/font] with the session receipt from [font=Courier New]RegisterGizmo[/font]. COG fans that payload out to [b]every placed instance[/b] of that type and stashes it on the type for the session, so delete/recreate and late placements still work. The view reads [font=Courier New]gizmo.livePayload[/font] (or [font=Courier New]gizmo.livePayloadJson[/font]) in [font=Courier New]update[/font]. [b]Example (Push Updated)[/b] uses this path.
+
+[code]; Push live data to all placed instances of this gizmo type (receipt from RegisterGizmo)
+COG_API.UpdateGizmo(PushGizmoReceipt, "{\"heading\":270.5,\"label\":\"North\"}")[/code]
+
+[code]update(host, gizmo) {
+const live = gizmo.livePayload || {};
+// live.heading, live.label, ...
+}[/code]
+
+[size=2][b]Tip:[/b] Pattern 1 is simplest when the gizmo is a fancy view of a gear you already push. Use [font=Courier New]UpdateGizmo[/font] when the gizmo has its own state (headings, map pins, custom structs) that is not a gear.[/size]
+
+
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Player Experience[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+[color=#bf9000][size=5]How Players Use Your Gizmo[/size][/color]
+
+[list=1]
+[*]Your mod loads and registers the type.[/*]
+[*]They open the COG editor → [color=#b45f06]Gizmos[/color].[/*]
+[*]Under [color=#b45f06]Mod-added Gizmos[/color], they place your product.[/*]
+[*]They drag, resize, rotate, and edit schema fields.[/*]
+[*]Your [font=Courier New]update[/font] hook keeps the paint fresh as settings and live data change.[/*]
+[/list]
+
+You do not need to ship a placed gizmo JSON unless you want a default layout. Types are enough; instances are the player's to create.
+
+[color=#bf9000][size=5]Common Pitfalls[/size][/color]
+
+[list]
+[*][font=Courier New]typeId[/font] in Papyrus must [b]exactly[/b] match [font=Courier New]CogRegisterGizmoRenderer("typeId", ...)[/font].[/*]
+[*]View script path is under [font=Courier New]PrismaUI/views/[/font], not under [font=Courier New]views/COG/[/font] (unless you intentionally put it there).[/*]
+[*]Do not start a [font=Courier New]typeId[/font] with [font=Courier New]cog-[/font] (reserved). Prefer a mod prefix ([font=Courier New]my-compass[/font], [font=Courier New]xmp-gearupdated[/font], ...).[/*]
+[*]Registering types before [font=Courier New]IsReady()[/font]: same rule as gears.[/*]
+[*]Skipping [font=Courier New]EndRegister[/font] when you meant to prune an old [font=Courier New]typeId[/font]: without it, omitted types stick around (same as gears). Use [font=Courier New]Unregister(receipt)[/font] to drop one immediately.[/*]
+[*]Calling [font=Courier New]UpdateGizmo[/font] with an instance id or [font=Courier New]typeId[/font] string: it takes the [font=Courier New]RegisterGizmo[/font] receipt ([font=Courier New]Int[/font]), like gear [font=Courier New]Update*[/font].[/*]
+[*]Expecting Papyrus alone to draw anything: without a loaded view script, the host stays a placeholder.[/*]
+[/list]
+
+When in doubt, steal from [b]COG - Example API[/b]: [font=Courier New]COG_Example.psc[/font] plus [font=Courier New]example.js[/font] (gear path) and [font=Courier New]example_push.js[/font] ([font=Courier New]UpdateGizmo[/font] path). Both register a type with two colour settings and paint with COG's mask helpers. Swap the art, the schema, and the [font=Courier New]typeId[/font], and you have a real mod-added gizmo.

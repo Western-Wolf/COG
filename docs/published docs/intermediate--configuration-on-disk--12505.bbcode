@@ -1,0 +1,101 @@
+This page is for players who edit files by hand, list authors who ship premade JSON, and anyone who just reinstalled COG and lost (or kept) a layout by accident.
+
+COG does not store your HUD in the save game. Almost everything you arrange in the editor lands under [font=Courier New]SKSE/Plugins/COG/[/font] as loose JSON and text. That is why layouts survive save swaps and new characters, and why Mod Organizer's Overwrite directory matters. I don't use Vortex, so I won't comment on how things show up there. I'm sure someone will tell me eventually.
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]The Tree[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]After Install[/size][/color]
+
+Paths below are under the game's [font=Courier New]Data[/font] folder. In a Nexus / MO2 mod archive they appear in the mod folder or in your Overwrite directory:
+
+[code]
+SKSE/Plugins/COG/
+general.json
+seen.json
+senders.json
+imported-icons.json
+groups/
+default.json          ← created on first load (not shipped)
+<other-group>.json
+gears/
+<id>.json
+gauges/
+<id>.json
+gizmoTypes/
+<typeId>.json        ← type catalog (loaded before gizmos/)
+gizmos/
+<id>.json            ← placed instances
+feed/
+notifications/
+inventory/
+location/
+effects/
+skills/[/code]
+
+Icons and fonts live elsewhere: [font=Courier New]PrismaUI/views/COG/assets/...[/font]. See [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12506]Intermediate: Fonts and Icons[/url][/b].
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]What Each File Is For[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]Core JSON[/size][/color]
+
+[list]
+[*][b]File / folder:[/b] [font=Courier New]general.json[/font]. [b]
+Role:[/b] Editor key ([font=Courier New]editorKey[/font]), [color=#b45f06]Show Default Group[/color], backup theme colours, gadget font, optional [color=#b45f06]Toggle UI[/color] hotkey ([font=Courier New]hideToggleKey[/font]), and whether Toggle also soft-hides Flash HUD ([font=Courier New]hideIncludesFlash[/font], default [font=Courier New]true[/font]). Session [font=Courier New]uiHidden[/font] is [b]not[/b] written here.
+Copied on deploy only if missing at the destination[/*]
+[*][b]File / folder:[/b] [font=Courier New]seen.json[/font]. [b]
+Role:[/b] Which gears have already been offered to the Default Group.
+Blank [font=Courier New]{"keys":[]}[/font] [b]is[/b] shipped; runtime updates will rewrite this file.[/*]
+[*][b]File / folder:[/b] [font=Courier New]senders.json[/font]. [b]
+Role:[/b] Which plugins COG has seen as gear / gizmo senders (and a little bookkeeping for that).[/*]
+[*][b]File / folder:[/b] [font=Courier New]imported-icons.json[/font]. [b]
+Role:[/b] Index of runtime imports under [font=Courier New]assets/imports/icons/[/font]
+Written when a mod calls [font=Courier New]ImportIcon[/font] at runtime[/*]
+[*][b]File / folder:[/b] [font=Courier New]groups/<id>.json[/font]. [b]
+Role:[/b] One file per group. [b][font=Courier New]
+default.json[/font] is not part of the install[/b]: first load creates it so that MO2 writes it to Overwrite. That way it survives a reinstall or update.[/*]
+[*][b]File / folder:[/b] [font=Courier New]gears/<id>.json[/font]. [b]
+Role:[/b] Gear appearance + link settings (and defaults from the mod that registered it)[/*]
+[*][b]File / folder:[/b] [font=Courier New]gauges/<id>.json[/font].
+[b]  Role:[/b] Gauge instances[/*]
+[*][b]File / folder:[/b] [font=Courier New]gizmoTypes/<typeId>.json[/font].
+[b]  Role:[/b] Registered gizmo [b]types[/b] (gallery product, defaults, schema). Loaded [b]before[/b] [font=Courier New]gizmos/[/font] so missing instance fields can fall back to the type[/*]
+[*][b]File / folder:[/b] [font=Courier New]gizmos/<id>.json[/font].
+[b]  Role:[/b] Placed gizmo instances (type settings, transform)[/*]
+[/list]
+
+[color=#bf9000][size=5]Feed Icon Registries[/size][/color]
+
+These can be found in [font=Courier New]gizmos/feed/<section>/*.txt[/font]: hand-edited icon rules.
+An install or update refreshes each section's [font=Courier New]_COG.txt[/font] only; your override [font=Courier New]*.txt[/font] files stay in place.
+Details: [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12503]Intermediate: Feed Icon Maps[/url][/b].
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]MO2 and Overwrite[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]Why Default Group Survives Reinstall[/size][/color]
+
+Because [font=Courier New]groups/default.json[/font] is created at runtime, a clean reinstall of the COG mod folder does not wipe the group sitting in [b]Overwrite[/b]. That is intentional.
+
+[font=Courier New]seen.json[/font] is the opposite trap: it is shipped with COG and stays in the mod directory, so a new install will wipe it, forcing imported Gears that aren't in a group and don't have a [font=Courier New].json[/font] file to reappear. This won't impact you unless Gears were already trimmed when COG couldn't find them, and acts as a way to bring them back.
+
+[color=#bf9000][size=5]List Authors[/size][/color]
+
+To stop a gear from auto-landing on the Default Group, ship a premade [font=Courier New]gears/<id>.json[/font] so COG treats it as already handled. Packaging the gear definition with your mod is the usual approach: see also the note in the main mod description under Groups. Authors registering gears from Papyrus: [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12502]Mod Author: Creating Gears[/url][/b].
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Editing Safely[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]Tips[/size][/color]
+
+[list]
+[*]Prefer the in-game editor when you can: it writes valid JSON, so you're not leaving typos behind.[/*]
+[*]If you hand-edit, close the game first (or the next save from COG will overwrite your file).[/*]
+[*]Back up the whole [font=Courier New]SKSE/Plugins/COG/[/font] folder before big experiments.[/*]
+[*]Live meter values are session-only. These files remember [i]layout and appearance[/i], not the momentary health number from Papyrus.[/*]
+[/list]
+
+[color=#bf9000][size=5]Related[/size][/color]
+
+[list]
+[*][b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12509]Beginner: Player Quickstart[/url][/b][/*]
+[*][b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12502]Mod Author: Creating Gears[/url][/b] / [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12501]Mod Author: Creating Gizmos[/url][/b][/*]
+[*][b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12503]Intermediate: Feed Icon Maps[/url][/b][/*]
+[/list]

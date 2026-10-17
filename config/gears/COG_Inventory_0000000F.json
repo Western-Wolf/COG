@@ -1,0 +1,24 @@
+{
+  "id": "COG_Inventory_0000000F",
+  "mod": "COG.Inventory",
+  "name": "0000000F",
+  "enabled": true,
+  "locked": false,
+  "exemptFromGroupColors": false,
+  "defaults": {
+    "display": "Septims",
+    "icon": "Treasure/bag-of-coin.svg",
+    "startColor": "",
+    "endColor": "",
+    "barColor": "",
+    "hideAt": ""
+  },
+  "settings": {
+    "display": "Septims",
+    "icon": "Treasure/bag-of-coin.svg",
+    "startColor": "",
+    "endColor": "",
+    "barColor": "",
+    "hideAt": ""
+  }
+}

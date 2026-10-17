@@ -1,0 +1,19 @@
+# Internal notes — keep on disk, out of the public tree
+docs/v1-code-review.md
+docs/v2-code-review.md
+docs/v2-ctd-review.md
+docs/v2-ctd-smoke.md
+docs/v2-log-review.md
+docs/v2-section-a-smoke.md
+docs/AI recommendation.md
+docs/similarity-permissions-review.md
+docs/c1-*.md
+docs/a3-builtin-gear-ownership.md
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+.vs/

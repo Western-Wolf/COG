@@ -1,0 +1,232 @@
+[size=3]A [b]Gear[/b] in COG is one registered tracker: a named variable your mod owns, with a type, a display name, an optional icon, and live values you push every session. Players connect those Gears to Groups and Gauges; you do not draw the HUD yourself.[/size]
+
+[size=3]There are three gear types: [b]percent[/b], [b]count[/b], and [b]timer[/b]. This page walks through registering and updating each one. For icons and fonts (paths + [font=Courier New]ImportIcon[/font] for files outside COG's asset trees), see [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12532]Mod Author: Fonts and Icons[/url][/b]. For a full working pack, enable the optional [b]COG - Example API[/b] files in the installer.[/size]
+
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]The Basics[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]What You Register[/size][/color]
+
+Every gear is identified by [b][font=Courier New]sourceMod[/font] + [font=Courier New]varName[/font][/b]. That pair is what survives in the player's layout JSON. The [b]receipt[/b] ([font=Courier New]Int[/font]) you get back from [font=Courier New]RegisterGear[/font] is only for this SKSE session: save it on a script property, then call [font=Courier New]Update*[/font] with it. After every load, register again.
+
+Typical flow:
+
+[list=1]
+[*]Wait until COG is up ([font=Courier New]COG_API.IsReady()[/font] and/or the [font=Courier New]COG_Ready[/font] mod event).[/*]
+[*][font=Courier New]BeginRegister(sourceMod, pluginFile)[/font]: bind your plugin so COG can clean up if it is unloaded.[/*]
+[*][font=Courier New]RegisterGear(...)[/font] once per variable; keep the receipts. (Same batch may also call [font=Courier New]RegisterGizmo[/font].)[/*]
+[*][font=Courier New]EndRegister(sourceMod)[/font]: drops gears / gizmo types for this mod whose [font=Courier New]varName[/font]s / [font=Courier New]typeId[/font]s you did [b]not[/b] re-register this session (additive batches keep prior entries).[/*]
+[*]Push live values with [font=Courier New]UpdatePercent[/font] / [font=Courier New]UpdateCount[/font] / [font=Courier New]UpdateTimer[/font] whenever they change (or on a poll).[/*]
+[/list]
+
+[code]Event OnInit()
+RegisterForModEvent("COG_Ready", "OnCOGReady")
+Setup() ; this is an extra try, in case COG's already fired its "ready" signal.
+EndEvent
+
+Event OnCOGReady(String eventName, String strArg, Float numArg, Form sender)
+Setup()
+EndEvent
+
+Function Setup()
+If !COG_API.IsReady()
+Return
+EndIf
+RegisterMyGears()
+EndFunction[/code]
+
+[size=2][b]Tip:[/b] Pass your real plugin file to [font=Courier New]BeginRegister[/font] (for example [font=Courier New]"MyMod.esp"[/font]). If you omit it, COG tries to sniff the caller from the Papyrus stack, but being explicit is kinder to everyone.[/size]
+
+[color=#bf9000][size=5]RegisterGear Signature[/size][/color]
+
+[code]Int Function RegisterGear(String sourceMod, String varName, String type, String displayName, String category, String icon, String startColor = "", String endColor = "", String barColor = "", String hideAt = "", String HUDLinkedElement = "", Bool HUDHideDuplicate = false) Global Native[/code]
+
+[list]
+[*][b]Argument:[/b] [font=Courier New]type[/font]. [b]Notes:[/b] [font=Courier New]"percent"[/font], [font=Courier New]"count"[/font], or [font=Courier New]"timer"[/font][/*]
+[*][b]Argument:[/b] [font=Courier New]displayName[/font] / [font=Courier New]category[/font]. [b]Notes:[/b] What players see in the editor filters[/*]
+[*][b]Argument:[/b] [font=Courier New]icon[/font]. [b]Notes:[/b] Path relative to [font=Courier New]assets/icons/[/font] (or a registered import), e.g. [font=Courier New]"MyMod/stress.svg"[/font]. Pass [font=Courier New]""[/font] for none[/*]
+[*][b]Argument:[/b] [font=Courier New]startColor[/font] / [font=Courier New]endColor[/font]. [b]Notes:[/b] Optional [font=Courier New]#RRGGBB[/font] icon colours. Both empty = theme defaults (usually white). One = solid. Both = lerp 0%→100% on meters[/*]
+[*][b]Argument:[/b] [font=Courier New]barColor[/font]. [b]Notes:[/b] Optional meter fill; empty uses the [color=#b45f06]General[/color] fill colour[/*]
+[*][b]Argument:[/b] [font=Courier New]hideAt[/font]. [b]Notes:[/b] Optional rule, e.g. [font=Courier New]"<0.3"[/font] (percent ratio), [font=Courier New]"<1"[/font] (count), [font=Courier New]"<30"[/font] (timer seconds)[/*]
+[*][b]Argument:[/b] [font=Courier New]HUDLinkedElement[/font] + [font=Courier New]HUDHideDuplicate[/font]. [b]Notes:[/b] Soft-hide a vanilla/mod Flash element while this gear is exposed: see [color=#b45f06]?[/color] → [color=#b45f06]Suppressions[/color] → [color=#b45f06]Alias Index[/color], and [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12533]Mod Author: HUD Suppression[/url][/b][/*]
+[/list]
+
+Re-registering the same [font=Courier New]sourceMod[/font] + [font=Courier New]varName[/font] replaces the receipt. Empty optional strings leave previous defaults alone; [font=Courier New]HUDHideDuplicate[/font] is always taken from the call.
+
+Newly seen third-party gears are offered onto the [b]Default Group[/b] once. Ship a premade [font=Courier New]gears/<id>.json[/font] if you do not want that auto-offer. ([font=Courier New]seen.json[/font] ships with COG and is wiped on reinstall; it is not an Overwrite file. Details: [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12505]Intermediate: Configuration On Disk[/url][/b].)
+
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Percent[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]What It Is[/size][/color]
+
+A [b]percent[/b] gear tracks [font=Courier New]current[/font] against [font=Courier New]maximum[/font]. The HUD shows a filled meter (ratio [font=Courier New]current / maximum[/font]). Use it for health-style needs, charge bars, resistances that behave like a fill, and anything else that has a natural "how full am I?" answer.
+
+[color=#bf9000][size=5]RegisterGear[/size][/color]
+
+[code]String Property SourceMod = "MyMod" AutoReadOnly
+String Property PluginFile = "MyMod.esp" AutoReadOnly
+Int Property StressReceipt = 0 Auto
+
+Function RegisterMyGears()
+COG_API.BeginRegister(SourceMod, PluginFile)
+
+; Icon lerps red→green with fill; bar uses a brass tint.
+StressReceipt = COG_API.RegisterGear(SourceMod, "Stress", "percent", "Stress", "My Mod", "MyMod/stress.svg", "#DF2020", "#20DF20", "#C4A35A")
+
+COG_API.EndRegister(SourceMod)
+EndFunction[/code]
+
+Optional [font=Courier New]hideAt[/font] for percents is a [b]0-1 ratio[/b] (values like [font=Courier New]">99"[/font] are treated as percents). Example: hide when the bar would round to [b]0%[/b] (below [b]1%[/b]):
+
+[code]StressReceipt = COG_API.RegisterGear(SourceMod, "Stress", "percent", "Stress", "My Mod", "MyMod/stress.svg", "", "", "", "<0.01")[/code]
+
+[color=#bf9000][size=5]Update[/size][/color]
+
+[code]Function PushStress(Float current, Float maximum)
+If StressReceipt != 0
+COG_API.UpdatePercent(StressReceipt, current, maximum)
+EndIf
+EndFunction
+
+; Example: 35 out of 100
+PushStress(35.0, 100.0)[/code]
+
+If a receipt might have gone stale, you can also use:
+
+[code]COG_API.UpdatePercentByKey(SourceMod, "Stress", 35.0, 100.0)[/code]
+
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Count[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]What It Is[/size][/color]
+
+A [b]count[/b] gear is a plain integer: gold, arrows, quest tokens, stacks of cheese: anything where "how many?" is the whole story. There is no maximum in the update call, because you [b][i]always [/i][/b]need more cheese.
+
+[color=#bf9000][size=5]RegisterGear[/size][/color]
+
+[code]Int Property TokenReceipt = 0 Auto
+
+Function RegisterMyGears()
+COG_API.BeginRegister(SourceMod, PluginFile)
+
+; Hide when the player has none. Colour variables blank in this example. Defaults will be used.
+TokenReceipt = COG_API.RegisterGear(SourceMod, "Tokens", "count", "Tokens", "My Mod", "Treasure/diamond.svg", "", "", "", "<1")
+
+COG_API.EndRegister(SourceMod)
+EndFunction[/code]
+
+[color=#bf9000][size=5]Update[/size][/color]
+
+[code]Function PushTokens(Int amount)
+If TokenReceipt != 0
+COG_API.UpdateCount(TokenReceipt, amount)
+EndIf
+EndFunction
+
+PushTokens(Game.GetPlayer().GetItemCount(MyTokenForm))[/code]
+
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Timer[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]What It Is[/size][/color]
+
+A [b]timer[/b] gear is remaining [b]real seconds[/b] (≥ 0). [font=Courier New]0[/font] means inactive / hidden. COG remembers the highest remaining value it has seen so meters can show a depleting bar even after a timer ticks up (like werewolf transformation after feeding, for example.)
+
+[color=#bf9000][size=5]RegisterGear[/size][/color]
+
+[code]Int Property BuffReceipt = 0 Auto
+
+Function RegisterMyGears()
+COG_API.BeginRegister(SourceMod, PluginFile)
+
+; Colour variables omitted in this example. Defaults will be used.
+BuffReceipt = COG_API.RegisterGear(SourceMod, "Blessing", "timer", "Blessing", "My Mod", "Magic/sparkles.svg")
+
+COG_API.EndRegister(SourceMod)
+EndFunction[/code]
+
+Optional [font=Courier New]hideAt[/font] compares against remaining [b]seconds[/b] (for example [font=Courier New]"<30"[/font]).
+
+[color=#bf9000][size=5]Update[/size][/color]
+
+[code]Function PushBlessingRemaining(Float secondsLeft)
+If BuffReceipt != 0
+COG_API.UpdateTimer(BuffReceipt, secondsLeft)
+EndIf
+EndFunction
+
+; Active: two minutes left
+PushBlessingRemaining(120.0)
+
+; Done / inactive
+PushBlessingRemaining(0.0)[/code]
+
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Putting It Together[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+
+[color=#bf9000][size=5]One Batch, All Three Types[/size][/color]
+
+The Example API registers all three in a single batch and updates them from the same countdown. A trimmed version:
+
+[code]String Property SourceMod = "MyMod" AutoReadOnly
+String Property PluginFile = "MyMod.esp" AutoReadOnly
+String Property IconPath = "MyMod/widget.svg" AutoReadOnly
+
+Int Property CountReceipt = 0 Auto
+Int Property PercentReceipt = 0 Auto
+Int Property TimerReceipt = 0 Auto
+
+Function RegisterMyGears()
+If !COG_API.IsReady()
+Return
+EndIf
+
+COG_API.BeginRegister(SourceMod, PluginFile)
+CountReceipt = COG_API.RegisterGear(SourceMod, "count", "count", "Example Count", "Example", IconPath)
+PercentReceipt = COG_API.RegisterGear(SourceMod, "percent", "percent", "Example Percent", "Example", IconPath, "#DF2020", "#20DF20", "#C4A35A")
+TimerReceipt = COG_API.RegisterGear(SourceMod, "timer", "timer", "Example Timer", "Example", IconPath)
+; Optional same batch: RegisterGizmo(...) — see Creating Gizmos
+COG_API.EndRegister(SourceMod)
+EndFunction
+
+Function PushAll(Int remaining)
+If CountReceipt != 0
+COG_API.UpdateCount(CountReceipt, remaining)
+EndIf
+If PercentReceipt != 0
+COG_API.UpdatePercent(PercentReceipt, remaining as Float, 10.0)
+EndIf
+If TimerReceipt != 0
+COG_API.UpdateTimer(TimerReceipt, remaining as Float)
+EndIf
+EndFunction[/code]
+
+[color=#bf9000][size=5]Stopping a Gear[/size][/color]
+
+[code]COG_API.Unregister(StressReceipt)
+StressReceipt = 0[/code]
+
+That removes gears (and gauges) bound to that [font=Courier New]sourceMod[/font] + [font=Courier New]varName[/font] immediately. The same [font=Courier New]Unregister(receipt)[/font] call also drops a gizmo type if the receipt came from [font=Courier New]RegisterGizmo[/font]. Prefer [font=Courier New]EndRegister[/font] for "this session no longer includes gear / type X" when you re-register the rest of your set after load.
+
+[color=#bf9000][size=5]Session UI Hide (Optional)[/size][/color]
+
+For photos, immersion, or a mod that wants a [b]clear view[/b] without tearing down the player's layout — not a "show vanilla HUD" mode:
+
+[code]COG_API.SetUiHidden(true)   ; hide all COG play HUD this session
+COG_API.ToggleUiHidden()    ; flip
+Bool hidden = COG_API.IsUiHidden()[/code]
+
+These are [b]session-only[/b] (not saved to disk). Editor preview still works while the COG editor is open. They do [b]not[/b] clear HUD links, Feed soft-hides, or Suppressor entries: suppressed Flash stays suppressed. If the player left [color=#b45f06]Toggle also hides Flash HUD[/color] on (default), whole Flash menus also go to alpha 0 for an emptier frame. Players can bind a [color=#b45f06]Toggle UI[/color] hotkey under General; that key only fires in free gameplay with menus closed. Your Papyrus [font=Courier New]Set[/font] / [font=Courier New]Toggle[/font] calls still work anytime.
+
+[color=#bf9000][size=5]Common Pitfalls[/size][/color]
+
+[list]
+[*]Calling [font=Courier New]RegisterGear[/font] / [font=Courier New]Update*[/font] before [font=Courier New]IsReady()[/font]: wait for COG.[/*]
+[*]Treating the receipt as save data: it is not. Re-register every session.[/*]
+[*]Skipping [font=Courier New]EndRegister[/font] when you meant to prune old [font=Courier New]varName[/font]s / [font=Courier New]typeId[/font]s: without it, missing entries stick around.[/*]
+[*]Forgetting that players still have to [b]place[/b] the gear (Default Group auto-offer helps once for new third-party sources; builtins never auto-place).[/*]
+[*]Using the wrong update call for the type ([font=Courier New]UpdatePercent[/font] on a count receipt will not do what you want).[/*]
+[/list]
+
+When in doubt, copy the optional [b]COG - Example API[/b] quest: it registers one of each type, pushes all three every second, and even fires a Feed [font=Courier New]Notify[/font] at zero. Swap the names, point the icon at your art, and you are most of the way there.

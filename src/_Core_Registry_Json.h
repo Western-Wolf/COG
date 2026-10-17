@@ -1,0 +1,76 @@
+#pragma once
+
+#include "_Core_Registry.h"
+#include "_Core_Json.h"
+
+#include <string>
+#include <string_view>
+#include <vector>
+
+// Entity normalize / parse / serialize shared by Registry core, Config, and UiPush.
+namespace CogRegistryJson
+{
+	std::string Lower(std::string s);
+	std::string TrimCopy(std::string raw);
+	std::string EscapeJson(const std::string& s);
+	std::string FileStem(const std::string& id);
+
+	std::string NormalizeIcon(std::string raw);
+	std::string NormalizeHideAt(std::string raw);
+	// When varType is count/timer, threshold stays absolute; percent uses 0–1 ratio (or explicit %).
+	std::string NormalizeHideAt(std::string raw, std::string_view varType);
+	std::string NormalizeHexColor(std::string raw, const char* fallback);
+	std::string OptionalHexColor(std::string raw);
+	std::string NormalizeEditorKey(const std::string& raw);
+	std::string NormalizeNeutralIconMode(std::string raw);
+	std::string NormalizeGizmoType(std::string raw);
+	/** hud = HUD Visible, ui = UI Visible (menus too). Unknown/empty → hud. */
+	std::string NormalizeGizmoVisibility(std::string raw);
+	/** Universal/builtin visibility when no type record exists (feed→ui, suppressor→none, else hud). */
+	std::string BuiltinDefaultVisibilityForType(std::string_view typeId);
+	/** Fill missing settings keys from type schema `default` values. Returns true if any key was added. */
+	bool MergeMissingSettingsFromSchema(CogJson::Value& settings, std::string_view settingsSchemaJson);
+	/** Merge missing settings on an instance from its type schema. Returns true if settingsJson changed. */
+	bool MergeGizmoSettingsFromType(CogGizmo& g, const CogGizmoType* type);
+	// visibility != "none" — instance participates in play (divert / HUD mount rules).
+	bool GizmoIsPlayActive(const CogGizmo& g);
+	bool GizmoSettingsBool(const CogGizmo& g, std::string_view key, bool fallback);
+	std::string GizmoSettingsRawJson(const CogGizmo& g, std::string_view key, std::string_view fallback);
+	std::string NormalizeStack(std::string raw);
+	std::string NormalizeFillFromHidden(std::string raw);
+	std::string NormalizeEndCapMode(std::string raw);
+	std::string NormalizeEndCapArt(std::string raw);
+	std::string NormalizeGaugePlacement(std::string raw);
+	std::string NormalizeFrameSlot(std::string raw);
+	std::string NormalizeIconColorMode(std::string raw);
+	std::string NormalizeLabelColorMode(std::string raw);
+	std::string NormalizeHudKeyListJson(std::string raw);
+
+	std::string SanitizeGizmoTypeId(std::string raw);
+	bool IsBuiltinGizmoTypeId(std::string_view typeId);
+	std::string SanitizeViewScriptPath(std::string path);
+	bool LooksLikeJsonObjectOrArray(std::string_view s);
+
+	CogGroup DefaultGroup();
+	bool AppearanceEmpty(const CogGearAppearance& a);
+	CogGearAppearance ParseAppearance(const CogJson::Value& obj, CogJson::ParseContext& ctx);
+	void AppendAppearance(CogJson::Writer& w, const CogGearAppearance& a);
+
+	CogGroup ParseGroup(const CogJson::Value& obj, CogJson::ParseContext& ctx);
+	CogGear ParseGear(const CogJson::Value& obj, CogJson::ParseContext& ctx);
+	CogGauge ParseGauge(const CogJson::Value& obj, CogJson::ParseContext& ctx);
+	CogGizmo ParseGizmo(const CogJson::Value& obj, CogJson::ParseContext& ctx, const CogGizmoType* type = nullptr);
+	CogGizmoType ParseGizmoType(const CogJson::Value& obj, CogJson::ParseContext& ctx);
+
+	void AppendGroup(CogJson::Writer& w, const CogGroup& g);
+	void AppendGear(CogJson::Writer& w, const CogGear& g);
+	void AppendGauge(CogJson::Writer& w, const CogGauge& g);
+	void AppendGizmo(CogJson::Writer& w, const CogGizmo& g);
+	void AppendGizmoType(CogJson::Writer& w, const CogGizmoType& t);
+
+	std::string GroupToJson(const CogGroup& g);
+	std::string GearToJson(const CogGear& g);
+	std::string GaugeToJson(const CogGauge& g);
+	std::string GizmoToJson(const CogGizmo& g);
+	std::string GizmoTypeToJson(const CogGizmoType& t);
+}

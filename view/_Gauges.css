@@ -1,0 +1,149 @@
+.hud-gauge {
+	position: absolute;
+	box-sizing: border-box;
+	transform: rotate(var(--gauge-rot, 0deg));
+	transform-origin: 50% 50%;
+	pointer-events: none;
+	z-index: 1;
+}
+
+.hud-gauge.is-inactive > :not(.hud-handle):not(.gauge-frame-handle-layer) {
+	opacity: 0.35;
+}
+
+.hud-gauge.is-inactive .gauge-frame-handle-layer,
+.hud-gauge.is-inactive > .hud-handle {
+	opacity: 1;
+}
+
+.hud-gauge.is-fading-in {
+	animation: cog-fade-in 0.25s ease-out both;
+}
+
+.hud-gauge.is-fading-out {
+	opacity: 0;
+	transition: opacity 0.25s ease-out;
+}
+
+body.is-focused #hud .hud-gauge.is-editable,
+body.is-focused #hud-front .hud-gauge.is-front {
+	pointer-events: auto;
+	cursor: move;
+}
+
+.gauge-gear-label,
+.gauge-gear-count {
+	position: absolute;
+	pointer-events: none;
+	z-index: 4;
+	letter-spacing: 0.04em;
+	white-space: normal;
+	overflow-wrap: break-word;
+	word-break: normal;
+	box-sizing: border-box;
+	text-shadow:
+		0 1px 2px rgba(0, 0, 0, 1),
+		0 0 4px rgba(0, 0, 0, 0.95),
+		0 0 8px rgba(0, 0, 0, 0.75);
+}
+
+.gauge-gear-count {
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.gauge-gear-label.is-default-color,
+.gauge-gear-count.is-default-color {
+	color: #ffffff;
+	opacity: 0.55;
+}
+
+.gauge-gear-icon {
+	filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
+}
+
+.gauge-gear-icon {
+	position: absolute;
+	top: 50%;
+	/* translateY + counter-rotation set in JS so the icon stays upright */
+	z-index: 3;
+	pointer-events: none;
+	transform-origin: center center;
+}
+
+.gauge-gear-icon-face {
+	position: absolute;
+	inset: 0;
+	box-sizing: border-box;
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+	-webkit-mask-position: center;
+	mask-position: center;
+	-webkit-mask-size: contain;
+	mask-size: contain;
+	pointer-events: none;
+}
+
+.hud-gauge .hud-handle-n {
+	left: calc(var(--handle-left, 0px) + var(--handle-width, 100%) * 0.5);
+	top: var(--handle-top, 0);
+}
+.hud-gauge .hud-handle-s {
+	left: calc(var(--handle-left, 0px) + var(--handle-width, 100%) * 0.5);
+	top: calc(var(--handle-top, 0px) + var(--handle-height, 100%));
+}
+.hud-gauge .hud-handle-e {
+	left: calc(var(--handle-left, 0px) + var(--handle-width, 100%));
+	top: calc(var(--handle-top, 0px) + var(--handle-height, 100%) * 0.5);
+}
+.hud-gauge .hud-handle-w {
+	left: var(--handle-left, 0);
+	top: calc(var(--handle-top, 0px) + var(--handle-height, 100%) * 0.5);
+}
+.hud-gauge .hud-handle-ne {
+	left: calc(var(--handle-left, 0px) + var(--handle-width, 100%));
+	top: var(--handle-top, 0);
+}
+.hud-gauge .hud-handle-nw {
+	left: var(--handle-left, 0);
+	top: var(--handle-top, 0);
+}
+.hud-gauge .hud-handle-se {
+	left: calc(var(--handle-left, 0px) + var(--handle-width, 100%));
+	top: calc(var(--handle-top, 0px) + var(--handle-height, 100%));
+}
+.hud-gauge .hud-handle-sw {
+	left: var(--handle-left, 0);
+	top: calc(var(--handle-top, 0px) + var(--handle-height, 100%));
+}
+
+.hud-gauge .hud-handle-rotate {
+	left: calc(var(--handle-left, 0px) + var(--handle-width, 100%) * 0.5);
+	top: calc(var(--handle-top, 0px) + var(--handle-height, 100%) + var(--handle-rotate-gap, 22px));
+	transform: translate(-50%, -50%);
+}
+
+/* Bar/arc handles live on the rotor so they inherit --gauge-rot. */
+.gauge-bar-rotor,
+.gauge-arc-rotor {
+	overflow: visible;
+}
+
+.gauge-bar-rotor .hud-handle,
+.gauge-arc-rotor .hud-handle {
+	z-index: 6;
+}
+
+body.is-focused .hud-gauge .hud-handle {
+	display: none;
+}
+
+body.is-focused .hud-gauge.is-handle-active .hud-handle {
+	display: block;
+}
+
+.gauge-gear-icon.is-painted {
+	background: transparent !important;
+	-webkit-mask-image: none !important;
+	mask-image: none !important;
+}

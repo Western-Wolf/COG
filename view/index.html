@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Custom Overlay Gadgets</title>
+	<link rel="stylesheet" href="_Core.css">
+	<link rel="stylesheet" href="_Hud.css">
+	<link rel="stylesheet" href="_Groups.css">
+	<link rel="stylesheet" href="_Gauges.css">
+	<link rel="stylesheet" href="_Gauge_Meter.css">
+	<link rel="stylesheet" href="_Gauge_Frame.css">
+	<link rel="stylesheet" href="_Gears.css">
+	<link rel="stylesheet" href="_Gizmos.css">
+	<link rel="stylesheet" href="_Gizmo_Clock.css">
+	<link rel="stylesheet" href="_Gizmo_Feed.css">
+	<link rel="stylesheet" href="_Gizmo_ShoutMeter.css">
+	<link rel="stylesheet" href="_Gizmo_Suppressor.css">
+	<link rel="stylesheet" href="_Editor.css">
+</head>
+<body>
+	<div id="hud"></div>
+	<div id="editor">
+		<div id="editor-panel">
+			<header class="banner">
+				<img class="banner-cog" src="assets/cog.png" alt="">
+				<h1 class="banner-title">
+					<span class="acronym-c">C</span><span class="word-rest">ustom</span>
+					<span class="acronym-o">O</span><span class="word-rest">verlay</span>
+					<span class="acronym-g">G</span><span class="word-rest">adgets</span>
+				</h1>
+				<button type="button" class="hint help-btn" id="editor-help" aria-label="About, Definitions, Help, and Suppressions" title="About, Definitions, Help, and Suppressions">?</button>
+				<button type="button" class="hint keybind" id="editor-keybind">F3 closes</button>
+			</header>
+			<nav class="tabs" id="tabs">
+				<button type="button" class="tab is-active" data-tab="general">General</button>
+				<button type="button" class="tab" data-tab="gears">Gears</button>
+				<button type="button" class="tab" data-tab="groups">Groups</button>
+				<button type="button" class="tab" data-tab="gauges">Gauges</button>
+				<button type="button" class="tab" data-tab="gizmos">Gizmos</button>
+			</nav>
+			<div id="tab-body"></div>
+		</div>
+	</div>
+	<div id="hud-front"></div>
+	<script src="_Help_Markdown.js"></script>
+	<script src="_UI.js"></script>
+	<script src="_Help_Suppressions.js"></script>
+	<script src="_Gauges.js"></script>
+	<script src="_Gauges_Meter.js"></script>
+	<script src="_Gauges_Meter_Bar.js"></script>
+	<script src="_Gauges_Meter_Arc.js"></script>
+	<script src="_Gizmos.js"></script>
+	<script src="_Gizmo_Clock.js"></script>
+	<script src="_Gizmo_ShoutMeter.js"></script>
+	<script src="_Gizmo_Feed.js"></script>
+	<script src="_Gizmo_Suppressor.js"></script>
+	<script src="_Groups.js"></script>
+	<script src="_Gears.js"></script>
+	<script src="_Gauges_Frame.js"></script>
+	<script src="_Core.js"></script>
+</body>
+</html>

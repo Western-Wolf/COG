@@ -1,0 +1,101 @@
+.hud-gizmo {
+	position: absolute;
+	box-sizing: border-box;
+	transform: rotate(var(--gizmo-rot, 0deg));
+	transform-origin: 50% 50%;
+	pointer-events: none;
+	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	overflow: visible;
+}
+
+/* Author display:flex beats UA [hidden] in CEF/Ultralight without !important. */
+.hud-gizmo[hidden] {
+	display: none !important;
+}
+
+.hud-gizmo-custom {
+	/* Root must stay visible so resize/rotate handles (outside the box) are not clipped.
+	   Content clipping lives on .gizmo-custom-host. */
+	overflow: visible;
+}
+
+.hud-gizmo-custom .gizmo-custom-host {
+	width: 100%;
+	height: 100%;
+	box-sizing: border-box;
+	overflow: hidden;
+}
+
+.hud-gizmo-custom .gizmo-custom-host.is-placeholder {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0.4em;
+	opacity: 0.75;
+	font-size: 12px;
+	text-align: center;
+	color: #e8d2a0;
+}
+
+body.is-focused #hud .hud-gizmo.is-editable,
+body.is-focused #hud-front .hud-gizmo.is-front {
+	pointer-events: auto;
+	cursor: move;
+}
+
+body.is-focused .hud-gizmo .hud-handle {
+	display: none;
+}
+
+body.is-focused .hud-gizmo.is-handle-active .hud-handle {
+	display: block;
+	opacity: 1;
+}
+
+.hud-gizmo .hud-handle-rotate {
+	bottom: auto;
+	left: auto;
+	transform: none;
+}
+
+.hud-gizmo .hud-handle-n {
+	left: calc(var(--handle-left, 0px) + var(--handle-width, 100%) * 0.5);
+	top: var(--handle-top, 0);
+}
+.hud-gizmo .hud-handle-s {
+	left: calc(var(--handle-left, 0px) + var(--handle-width, 100%) * 0.5);
+	top: calc(var(--handle-top, 0px) + var(--handle-height, 100%));
+}
+.hud-gizmo .hud-handle-e {
+	left: calc(var(--handle-left, 0px) + var(--handle-width, 100%));
+	top: calc(var(--handle-top, 0px) + var(--handle-height, 100%) * 0.5);
+}
+.hud-gizmo .hud-handle-w {
+	left: var(--handle-left, 0);
+	top: calc(var(--handle-top, 0px) + var(--handle-height, 100%) * 0.5);
+}
+.hud-gizmo .hud-handle-ne {
+	left: calc(var(--handle-left, 0px) + var(--handle-width, 100%));
+	top: var(--handle-top, 0);
+}
+.hud-gizmo .hud-handle-nw {
+	left: var(--handle-left, 0);
+	top: var(--handle-top, 0);
+}
+.hud-gizmo .hud-handle-se {
+	left: calc(var(--handle-left, 0px) + var(--handle-width, 100%));
+	top: calc(var(--handle-top, 0px) + var(--handle-height, 100%));
+}
+.hud-gizmo .hud-handle-sw {
+	left: var(--handle-left, 0);
+	top: calc(var(--handle-top, 0px) + var(--handle-height, 100%));
+}
+
+.hud-gizmo .hud-handle-rotate {
+	left: calc(var(--handle-left, 0px) + var(--handle-width, 100%) * 0.5);
+	top: calc(var(--handle-top, 0px) + var(--handle-height, 100%) + var(--handle-rotate-gap, 22px));
+	transform: translate(-50%, -50%);
+}

@@ -1,0 +1,11 @@
+{
+	"showDefaultGroup": true,
+	"editorKey": "F3",
+	"fillColor": "#c4a35a",
+	"borderColor": "#e8d2a0",
+	"iconStartColor": "#ffffff",
+	"iconEndColor": "#ffffff",
+	"neutralIconMode": "white",
+	"gadgetFont": "Roboto",
+	"logLevel": "info"
+}

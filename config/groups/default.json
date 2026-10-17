@@ -1,0 +1,19 @@
+{
+	"id": "default",
+	"name": "Default Group",
+	"locked": true,
+	"visible": true,
+	"x": 0.1,
+	"y": 0.1,
+	"rotation": 0,
+	"gearSize": 50,
+	"spacing": 25,
+	"stack": "below",
+	"style": {
+		"showLabel": false,
+		"showIcon": true,
+		"barTrough": true,
+		"numberFormat": "barPercent"
+	},
+	"gearIds": []
+}

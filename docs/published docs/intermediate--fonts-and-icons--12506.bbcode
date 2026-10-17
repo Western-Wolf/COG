@@ -1,0 +1,104 @@
+[size=2]Also see: [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12532]Mod Author: Fonts and Icons[/url][/b] ([font=Courier New]RegisterGear[/font], [font=Courier New]ImportIcon[/font], [font=Courier New]Notify[/font] icons).[/size]
+
+[size=3]COG keeps its icons and fonts as loose files on disk: no BSAs wrapping them up. That means you can drop icons and fonts straight into the install, or ship them inside your own mod with the same paths. This page is the file-side guide — no scripting required.[/size]
+
+[size=3]If you only remember one rule, it should be this:[/size]
+[list]
+[*][size=3][b]Shipped layout[/b] lives under [font=Courier New]PrismaUI/views/COG/assets/icons/[/font] and [font=Courier New].../assets/fonts/[/font].[/size][/*]
+[*][size=3][b]Runtime icon imports[/b] (written while the game is running) live under [font=Courier New].../assets/imports/icons/[/font].[/size][/*]
+[/list]
+[size=3]Icon imports stay in their own tree and are individually indexed so MO2's virtual file system does not get confused when something writes files after the game has already started. Fonts ship or drop under [font=Courier New]assets/fonts/[/font] only for now.[/size]
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Icons[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+[color=#bf9000][size=5]Where Icons Live[/size][/color]
+
+In practice you put files in:
+
+[list]
+[*][font=Courier New]PrismaUI/views/COG/assets/icons/<SectionName>/[/font] for icons that ship with COG or a mod and should show up from a normal disk scan.[/*]
+[*][font=Courier New]PrismaUI/views/COG/assets/imports/icons/<SectionName>/[/font] for icons written or copied while the game is running (or packaged there on purpose).[/*]
+[/list]
+
+The first folder under that root becomes the section name in the editor's icon picker. So [font=Courier New]Survival/health.svg[/font] shows under [b]Survival[/b], and [font=Courier New]MyCoolMod/widget.png[/font] shows under [b]MyCoolMod[/b].
+
+Supported formats include SVG (great for tinting), JPG, BMP, PNG, GIF, and WebP.
+[list]
+[*]GIF and WebP keep their original colour(s) when you leave icon colours blank, and they can animate.[/*]
+[*]SVGs are the best choice for gears that should pick up theme colours, but other formats outside of GIF and WebP behave the same way as SVGs: blanks fall back to COG's backup colours rather than the image's.[/*]
+[/list]
+This distinction is intentional to give you options on how you want things to display.
+
+[color=#bf9000][size=5]Adding Icons Directly to COG[/size][/color]
+
+Want a custom icon for your own load order without writing a mod? Drop the file into COG's folder (or a small personal mod with the same paths):
+
+[font=Courier New]PrismaUI/views/COG/assets/icons/YourFolder/your-icon.svg[/font]
+
+In Mod Organizer 2, that means creating an empty mod, then right-clicking and opening it in the explorer so you can add the correct folder structure. Restart your game and open the COG editor: the new file should show up in the picker under [b]YourFolder[/b].
+
+Fonts work the same way under [font=Courier New]assets/fonts/[/font]: more on that below.
+
+[size=2][b]Tip:[/b] Prefer a dedicated personal mod that mirrors the COG paths over editing the main COG install. Updates to COG will not wipe your extras if they live in their own mod.[/size]
+
+[color=#bf9000][size=5]Shipping Icons With Your Mod[/size][/color]
+
+If you are packaging a mod for other people, put icons at the same paths your players will see under [font=Courier New]Data[/font] after install. On Nexus / MO2, the mod archive is already rooted at that level: no extra [font=Courier New]Data/[/font] wrapper.
+
+Example layout for a gear pack:
+
+[code]PrismaUI/
+  views/
+    COG/
+      assets/
+        icons/
+          MyMod/
+            stress.svg
+            calm.svg[/code]
+
+In the example above, users will see a [b]MyMod[/b] section in the picker, but you can call that last folder whatever you like. Files under [font=Courier New]assets/icons/[/font] are picked up when the catalog refreshes — no extra import step for those.
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Fonts[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+[color=#bf9000][size=5]Where Fonts Live[/size][/color]
+
+Fonts live under [font=Courier New]PrismaUI/views/COG/assets/fonts/[/font]: shipped with COG, or dropped / packaged the same way as icons. There is no font-import API yet. [font=Courier New]assets/imports/fonts/[/font] exists only for parity with icons, and may be used later if there is demand — it is far less important than icon imports.
+
+COG looks for [font=Courier New].ttf[/font], [font=Courier New].otf[/font], [font=Courier New].woff[/font], and [font=Courier New].woff2[/font] files sitting [b]directly[/b] in [font=Courier New]assets/fonts/[/font] (not nested in subfolders). The family name in the editor comes from the file name.
+
+Drop the file in and then start the game. Open the editor, and pick it under [color=#b45f06]General[/color] → [color=#b45f06]Default gadget font[/color]. That choice applies to group, gauge, and most gizmo text. The Shout Meter always uses Dragon Script for the Dovahzul carving, and Dragon Script is not a 1:1 with our alphabet: do not delete that font unless you enjoy reading shouts as [font=Courier New]WULD N4 KEST[/font].
+
+[color=#bf9000][size=5]Adding Fonts Directly or Via a Mod[/size][/color]
+
+Same story as icons:
+
+[list]
+[*][b]Personal / overwrite:[/b] drop [font=Courier New]FancyType.ttf[/font] into COG's [font=Courier New]assets/fonts/[/font][/*]
+[*][b]Your mod:[/b] ship it at [font=Courier New]PrismaUI/views/COG/assets/fonts/FancyType.ttf[/font] so it merges in for everyone who installs your mod.[/*]
+[/list]
+
+Example mod layout:
+
+[code]PrismaUI/
+  views/
+    COG/
+      assets/
+        fonts/
+          MyModDisplay.otf[/code]
+
+After load, open the COG editor → [color=#b45f06]General[/color] → [color=#b45f06]Default gadget font[/color] → choose [color=#b45f06]MyModDisplay[/color] (or whatever the file was named). Players can also set [font=Courier New]gadgetFont[/font] in [font=Courier New]SKSE/Plugins/COG/general.json[/font] if they prefer editing JSON to clicking menus. Either way, the layout is saved on disk, not in the save game. See [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12505]Intermediate: Configuration On Disk[/url][/b] if you are editing JSON by hand.
+
+[center][img width=250]https://i.ibb.co/qL0ZKvB1/Dragonborn-Knotwork-Left.png[/img] [size=6]Quick Reference[/size] [img width=250]https://i.ibb.co/gL2J92Hx/Dragonborn-Knotwork-Right.png[/img][/center]
+[color=#bf9000][size=5]Which Path Should I Use?[/size][/color]
+
+[list]
+[*][b]Icon ships with the mod, known at install time[/b] → [font=Courier New]assets/icons/SectionName/...[/font].[/*]
+[*][b]Icon is copied/converted while playing[/b] → authors call [font=Courier New]ImportIcon[/font] (writes under [font=Courier New]assets/imports/icons/[/font]) — see [b][url=https://www.nexusmods.com/skyrimspecialedition/articles/12532]Mod Author: Fonts and Icons[/url][/b].[/*]
+[*][b]Font ships with the mod or is a user drop[/b] → [font=Courier New]assets/fonts/[/font]. Pick it in the editor.[/*]
+[/list]
+
+[color=#bf9000][size=5]Common Pitfalls[/size][/color]
+
+[list]
+[*]Putting runtime writes into [font=Courier New]assets/icons/[/font] instead of [font=Courier New]assets/imports/icons/[/font]: that's how you fight MO2's VFS and lose.[/*]
+[*]Forgetting that the first folder is the picker section. A flat [font=Courier New]assets/icons/myicon.svg[/font] works, but a section folder keeps the picker tidy.[/*]
+[*]Expecting the Shout Meter to honour the gadget font: it will not. Dragon Script stays. If you delete Dragon Script, the shout meter looks silly.[/*]
+[/list]

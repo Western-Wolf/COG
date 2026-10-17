@@ -1,0 +1,90 @@
+#hud {
+	position: fixed;
+	inset: 0;
+	z-index: 1;
+	pointer-events: none;
+	overflow: visible;
+}
+
+#hud-front {
+	position: fixed;
+	inset: 0;
+	z-index: 1;
+	pointer-events: none;
+	overflow: visible;
+}
+
+/* Soft-hide during menus/load — keep nodes mounted so show isn't a full redraw.
+   UI Visible (data-visibility="ui") stays up; HUD Visible / unset hide with the HUD.
+   Editor focus keeps preview visible even if hud-hidden races on. */
+body.hud-hidden:not(.is-focused) #hud > *:not([data-visibility="ui"]),
+body.hud-hidden:not(.is-focused) #hud-front > *:not([data-visibility="ui"]) {
+	visibility: hidden !important;
+}
+
+/* Session UiHidden (hotkey / COG_API): all COG play HUD treated as none.
+   Editor focus still shows preview. */
+body.ui-hidden:not(.is-focused) #hud > *,
+body.ui-hidden:not(.is-focused) #hud-front > * {
+	visibility: hidden !important;
+	pointer-events: none !important;
+}
+
+#hud-front.has-front {
+	z-index: 6;
+}
+
+.hud-handle-resize {
+	width: 10px;
+	height: 10px;
+	border-radius: 1px;
+	cursor: nwse-resize;
+}
+
+/* Mid-edge handles: diamonds so points follow N/S/E/W drag axes. Corners stay squares. */
+.hud-handle-n { left: 50%; top: 0; transform: translate(-50%, -50%) rotate(45deg); cursor: ns-resize; }
+.hud-handle-s { left: 50%; top: 100%; transform: translate(-50%, -50%) rotate(45deg); cursor: ns-resize; }
+.hud-handle-e { left: 100%; top: 50%; transform: translate(-50%, -50%) rotate(45deg); cursor: ew-resize; }
+.hud-handle-w { left: 0; top: 50%; transform: translate(-50%, -50%) rotate(45deg); cursor: ew-resize; }
+.hud-handle-ne { left: 100%; top: 0; transform: translate(-50%, -50%); cursor: nesw-resize; }
+.hud-handle-nw { left: 0; top: 0; transform: translate(-50%, -50%); cursor: nwse-resize; }
+.hud-handle-se { left: 100%; top: 100%; transform: translate(-50%, -50%); cursor: nwse-resize; }
+.hud-handle-sw { left: 0; top: 100%; transform: translate(-50%, -50%); cursor: nesw-resize; }
+
+.hud-handle {
+	display: none;
+	position: absolute;
+	z-index: 2;
+	width: 12px;
+	height: 12px;
+	border: 1px solid #e8d2a0;
+	background: rgba(12, 10, 8, 0.9);
+	pointer-events: auto;
+}
+
+body.is-focused .hud-handle {
+	display: block;
+}
+
+.hud-handle-rotate {
+	left: calc(100% + 0.55em);
+	top: 50%;
+	transform: translate(-50%, -50%);
+	border-radius: 50%;
+	cursor: grab;
+	width: 10px;
+	height: 10px;
+	border-color: rgba(232, 210, 160, 0.7);
+	background: rgba(12, 10, 8, 0.75);
+}
+
+@keyframes cog-fade-in {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+.hud-gauge,
+.hud-gizmo:not(.hud-gizmo-shout-meter),
+.hud-group {
+	font-family: var(--cog-font-gadget);
+}
