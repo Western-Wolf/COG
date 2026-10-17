@@ -271,6 +271,29 @@ function getCachedIconPack(rel) {
 	return iconPackCache.get(key) || null;
 }
 
+/** Seed pack cache from C++ catalog `frames` (Prisma CEF often cannot fetch local JSON). */
+function seedIconPackFromCatalogEntry(item) {
+	const path = String((item && item.path) || "")
+		.trim()
+		.replace(/\\/g, "/");
+	if (!isIconPackPath(path)) {
+		return null;
+	}
+	const cleaned = stripIconRootPrefixes(path);
+	const key = cleaned.toLowerCase();
+	const rawFrames = item && Array.isArray(item.frames) ? item.frames : null;
+	if (!rawFrames || !rawFrames.length) {
+		return null;
+	}
+	const frames = expandIconPackFrames(rawFrames);
+	if (!frames.length) {
+		return null;
+	}
+	const entry = { frames, href: resolveIconHref(cleaned), path: cleaned, fromCatalog: true };
+	iconPackCache.set(key, entry);
+	return entry;
+}
+
 function ensureIconPackLoaded(rel) {
 	const cleaned = stripIconRootPrefixes(rel);
 	if (!cleaned || !isIconPackPath(cleaned)) {
@@ -278,8 +301,31 @@ function ensureIconPackLoaded(rel) {
 	}
 	const key = cleaned.toLowerCase();
 	const hit = iconPackCache.get(key);
-	if (hit) {
+	if (hit && hit.frames && hit.frames.length) {
 		return hit;
+	}
+	// Prefer frames embedded in the live catalog / importedIcons snapshot.
+	const catalog = Array.isArray(snapshot.icons) ? snapshot.icons : [];
+	for (const item of catalog) {
+		const p = stripIconRootPrefixes(String((item && item.path) || "")).toLowerCase();
+		if (p === key) {
+			const seeded = seedIconPackFromCatalogEntry(item);
+			if (seeded) {
+				return seeded;
+			}
+			break;
+		}
+	}
+	const imported = Array.isArray(snapshot.importedIcons) ? snapshot.importedIcons : [];
+	for (const item of imported) {
+		const p = stripIconRootPrefixes(String((item && item.path) || "")).toLowerCase();
+		if (p === key) {
+			const seeded = seedIconPackFromCatalogEntry(item);
+			if (seeded) {
+				return seeded;
+			}
+			break;
+		}
 	}
 	if (iconPackFetchInflight.has(key)) {
 		return null;
@@ -288,6 +334,7 @@ function ensureIconPackLoaded(rel) {
 	if (!href) {
 		return null;
 	}
+	// Fallback only — Prisma CEF often cannot fetch view-relative JSON.
 	const fetchPromise = fetch(href, { cache: "no-cache" })
 		.then((res) => (res.ok ? res.json() : Promise.reject(new Error("pack fetch failed"))))
 		.then((data) => {
@@ -305,7 +352,9 @@ function ensureIconPackLoaded(rel) {
 			return entry;
 		})
 		.catch(() => {
-			iconPackCache.set(key, { frames: [], href, path: cleaned, failed: true });
+			if (!iconPackCache.has(key) || !(iconPackCache.get(key).frames || []).length) {
+				iconPackCache.set(key, { frames: [], href, path: cleaned, failed: true });
+			}
 			iconPackFetchInflight.delete(key);
 			return null;
 		});
@@ -332,20 +381,28 @@ function resolveActiveIconRel(raw, percent) {
 function prefetchIconPacksFromCatalog() {
 	const list = Array.isArray(snapshot.icons) ? snapshot.icons : [];
 	for (const item of list) {
-		const path = String((item && item.path) || item || "")
-			.trim()
-			.replace(/\\/g, "/");
-		if (isIconPackPath(path)) {
-			ensureIconPackLoaded(path);
+		if (item && Array.isArray(item.frames) && item.frames.length) {
+			seedIconPackFromCatalogEntry(item);
+		} else {
+			const path = String((item && item.path) || item || "")
+				.trim()
+				.replace(/\\/g, "/");
+			if (isIconPackPath(path)) {
+				ensureIconPackLoaded(path);
+			}
 		}
 	}
 	const imported = Array.isArray(snapshot.importedIcons) ? snapshot.importedIcons : [];
 	for (const item of imported) {
-		const path = String((item && item.path) || item || "")
-			.trim()
-			.replace(/\\/g, "/");
-		if (isIconPackPath(path)) {
-			ensureIconPackLoaded(path);
+		if (item && Array.isArray(item.frames) && item.frames.length) {
+			seedIconPackFromCatalogEntry(item);
+		} else {
+			const path = String((item && item.path) || item || "")
+				.trim()
+				.replace(/\\/g, "/");
+			if (isIconPackPath(path)) {
+				ensureIconPackLoaded(path);
+			}
 		}
 	}
 }

@@ -15,7 +15,10 @@
 #include "RE/T/TESClimate.h"
 
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -32,6 +35,147 @@ using CogRegistryJson::NormalizeGizmoVisibility;
 
 namespace
 {
+	std::string ReadFileText(const std::filesystem::path& path)
+	{
+		std::ifstream in(path, std::ios::binary);
+		if (!in) {
+			return {};
+		}
+		return std::string(
+			std::istreambuf_iterator<char>(in),
+			std::istreambuf_iterator<char>());
+	}
+
+	/** Parse a multi-icon pack JSON into snapshot frames (with concrete min/max). */
+	std::string BuildIconPackFramesJson(const std::filesystem::path& packPath)
+	{
+		const auto text = ReadFileText(packPath);
+		if (text.empty()) {
+			return "[]";
+		}
+		CogJson::Value root;
+		std::string err;
+		if (!CogJson::Parse(text, root, err) || !root.IsObject()) {
+			return "[]";
+		}
+		CogJson::ParseContext ctx;
+		ctx.path = packPath.filename().string();
+		const auto* icons = ctx.GetArray(root, "icons");
+		if (!icons || !icons->IsArray() || icons->arrayValue.empty()) {
+			return "[]";
+		}
+
+		struct Frame
+		{
+			std::string path;
+			double min = 0;
+			double max = 100;
+			bool hasMin = false;
+			bool hasMax = false;
+		};
+		std::vector<Frame> staged;
+		staged.reserve(icons->arrayValue.size());
+		for (const auto& item : icons->arrayValue) {
+			Frame f;
+			if (item.IsString()) {
+				f.path = item.stringValue;
+			} else if (item.IsObject()) {
+				f.path = ctx.GetString(item, "path");
+				if (f.path.empty()) {
+					f.path = ctx.GetString(item, "icon");
+				}
+				if (item.Find("min") && item.Find("min")->IsNumber()) {
+					f.min = item.Find("min")->numberValue;
+					f.hasMin = true;
+				}
+				if (item.Find("max") && item.Find("max")->IsNumber()) {
+					f.max = item.Find("max")->numberValue;
+					f.hasMax = true;
+				}
+			} else {
+				continue;
+			}
+			std::replace(f.path.begin(), f.path.end(), '\\', '/');
+			while (!f.path.empty() && (f.path.front() == '/' || f.path.starts_with("./"))) {
+				if (f.path.starts_with("./")) {
+					f.path.erase(0, 2);
+				} else {
+					f.path.erase(f.path.begin());
+				}
+			}
+			constexpr std::string_view kPrefixes[] = {
+				"assets/imports/icons/",
+				"imports/icons/",
+				"assets/icons/",
+				"icons/",
+			};
+			for (const auto prefix : kPrefixes) {
+				if (f.path.size() > prefix.size()) {
+					auto lower = f.path;
+					std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) {
+						return static_cast<char>(std::tolower(c));
+					});
+					std::string pLower{ prefix };
+					if (lower.rfind(pLower, 0) == 0) {
+						f.path = f.path.substr(prefix.size());
+						break;
+					}
+				}
+			}
+			if (f.path.empty() || f.path.find("..") != std::string::npos) {
+				continue;
+			}
+			staged.push_back(std::move(f));
+		}
+		if (staged.empty()) {
+			return "[]";
+		}
+
+		const bool anyBound = std::any_of(staged.begin(), staged.end(), [](const Frame& f) {
+			return f.hasMin || f.hasMax;
+		});
+		const std::size_t n = staged.size();
+		const double denom = static_cast<double>(n > 1 ? n - 1 : 1);
+		if (!anyBound) {
+			for (std::size_t i = 0; i < n; ++i) {
+				staged[i].min = (static_cast<double>(i) * 100.0) / denom;
+				staged[i].max = i + 1 < n ? (static_cast<double>(i + 1) * 100.0) / denom : 100.0;
+			}
+		} else {
+			for (auto& f : staged) {
+				if (!f.hasMin && !f.hasMax) {
+					f.min = 0;
+					f.max = 100;
+				} else if (!f.hasMin) {
+					f.min = 0;
+				} else if (!f.hasMax) {
+					f.max = 100;
+				}
+				if (f.min > f.max) {
+					std::swap(f.min, f.max);
+				}
+				if (f.min < 0) {
+					f.min = 0;
+				}
+				if (f.max > 100) {
+					f.max = 100;
+				}
+			}
+		}
+
+		std::ostringstream o;
+		o << "[";
+		for (std::size_t i = 0; i < staged.size(); ++i) {
+			if (i) {
+				o << ",";
+			}
+			o << "{\"path\":\"" << EscapeJson(staged[i].path) << "\",\"min\":" << staged[i].min
+			  << ",\"max\":" << staged[i].max << "}";
+		}
+		o << "]";
+		return o.str();
+	}
+
 	std::string SkyModeKey(RE::Sky::Mode mode)
 	{
 		switch (mode) {
@@ -376,6 +520,7 @@ std::string CogRegistry::BuildSnapshotJson()
 				std::string path;
 				std::string section;
 				std::string root;
+				std::string framesJson;  // multi-icon pack frames, or empty
 			};
 			std::unordered_map<std::string, IconEntry> iconsByPath;
 			const auto assetsRoot =
@@ -422,17 +567,23 @@ std::string CogRegistry::BuildSnapshotJson()
 					if (slash != std::string::npos && slash > 0) {
 						section = rel.substr(0, slash);
 					}
-					const IconEntry entry{ rel, std::move(section), std::string(rootTag) };
+					IconEntry entry{ rel, std::move(section), std::string(rootTag), {} };
+					if (ext == ".json") {
+						entry.framesJson = BuildIconPackFramesJson(it->path());
+					}
 					const auto [itInsert, inserted] = iconsByPath.try_emplace(rel, entry);
 					if (!inserted && rootTag == "icons") {
-						itInsert->second = entry;
+						itInsert->second = std::move(entry);
 					}
 				}
 			}
 			for (const auto& [path, section] : _importedIcons) {
-				iconsByPath.try_emplace(
-					path,
-					IconEntry{ path, section.empty() ? "General" : section, "imports/icons" });
+				IconEntry entry{ path, section.empty() ? "General" : section, "imports/icons", {} };
+				if (Lower(path).ends_with(".json")) {
+					const auto abs = assetsRoot / "imports" / "icons" / std::filesystem::path(path);
+					entry.framesJson = BuildIconPackFramesJson(abs);
+				}
+				iconsByPath.try_emplace(path, std::move(entry));
 			}
 			std::vector<IconEntry> icons;
 			icons.reserve(iconsByPath.size());
@@ -458,7 +609,11 @@ std::string CogRegistry::BuildSnapshotJson()
 				}
 				first = false;
 				o << "{\"path\":\"" << EscapeJson(icon.path) << "\",\"section\":\"" << EscapeJson(icon.section)
-				  << "\",\"root\":\"" << EscapeJson(icon.root) << "\"}";
+				  << "\",\"root\":\"" << EscapeJson(icon.root) << "\"";
+				if (!icon.framesJson.empty() && icon.framesJson != "[]") {
+					o << ",\"frames\":" << icon.framesJson;
+				}
+				o << "}";
 			}
 		}
 		o << "],\"importedIcons\":[";
