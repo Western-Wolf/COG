@@ -644,8 +644,8 @@ function appendGizmoPositionSizeEditor(panel, gizmo) {
 	const posA = document.createElement("div");
 	posA.className = "pos-row";
 	posA.innerHTML = `
-		<label class="pos-field"><span>X %</span><input type="text" data-role="x" inputmode="decimal"></label>
-		<label class="pos-field"><span>Y %</span><input type="text" data-role="y" inputmode="decimal"></label>
+		<label class="pos-field"><span>X</span><input type="text" data-role="x" inputmode="decimal"></label>
+		<label class="pos-field"><span>Y</span><input type="text" data-role="y" inputmode="decimal"></label>
 		<label class="pos-field"><span>Rotation</span><input type="text" data-role="rotation" inputmode="decimal"></label>`;
 	const posB = document.createElement("div");
 	posB.className = "pos-row";
@@ -667,6 +667,7 @@ function appendGizmoPositionSizeEditor(panel, gizmo) {
 	wInput.value = String(Math.round(gizmo.width));
 	hInput.value = String(Math.round(gizmo.height));
 	bindNumberField(xInput, {
+		suffix: "%",
 		parse: (raw) => {
 			if (String(raw).trim() === "" || raw === "." || raw === "-") {
 				return null;
@@ -688,6 +689,7 @@ function appendGizmoPositionSizeEditor(panel, gizmo) {
 		}
 	});
 	bindNumberField(yInput, {
+		suffix: "%",
 		parse: (raw) => {
 			if (String(raw).trim() === "" || raw === "." || raw === "-") {
 				return null;
@@ -709,6 +711,7 @@ function appendGizmoPositionSizeEditor(panel, gizmo) {
 		}
 	});
 	bindNumberField(rotInput, {
+		suffix: "°",
 		parse: (raw) => {
 			if (String(raw).trim() === "" || raw === "-" || raw === "." || raw === "-.") {
 				return null;
@@ -727,12 +730,14 @@ function appendGizmoPositionSizeEditor(panel, gizmo) {
 		current: () => live().rotation || 0
 	});
 	bindNumberField(wInput, {
+		suffix: "px",
 		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(MIN_GIZMO_WIDTH, Math.min(2000, Number(raw) || 0))),
 		apply: (v) => patchGizmo(gid, { width: v }),
 		format: (v) => String(Math.round(v)),
 		current: () => live().width
 	});
 	bindNumberField(hInput, {
+		suffix: "px",
 		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(MIN_GIZMO_HEIGHT, Math.min(512, Number(raw) || 0))),
 		apply: (v) => patchGizmo(gid, { height: v }),
 		format: (v) => String(Math.round(v)),

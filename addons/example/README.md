@@ -43,4 +43,4 @@ Menus pause `Utility.Wait` / update ticks while open.
 xmake build COG_Example
 ```
 
-Deploys to `G:\Games\Skyrim\MO2 Instances\Mod - COG\mods\COG - Example API`. Compile `papyrus/COG_Example.psc` to `papyrus/pex/COG_Example.pex` (needs `COG_API.psc` on the import path) before or after first deploy so `Scripts\COG_Example.pex` is present.
+Stages to `_stage/COG - Example API` (repo root; packed into the FOMOD zip by `release.ps1`). Compile `papyrus/COG_Example.psc` to `papyrus/pex/COG_Example.pex` (needs `COG_API.psc` on the import path) before or after first build so `Scripts\COG_Example.pex` is present.

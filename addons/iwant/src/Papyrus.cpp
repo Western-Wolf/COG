@@ -30,6 +30,11 @@ namespace
 			std::move(iconName),
 			std::move(cogPathsJoined));
 	}
+
+	std::string BuildIconColorRamp(RE::StaticFunctionTag*, std::string rgbLinesJoined)
+	{
+		return CogIWant::BuildIconColorRamp(std::move(rgbLinesJoined));
+	}
 }
 
 bool CogIWantPapyrus::Bind(RE::BSScript::IVirtualMachine* vm)
@@ -41,5 +46,6 @@ bool CogIWantPapyrus::Bind(RE::BSScript::IVirtualMachine* vm)
 	vm->RegisterFunction("ResolveExportedIconPath", "COG_iWant", ResolveExportedIconPath);
 	vm->RegisterFunction("IsReady", "COG_iWant", IsReady);
 	vm->RegisterFunction("WriteIconPack", "COG_iWant", WriteIconPack);
+	vm->RegisterFunction("BuildIconColorRamp", "COG_iWant", BuildIconColorRamp);
 	return true;
 }

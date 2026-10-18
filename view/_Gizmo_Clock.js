@@ -1631,6 +1631,7 @@ function fillClockGizmoEditor(panel, gizmo) {
 	const fontInput = fontField.querySelector("input");
 	fontInput.value = gizmo.settings.fontSize > 0 ? String(Math.round(gizmo.settings.fontSize)) : "";
 	bindNumberField(fontInput, {
+		suffix: "px",
 		parse: (raw) => {
 			if (String(raw).trim() === "") {
 				return 0;
@@ -1729,10 +1730,11 @@ function fillClockGizmoEditor(panel, gizmo) {
 		endArtRow.appendChild(endCaps);
 		const overlap = document.createElement("label");
 		overlap.className = "pos-field compact narrow overlap-cap-field";
-		overlap.innerHTML = `<span>Overlap %</span><input type="number" min="0" max="45" step="0.5" data-role="endCapOverlap">`;
+		overlap.innerHTML = `<span>Overlap</span><input type="number" min="0" max="45" step="0.5" data-role="endCapOverlap">`;
 		const overlapInput = overlap.querySelector("input");
 		overlapInput.value = fmtDec(gizmo.settings.endCapOverlap, 1);
 		bindNumberField(overlapInput, {
+			suffix: "%",
 			parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(45, Number(raw) || 0))),
 			apply: (v) => patchGizmo(gid, { endCapOverlap: v }),
 			decimals: 1,
@@ -1753,10 +1755,11 @@ function fillClockGizmoEditor(panel, gizmo) {
 	celestialColorRow.appendChild(borderColor);
 	const thick = document.createElement("label");
 	thick.className = "pos-field compact narrow";
-	thick.innerHTML = `<span>Border Thickness %</span><input type="number" min="0" max="50" step="0.5" data-role="borderThickness">`;
+	thick.innerHTML = `<span>Border Thickness</span><input type="number" min="0" max="50" step="0.5" data-role="borderThickness">`;
 	const thickInput = thick.querySelector("input");
 	thickInput.value = fmtDec(gizmo.settings.borderThickness, 1);
 	bindNumberField(thickInput, {
+		suffix: "%",
 		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(50, Number(raw) || 0))),
 		apply: (v) => patchGizmo(gid, { borderThickness: v }),
 		decimals: 1,

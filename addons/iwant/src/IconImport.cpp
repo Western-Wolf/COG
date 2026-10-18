@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -105,8 +106,7 @@ namespace
 	struct PackFrame
 	{
 		std::string path;
-		double min = 0;
-		double max = 100;
+		double pct = 0;
 	};
 }
 
@@ -230,23 +230,34 @@ namespace CogIWant
 		}
 
 		const std::size_t n = paths.size();
+		// Match BuildIconColorRamp / iWant_Status_Bars._statusToPercent landmarks.
 		const double denom = static_cast<double>(n > 1 ? n - 1 : 1);
 		std::vector<PackFrame> bands;
 		bands.reserve(n);
 		for (std::size_t i = 0; i < n; ++i) {
-			const double lo = (static_cast<double>(i) * 100.0) / denom;
-			const double hi = i + 1 < n ? (static_cast<double>(i + 1) * 100.0) / denom : 100.0;
-			bands.push_back(PackFrame{ paths[i], lo, hi });
+			const double pct = 0.1 + static_cast<double>(i) * (99.9 / denom);
+			bands.push_back(PackFrame{ paths[i], pct });
 		}
 
 		std::vector<PackFrame> collapsed;
 		collapsed.reserve(bands.size());
 		for (const auto& band : bands) {
 			if (!collapsed.empty() && collapsed.back().path == band.path) {
-				collapsed.back().max = band.max;
-			} else {
-				collapsed.push_back(band);
+				continue;
 			}
+			collapsed.push_back(band);
+		}
+
+		// One unique asset (e.g. same .dds for every colour state) → plain icon, no pack JSON.
+		if (collapsed.size() <= 1) {
+			const auto& only = collapsed.empty() ? paths.front() : collapsed.front().path;
+			logger::info(
+				"COG_iWant WriteIconPack skipped ({} states → 1 asset '{}', mod='{}' icon='{}')",
+				n,
+				only,
+				sourceMod,
+				iconName);
+			return only;
 		}
 
 		const auto modTok = SanitizeToken(sourceMod);
@@ -267,8 +278,7 @@ namespace CogIWant
 			out << "{\n\t\"icons\": [\n";
 			for (std::size_t i = 0; i < collapsed.size(); ++i) {
 				const auto& f = collapsed[i];
-				out << "\t\t{ \"path\": \"" << JsonEscape(f.path) << "\", \"min\": " << f.min
-					<< ", \"max\": " << f.max << " }";
+				out << "\t\t{ \"path\": \"" << JsonEscape(f.path) << "\", \"pct\": " << f.pct << " }";
 				if (i + 1 < collapsed.size()) {
 					out << ",";
 				}
@@ -278,12 +288,80 @@ namespace CogIWant
 		}
 
 		logger::info(
-			"COG_iWant WriteIconPack -> {} ({} states -> {} bands, mod='{}' icon='{}')",
+			"COG_iWant WriteIconPack -> {} ({} states -> {} stops, mod='{}' icon='{}')",
 			rel,
 			n,
 			collapsed.size(),
 			sourceMod,
 			iconName);
 		return rel;
+	}
+
+	std::string BuildIconColorRamp(std::string rgbLinesJoined)
+	{
+		struct Rgb
+		{
+			int r = 255;
+			int g = 255;
+			int b = 255;
+		};
+		std::vector<Rgb> colors;
+		{
+			std::stringstream ss(rgbLinesJoined);
+			std::string line;
+			while (std::getline(ss, line)) {
+				while (!line.empty() && (line.back() == '\r' || line.back() == ' ' || line.back() == '\t')) {
+					line.pop_back();
+				}
+				if (line.empty()) {
+					continue;
+				}
+				int r = 255;
+				int g = 255;
+				int b = 255;
+				std::replace(line.begin(), line.end(), ',', ' ');
+				std::istringstream ls(line);
+				if (!(ls >> r >> g >> b)) {
+					continue;
+				}
+				r = std::clamp(r, 0, 255);
+				g = std::clamp(g, 0, 255);
+				b = std::clamp(b, 0, 255);
+				colors.push_back(Rgb{ r, g, b });
+			}
+		}
+		if (colors.empty()) {
+			return {};
+		}
+		auto toHex = [](const Rgb& c) {
+			char buf[8];
+			std::snprintf(buf, sizeof(buf), "#%02x%02x%02x", c.r, c.g, c.b);
+			return std::string(buf);
+		};
+		const auto first = toHex(colors.front());
+		bool allSame = true;
+		for (const auto& c : colors) {
+			if (toHex(c) != first) {
+				allSame = false;
+				break;
+			}
+		}
+		if (allSame) {
+			return first;
+		}
+		const std::size_t n = colors.size();
+		const double denom = static_cast<double>(n > 1 ? n - 1 : 1);
+		std::ostringstream o;
+		o << "[";
+		for (std::size_t i = 0; i < n; ++i) {
+			if (i) {
+				o << ",";
+			}
+			// Match iWant_Status_Bars._statusToPercent
+			const double pct = 0.1 + static_cast<double>(i) * (99.9 / denom);
+			o << "{\"pct\":" << pct << ",\"color\":\"" << toHex(colors[i]) << "\"}";
+		}
+		o << "]";
+		return o.str();
 	}
 }

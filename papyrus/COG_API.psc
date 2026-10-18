@@ -26,8 +26,9 @@ Function EndRegister(String sourceMod) Global Native
 ; type: "percent" | "count" | "timer"
 ; category: grouping for the editor filter, e.g. "Base Game"
 ; icon: path relative to the overlay icons folder, e.g. "Survival/health.svg" or "Weapons/bow.svg". Pass "" for none.
-; startColor / endColor: optional icon colours (#RRGGBB). Both empty = white. One = solid. Both = top-to-bottom gradient.
-; barColor: optional bar fill (#RRGGBB). Empty = general fill colour.
+; iconColor: optional icon tint — #RRGGBB, or JSON stops [{"pct":0,"color":"#fff"},{"pct":100,"color":"#f00"}] (lerp between).
+;   Empty = General backup icon. Legacy: pass a second #hex in legacyEndColor for a 0%/100% pair (old start/end callers).
+; barColor: optional bar fill — same hex-or-JSON-stops shape. Empty = General backup bar.
 ; hideAt: optional hide rule. Percent: 0–1 ratio e.g. "<0.3", or explicit percent e.g. ">99%". Count: raw number e.g. "<1". Timer: seconds e.g. "<30". Empty = never hide from this.
 ; HUDLinkedElement: optional Scaleform target to soft-hide while this variable is on a visible enabled gear.
 ;   Aliases: hud.health, hud.stamina, hud.magicka, hud.ammo (vanilla equipped ammo), hud.oxygen (Oxygen Meter 2), hud.casting (Casting Bar),
@@ -37,7 +38,7 @@ Function EndRegister(String sourceMod) Global Native
 ;   Missing menus/clips are ignored (soft dependency).
 ; HUDHideDuplicate: when true, hide HUDLinkedElement while this source is exposed. Pass every RegisterGear; default false.
 ; Re-registering the same sourceMod+varName returns the existing receipt.
-Int Function RegisterGear(String sourceMod, String varName, String type, String displayName, String category, String icon, String startColor = "", String endColor = "", String barColor = "", String hideAt = "", String HUDLinkedElement = "", Bool HUDHideDuplicate = false) Global Native
+Int Function RegisterGear(String sourceMod, String varName, String type, String displayName, String category, String icon, String iconColor = "", String legacyEndColor = "", String barColor = "", String hideAt = "", String HUDLinkedElement = "", Bool HUDHideDuplicate = false) Global Native
 
 Function UpdatePercent(Int receipt, Float current, Float maximum) Global Native
 ; Same as UpdatePercent, but finds the source by sourceMod+varName (useful when a receipt may have drifted).

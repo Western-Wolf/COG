@@ -708,10 +708,11 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 
 	const thick = document.createElement("label");
 	thick.className = "pos-field compact mid";
-	thick.innerHTML = `<span>Border Thickness %</span><input type="number" min="0" max="50" step="0.5" data-role="frameBorderThickness">`;
+	thick.innerHTML = `<span>Border Thickness</span><input type="number" min="0" max="50" step="0.5" data-role="frameBorderThickness">`;
 	const thickInput = thick.querySelector("input");
 	thickInput.value = fmtDec(gauge.frameBorderThickness, 1);
 	bindNumberField(thickInput, {
+		suffix: "%",
 		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(50, Number(raw) || 0))),
 		apply: (v) => patchGauge(gid, { frameBorderThickness: v }),
 		decimals: 1,
@@ -721,10 +722,11 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 
 	const inside = document.createElement("label");
 	inside.className = "pos-field compact narrow";
-	inside.innerHTML = `<span>Inside Size %</span><input type="number" min="5" max="100" step="1" data-role="insideSize">`;
+	inside.innerHTML = `<span>Inside Size</span><input type="number" min="5" max="100" step="1" data-role="insideSize">`;
 	const insideInput = inside.querySelector("input");
 	insideInput.value = fmtDec(gauge.insideSize, 0);
 	bindNumberField(insideInput, {
+		suffix: "%",
 		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(5, Math.min(100, Number(raw) || 0))),
 		apply: (v) => patchGauge(gid, { insideSize: v }),
 		decimals: 0,
@@ -781,10 +783,11 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 
 		const picRot = document.createElement("label");
 		picRot.className = "pos-field compact mid";
-		picRot.innerHTML = `<span>Picture Rotation°</span><input type="number" min="-180" max="180" step="0.1" data-role="pictureRotation">`;
+		picRot.innerHTML = `<span>Picture Rotation</span><input type="number" min="-180" max="180" step="0.1" data-role="pictureRotation">`;
 		const picRotInput = picRot.querySelector("input");
 		picRotInput.value = (Number(gauge.pictureRotation) || 0).toFixed(1);
 		bindNumberField(picRotInput, {
+			suffix: "°",
 			parse: (raw) => {
 				if (String(raw).trim() === "" || raw === "-" || raw === "." || raw === "-.") {
 					return null;

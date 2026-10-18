@@ -1,5 +1,6 @@
 -- COG Example API pack (Papyrus-only reference for public COG_API surface).
-local deploy_root = [[G:\Games\Skyrim\MO2 Instances\Mod - COG\mods\COG - Example API]]
+-- Stages under repo `_stage/`; release.ps1 builds the FOMOD zip from there (no MO2 mod folder).
+local deploy_root = path.join(os.projectdir(), "_stage", "COG - Example API")
 local addon_dir = os.scriptdir()
 
 target("COG_Example")

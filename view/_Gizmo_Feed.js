@@ -1830,6 +1830,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 	const fontInput = fontField.querySelector("input");
 	fontInput.value = gizmo.settings.fontSize > 0 ? String(Math.round(gizmo.settings.fontSize)) : "";
 	bindNumberField(fontInput, {
+		suffix: "px",
 		parse: (raw) => {
 			if (String(raw).trim() === "") {
 				return DEFAULT_GIZMO_FONT_SIZE;
@@ -1874,10 +1875,11 @@ function fillFeedGizmoEditor(panel, gizmo) {
 
 	const durField = document.createElement("label");
 	durField.className = "pos-field compact";
-	durField.innerHTML = `<span>Persist (s)</span><input type="text" data-role="durationSec" inputmode="decimal">`;
+	durField.innerHTML = `<span>Persist</span><input type="text" data-role="durationSec" inputmode="decimal">`;
 	const durInput = durField.querySelector("input");
 	durInput.value = (gizmo.settings.durationMs / 1000).toFixed(3);
 	bindNumberField(durInput, {
+		suffix: "s",
 		parse: (raw) => {
 			if (String(raw).trim() === "" || raw === ".") {
 				return null;
@@ -1893,10 +1895,11 @@ function fillFeedGizmoEditor(panel, gizmo) {
 
 	const fadeField = document.createElement("label");
 	fadeField.className = "pos-field compact";
-	fadeField.innerHTML = `<span>Fade (s)</span><input type="text" data-role="fadeSec" inputmode="decimal">`;
+	fadeField.innerHTML = `<span>Fade</span><input type="text" data-role="fadeSec" inputmode="decimal">`;
 	const fadeInput = fadeField.querySelector("input");
 	fadeInput.value = (gizmo.settings.fadeMs / 1000).toFixed(3);
 	bindNumberField(fadeInput, {
+		suffix: "s",
 		parse: (raw) => {
 			if (String(raw).trim() === "" || raw === ".") {
 				return null;
@@ -1935,10 +1938,11 @@ function fillFeedGizmoEditor(panel, gizmo) {
 
 	const opacityField = document.createElement("label");
 	opacityField.className = "pos-field compact";
-	opacityField.innerHTML = `<span>Opacity %</span><input type="number" min="0" max="100" step="1" data-role="backdropOpacity">`;
+	opacityField.innerHTML = `<span>Opacity</span><input type="number" min="0" max="100" step="1" data-role="backdropOpacity">`;
 	const opacityInput = opacityField.querySelector("input");
 	opacityInput.value = String(gizmo.settings.backdropOpacity);
 	bindNumberField(opacityInput, {
+		suffix: "%",
 		parse: (raw) => Math.max(0, Math.min(100, Math.round(Number(raw)))),
 		apply: (v) => patchGizmo(gid, { backdropOpacity: v }),
 		format: (v) => String(Math.round(v)),
@@ -1986,10 +1990,11 @@ function fillFeedGizmoEditor(panel, gizmo) {
 	progressRow.appendChild(barColorField);
 	const barWidthField = document.createElement("label");
 	barWidthField.className = "pos-field compact";
-	barWidthField.innerHTML = `<span>Bar Width (%)</span><input type="number" min="5" max="100" step="1" data-role="progressBarWidth">`;
+	barWidthField.innerHTML = `<span>Bar Width</span><input type="number" min="5" max="100" step="1" data-role="progressBarWidth">`;
 	const barWidthInput = barWidthField.querySelector("input");
 	barWidthInput.value = fmtDec(gizmo.settings.progressBarWidth, 0);
 	bindNumberField(barWidthInput, {
+		suffix: "%",
 		parse: (raw) =>
 			String(raw).trim() === ""
 				? null
@@ -2114,10 +2119,11 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		fxRow.appendChild(fxColor);
 		const minField = document.createElement("label");
 		minField.className = "pos-field compact effects-remaining";
-		minField.innerHTML = `<span>Min remaining (s)</span><input type="number" min="0" max="600" step="1" data-role="effectsMinSec">`;
+		minField.innerHTML = `<span>Min remaining</span><input type="number" min="0" max="600" step="1" data-role="effectsMinSec">`;
 		const minInput = minField.querySelector("input");
 		minInput.value = fmtDec(gizmo.settings.effectsMinSec, 0);
 		bindNumberField(minInput, {
+			suffix: "s",
 			parse: (raw) => (String(raw).trim() === "" ? 1 : Math.max(0, Math.min(600, Number(raw) || 0))),
 			apply: (v) => patchGizmo(gid, { effectsMinSec: v == null ? 1 : v }),
 			decimals: 0,
@@ -2125,10 +2131,11 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		});
 		const maxField = document.createElement("label");
 		maxField.className = "pos-field compact effects-remaining";
-		maxField.innerHTML = `<span>Max remaining (s)</span><input type="number" min="0" max="3600" step="10" data-role="effectsMaxSec">`;
+		maxField.innerHTML = `<span>Max remaining</span><input type="number" min="0" max="3600" step="10" data-role="effectsMaxSec">`;
 		const maxInput = maxField.querySelector("input");
 		maxInput.value = fmtDec(gizmo.settings.effectsMaxSec, 0);
 		bindNumberField(maxInput, {
+			suffix: "s",
 			parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(3600, Number(raw) || 0))),
 			apply: (v) => patchGizmo(gid, { effectsMaxSec: v }),
 			decimals: 0,

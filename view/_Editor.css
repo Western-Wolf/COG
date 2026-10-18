@@ -53,10 +53,13 @@ body.is-focused #editor {
 	--cog-ctrl-hover-border: rgba(232, 210, 160, 0.55);
 	--cog-ctrl-selected-bg: rgba(196, 163, 90, 0.2);
 	--cog-ctrl-selected-border: #c4a35a;
-	/* Shared height for text fields + dropdowns (native select + .cog-select-trigger). */
-	--cog-field-height: 2.15em;
-	--cog-field-pad-y: 0.3em;
-	--cog-field-pad-x: 0.4em;
+	/*
+	 * Shared control box — px so nested .pos-field/.color-field em font sizes
+	 * cannot change field height vs dropdowns.
+	 */
+	--cog-field-height: 30px;
+	--cog-field-pad-y: 4px;
+	--cog-field-pad-x: 6px;
 }
 
 /* Base control chrome — role classes (.tiny, .action, .tab, …) override as needed */
@@ -597,7 +600,7 @@ body.is-focused #editor {
 }
 
 .hide-at-row .hide-at-pct {
-	flex: 0 0 7.5em;
+	flex: 0 0 8.5em;
 }
 
 .hide-at-row .hud-suppress-target {
@@ -1299,17 +1302,16 @@ button.action:hover,
 	min-width: 0;
 }
 
+.ccp-hex-wrap > .field-affix {
+	flex: 1;
+	min-width: 0;
+	width: 100%;
+}
+
 .ccp-hex {
 	flex: 1;
 	min-width: 0;
 	width: 100%;
-	font: inherit;
-	font-variant-numeric: tabular-nums;
-	color: #ffffff;
-	background: #070605;
-	border: 1px solid rgba(232, 210, 160, 0.4);
-	border-radius: 4px;
-	padding: 0.3em 0.4em;
 }
 
 .ccp-rgb-row {
@@ -1348,7 +1350,78 @@ button.action:hover,
 	width: 100%;
 }
 
-.color-hex {
+/* Faded # / % / ° / px / s glued to the field chrome */
+.field-affix {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.1em;
+	box-sizing: border-box;
+	min-height: var(--cog-field-height);
+	height: var(--cog-field-height);
+	padding: 0 var(--cog-field-pad-x);
+	background: #070605;
+	border: 1px solid rgba(232, 210, 160, 0.4);
+	border-radius: 4px;
+	color: #ffffff;
+	font: inherit;
+	font-variant-numeric: tabular-nums;
+	line-height: 1.2;
+}
+
+.field-affix:focus-within {
+	border-color: var(--cog-ctrl-hover-border);
+}
+
+.field-affix-mark {
+	flex: 0 0 auto;
+	opacity: 0.4;
+	line-height: 1;
+	user-select: none;
+	pointer-events: none;
+}
+
+#editor-panel .field-affix > input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]),
+.cog-color-picker .field-affix > input {
+	flex: 1 1 auto;
+	min-width: 0;
+	width: 100%;
+	min-height: 0;
+	height: 100%;
+	margin: 0;
+	padding: var(--cog-field-pad-y) 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	outline: none;
+	font: inherit;
+	font-variant-numeric: tabular-nums;
+	line-height: 1.2;
+	color: inherit;
+	-webkit-appearance: none;
+	appearance: none;
+}
+
+#editor-panel .field-affix > input:focus,
+#editor-panel .field-affix > input:focus-visible,
+.cog-color-picker .field-affix > input:focus,
+.cog-color-picker .field-affix > input:focus-visible {
+	outline: none;
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+}
+
+.pos-field > .field-affix {
+	display: flex;
+	width: 100%;
+}
+
+.color-controls > .field-affix {
+	flex: 0 0 auto;
+}
+
+.color-controls > .field-affix {
 	width: 7.2em;
 }
 
@@ -1428,21 +1501,18 @@ button.action:hover,
 	cursor: pointer;
 }
 
-.pos-field input[type="number"] {
-	appearance: auto;
-	-webkit-appearance: auto;
+/* No spinner chrome — keeps number fields the same height as text/select. */
+#editor-panel input[type="number"] {
+	-moz-appearance: textfield;
+	appearance: textfield;
 }
 
-.pos-field input[type="number"]::-webkit-inner-spin-button,
-.pos-field input[type="number"]::-webkit-outer-spin-button {
-	-webkit-appearance: inner-spin-button;
-	appearance: auto;
-	opacity: 1;
-	display: block;
-	width: 1.15em;
-	height: 1.45em;
-	margin-left: 0.2em;
-	cursor: pointer;
+#editor-panel input[type="number"]::-webkit-inner-spin-button,
+#editor-panel input[type="number"]::-webkit-outer-spin-button {
+	-webkit-appearance: none;
+	appearance: none;
+	margin: 0;
+	display: none;
 }
 
 .style-row input {
@@ -1591,7 +1661,7 @@ button.action:hover,
 	width: auto;
 }
 
-.style-row .color-field.compact .color-hex {
+.style-row .color-field.compact .color-controls > .field-affix {
 	width: 5.6em;
 	min-width: 0;
 }
@@ -2114,18 +2184,24 @@ button.action:hover,
 	line-height: 1.25;
 }
 
-.clock-token-remove {
+#editor-panel button.clock-token-remove {
 	border: 0;
+	border-radius: 0;
 	background: transparent;
 	color: inherit;
 	cursor: pointer;
 	padding: 0;
+	margin: 0;
+	min-width: 0;
+	min-height: 0;
 	line-height: 1;
 	font-size: 1.1em;
 	opacity: 0.75;
 }
 
-.clock-token-remove:hover {
+#editor-panel button.clock-token-remove:hover:not(:disabled) {
+	border: 0;
+	background: transparent;
 	opacity: 1;
 }
 
@@ -2163,4 +2239,163 @@ button.action:hover,
 .gizmo-celestial-settings .style-row.celestial-main-row {
 	flex-wrap: nowrap;
 	align-items: flex-end;
+}
+
+.color-ramp-stack {
+	display: flex;
+	flex-direction: column;
+	gap: 1em;
+	width: 100%;
+}
+
+.color-ramp-editor {
+	display: flex;
+	flex-direction: column;
+	gap: 0.45em;
+	width: 100%;
+}
+
+.color-ramp-heading {
+	font-weight: 600;
+	color: #e8d2a0;
+}
+
+.color-ramp-hint {
+	margin: 0;
+	opacity: 0.85;
+	font-size: 0.92em;
+}
+
+.color-ramp-stops {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.4em;
+}
+
+.color-ramp-card {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35em;
+	width: auto;
+	padding: 0.2em 0.4em;
+	/* Match .action button fill so stop chips read against the panel. */
+	border: 1px solid rgba(232, 210, 160, 0.55);
+	border-radius: 4px;
+	background: rgba(196, 163, 90, 0.2);
+	box-sizing: border-box;
+	line-height: 1.25;
+}
+
+.color-ramp-card .color-field {
+	margin: 0;
+	/* Match standalone .color-field so hex uses the same em base as General. */
+	font-size: 0.8em;
+}
+
+.color-ramp-card .color-field > span:first-child {
+	display: none;
+}
+
+.color-ramp-card .color-controls {
+	gap: 0.35em;
+}
+
+.color-ramp-general-row {
+	display: flex;
+	flex-wrap: nowrap;
+	align-items: flex-end;
+	gap: 1.5em;
+	width: 100%;
+	margin-top: 0.25em;
+}
+
+.color-ramp-general-row > .color-field {
+	flex: 0 0 auto;
+	min-width: 0;
+}
+
+/* Beat .style-row > label padding / flex so Neutral lines up with Border. */
+.color-ramp-general-row > label.color-field {
+	padding-top: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 0.2em;
+	font-size: 0.75em;
+	opacity: 1;
+	white-space: nowrap;
+}
+
+.color-ramp-general-row > .color-field-select {
+	flex: 1 1 auto;
+	min-width: 16em;
+	max-width: 22em;
+}
+
+.color-ramp-general-row > .color-field-select .cog-select {
+	min-width: 14em;
+	width: 100%;
+}
+
+.color-ramp-pct {
+	display: inline-flex;
+	align-items: center;
+	margin: 0;
+	/* Same em base as .color-field so % height matches hex / General. */
+	font-size: 0.8em;
+}
+
+#editor-panel .color-ramp-stops .color-ramp-card .color-controls > .field-affix {
+	width: 7.2em;
+	min-width: 0;
+}
+
+#editor-panel .color-ramp-stops .color-ramp-card .color-ramp-pct .field-affix {
+	width: 5.5em;
+	min-width: 5.5em;
+}
+
+/* Affix chrome uses its own height; keep card fields on the shared em base. */
+#editor-panel .color-ramp-card .field-affix {
+	min-height: var(--cog-field-height);
+	height: var(--cog-field-height);
+}
+
+.color-ramp-add-wrap {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+}
+
+.color-ramp-add {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.7em;
+	height: 1.7em;
+	margin: 0;
+	padding: 0;
+	border: 1px solid rgba(232, 210, 160, 0.35);
+	border-radius: 3px;
+	background: rgba(12, 10, 8, 0.55);
+	color: #e8d2a0;
+	font-size: 1.1em;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.color-ramp-add:hover:not(:disabled) {
+	background: rgba(232, 210, 160, 0.12);
+	color: #fff;
+}
+
+.color-ramp-add:disabled {
+	opacity: 0.35;
+	cursor: default;
+}
+
+.color-ramp-add-wrap.is-capped {
+	cursor: help;
 }

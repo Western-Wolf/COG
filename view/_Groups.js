@@ -18,8 +18,7 @@ function defaultGroupStyle() {
 		fillFromHidden: "",
 		numberFormat: "barPercent",
 		useGroupColors: false,
-		startColor: "",
-		endColor: "",
+		iconColor: "",
 		barColor: "",
 		borderColor: "",
 		neutralIconMode: "white"
@@ -94,9 +93,8 @@ function ensureGroupStyle(group) {
 		fillFromHidden: normalizeFillFromHidden(style.fillFromHidden),
 		numberFormat: normalizeNumberFormat(style),
 		useGroupColors: style.useGroupColors === true,
-		startColor: String(style.startColor || ""),
-		endColor: String(style.endColor || ""),
-		barColor: String(style.barColor || ""),
+		iconColor: normalizeColorRampValue(style.iconColor, style.startColor, style.endColor),
+		barColor: normalizeColorRampValue(style.barColor, "", ""),
 		borderColor: String(style.borderColor || ""),
 		neutralIconMode: normalizeNeutralIconMode(style.neutralIconMode)
 	};
@@ -562,11 +560,11 @@ function renderGroups(body) {
 			<div class="accordion-body">
 				<label class="section-label">Group settings</label>
 				<div class="pos-row">
-					<label class="pos-field">X %<input type="number" min="0" max="100" step="0.1" data-role="x"></label>
-					<label class="pos-field">Y %<input type="number" min="0" max="100" step="0.1" data-role="y"></label>
-					<label class="pos-field">Rotation°<input type="number" min="-180" max="180" step="1" data-role="rotation"></label>
-					<label class="pos-field">Size px<input type="number" min="4" max="256" step="1" data-role="gearSize"></label>
-					<label class="pos-field">Spacing px<input type="number" min="0" max="256" step="1" data-role="spacing"></label>
+					<label class="pos-field"><span>X</span><input type="number" min="0" max="100" step="0.1" data-role="x"></label>
+					<label class="pos-field"><span>Y</span><input type="number" min="0" max="100" step="0.1" data-role="y"></label>
+					<label class="pos-field"><span>Rotation</span><input type="number" min="-180" max="180" step="1" data-role="rotation"></label>
+					<label class="pos-field"><span>Size</span><input type="number" min="4" max="256" step="1" data-role="gearSize"></label>
+					<label class="pos-field"><span>Spacing</span><input type="number" min="0" max="256" step="1" data-role="spacing"></label>
 				</div>
 				<div class="style-row">
 					<label class="pos-field compact">Stack
@@ -703,6 +701,7 @@ function renderGroups(body) {
 		}
 		bindExclusiveGroup(details);
 		bindNumberField(details.querySelector('[data-role="x"]'), {
+			suffix: "%",
 			parse: (raw) => {
 				if (String(raw).trim() === "" || raw === "." || raw === "-") {
 					return null;
@@ -715,6 +714,7 @@ function renderGroups(body) {
 			current: () => groupFor(group.id)?.x ?? DEFAULT_HUD_X
 		});
 		bindNumberField(details.querySelector('[data-role="y"]'), {
+			suffix: "%",
 			parse: (raw) => {
 				if (String(raw).trim() === "" || raw === "." || raw === "-") {
 					return null;
@@ -727,6 +727,7 @@ function renderGroups(body) {
 			current: () => groupFor(group.id)?.y ?? DEFAULT_HUD_Y
 		});
 		bindNumberField(details.querySelector('[data-role="rotation"]'), {
+			suffix: "°",
 			parse: (raw) => {
 				if (String(raw).trim() === "" || raw === "-" || raw === "." || raw === "-.") {
 					return null;
@@ -739,12 +740,14 @@ function renderGroups(body) {
 			current: () => groupFor(group.id)?.rotation || 0
 		});
 		bindNumberField(details.querySelector('[data-role="gearSize"]'), {
+			suffix: "px",
 			parse: (raw) => (String(raw).trim() === "" ? null : clampPx(raw, 4, 256)),
 			apply: (v) => patchGroup(group.id, { gearSize: v }),
 			decimals: 0,
 			current: () => pixelSize(groupFor(group.id) || group)
 		});
 		bindNumberField(details.querySelector('[data-role="spacing"]'), {
+			suffix: "px",
 			parse: (raw) => (String(raw).trim() === "" ? null : clampPx(raw, 0, 256)),
 			apply: (v) => patchGroup(group.id, { spacing: v }),
 			decimals: 0,
@@ -833,16 +836,54 @@ function renderGroups(body) {
 			writeStyle();
 			renderEditor(true);
 		});
-		colorFields.appendChild(makeGroupColorField("Icon at 0%", group.id, "startColor", style.startColor, themeIconStart()));
-		colorFields.appendChild(makeGroupColorField("Icon at 100%", group.id, "endColor", style.endColor, themeIconEnd()));
-		colorFields.appendChild(makeGroupColorField("Bar", group.id, "barColor", style.barColor, themeFill()));
-		colorFields.appendChild(makeGroupColorField("Border", group.id, "borderColor", style.borderColor, themeBorder()));
+		colorFields.classList.add("color-ramp-stack");
+		const generalColors = document.createElement("div");
+		generalColors.className = "color-ramp-editor";
+		const generalHeading = document.createElement("div");
+		generalHeading.className = "color-ramp-heading";
+		generalHeading.textContent = "General Colours";
+		generalColors.appendChild(generalHeading);
+		const generalRow = document.createElement("div");
+		generalRow.className = "style-row color-ramp-general-row";
+		const borderField = makeGroupColorField("Border", group.id, "borderColor", style.borderColor, themeBorder());
+		borderField.classList.add("compact");
+		generalRow.appendChild(borderField);
+		const neutralField = makeNeutralIconField(
+			makeNeutralIconSelect(style.neutralIconMode, (mode) => {
+				writeStyle({ neutralIconMode: mode });
+			})
+		);
+		neutralField.classList.add("compact");
+		generalRow.appendChild(neutralField);
+		generalColors.appendChild(generalRow);
+		colorFields.appendChild(generalColors);
 		colorFields.appendChild(
-			makeNeutralIconField(
-				makeNeutralIconSelect(style.neutralIconMode, (mode) => {
-					writeStyle({ neutralIconMode: mode });
-				})
-			)
+			makeColorRampEditor("Icon colours", style.iconColor, themeIconColor(), (ramp, live) => {
+				const liveGroup = groupFor(group.id);
+				if (!liveGroup) {
+					return;
+				}
+				patchGroup(
+					group.id,
+					{ style: { ...ensureGroupStyle(liveGroup), iconColor: ramp } },
+					false,
+					live
+				);
+			})
+		);
+		colorFields.appendChild(
+			makeColorRampEditor("Bar colours", style.barColor, themeFill(), (ramp, live) => {
+				const liveGroup = groupFor(group.id);
+				if (!liveGroup) {
+					return;
+				}
+				patchGroup(
+					group.id,
+					{ style: { ...ensureGroupStyle(liveGroup), barColor: ramp } },
+					false,
+					live
+				);
+			})
 		);
 		enhanceSelects(details);
 		const list = details.querySelector(".gear-list");

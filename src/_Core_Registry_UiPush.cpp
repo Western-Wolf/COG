@@ -46,7 +46,7 @@ namespace
 			std::istreambuf_iterator<char>());
 	}
 
-	/** Parse a multi-icon pack JSON into snapshot frames (with concrete min/max). */
+	/** Parse a multi-icon pack JSON into snapshot frames ({ path, pct } stops). */
 	std::string BuildIconPackFramesJson(const std::filesystem::path& packPath)
 	{
 		const auto text = ReadFileText(packPath);
@@ -68,10 +68,8 @@ namespace
 		struct Frame
 		{
 			std::string path;
-			double min = 0;
-			double max = 100;
-			bool hasMin = false;
-			bool hasMax = false;
+			double pct = 0;
+			bool hasPct = false;
 		};
 		std::vector<Frame> staged;
 		staged.reserve(icons->arrayValue.size());
@@ -84,13 +82,12 @@ namespace
 				if (f.path.empty()) {
 					f.path = ctx.GetString(item, "icon");
 				}
-				if (item.Find("min") && item.Find("min")->IsNumber()) {
-					f.min = item.Find("min")->numberValue;
-					f.hasMin = true;
-				}
-				if (item.Find("max") && item.Find("max")->IsNumber()) {
-					f.max = item.Find("max")->numberValue;
-					f.hasMax = true;
+				if (item.Find("pct") && item.Find("pct")->IsNumber()) {
+					f.pct = item.Find("pct")->numberValue;
+					f.hasPct = true;
+				} else if (item.Find("percent") && item.Find("percent")->IsNumber()) {
+					f.pct = item.Find("percent")->numberValue;
+					f.hasPct = true;
 				}
 			} else {
 				continue;
@@ -125,52 +122,58 @@ namespace
 			if (f.path.empty() || f.path.find("..") != std::string::npos) {
 				continue;
 			}
+			if (f.hasPct) {
+				if (f.pct < 0) {
+					f.pct = 0;
+				}
+				if (f.pct > 100) {
+					f.pct = 100;
+				}
+			}
 			staged.push_back(std::move(f));
 		}
 		if (staged.empty()) {
 			return "[]";
 		}
 
-		const bool anyBound = std::any_of(staged.begin(), staged.end(), [](const Frame& f) {
-			return f.hasMin || f.hasMax;
+		const bool anyPct = std::any_of(staged.begin(), staged.end(), [](const Frame& f) {
+			return f.hasPct;
 		});
 		const std::size_t n = staged.size();
-		const double denom = static_cast<double>(n > 1 ? n - 1 : 1);
-		if (!anyBound) {
+		if (!anyPct) {
 			for (std::size_t i = 0; i < n; ++i) {
-				staged[i].min = (static_cast<double>(i) * 100.0) / denom;
-				staged[i].max = i + 1 < n ? (static_cast<double>(i + 1) * 100.0) / denom : 100.0;
+				staged[i].pct = (static_cast<double>(i) * 100.0) / static_cast<double>(n);
+				staged[i].hasPct = true;
 			}
 		} else {
 			for (auto& f : staged) {
-				if (!f.hasMin && !f.hasMax) {
-					f.min = 0;
-					f.max = 100;
-				} else if (!f.hasMin) {
-					f.min = 0;
-				} else if (!f.hasMax) {
-					f.max = 100;
+				if (!f.hasPct) {
+					f.pct = 0;
+					f.hasPct = true;
 				}
-				if (f.min > f.max) {
-					std::swap(f.min, f.max);
-				}
-				if (f.min < 0) {
-					f.min = 0;
-				}
-				if (f.max > 100) {
-					f.max = 100;
-				}
+			}
+			std::sort(staged.begin(), staged.end(), [](const Frame& a, const Frame& b) {
+				return a.pct < b.pct;
+			});
+		}
+
+		std::vector<Frame> uniq;
+		uniq.reserve(staged.size());
+		for (auto& f : staged) {
+			if (!uniq.empty() && std::abs(uniq.back().pct - f.pct) < 1e-9) {
+				uniq.back() = std::move(f);
+			} else {
+				uniq.push_back(std::move(f));
 			}
 		}
 
 		std::ostringstream o;
 		o << "[";
-		for (std::size_t i = 0; i < staged.size(); ++i) {
+		for (std::size_t i = 0; i < uniq.size(); ++i) {
 			if (i) {
 				o << ",";
 			}
-			o << "{\"path\":\"" << EscapeJson(staged[i].path) << "\",\"min\":" << staged[i].min
-			  << ",\"max\":" << staged[i].max << "}";
+			o << "{\"path\":\"" << EscapeJson(uniq[i].path) << "\",\"pct\":" << uniq[i].pct << "}";
 		}
 		o << "]";
 		return o.str();
@@ -370,9 +373,11 @@ std::string CogRegistry::BuildSnapshotJson()
 		first = false;
 		o << "{\"receipt\":" << src.receipt << ",\"mod\":\"" << EscapeJson(src.mod) << "\",\"name\":\""
 		  << EscapeJson(src.name) << "\",\"display\":\"" << EscapeJson(src.display) << "\",\"category\":\""
-		  << EscapeJson(src.category) << "\",\"icon\":\"" << EscapeJson(src.icon) << "\",\"startColor\":\""
-		  << EscapeJson(src.startColor) << "\",\"endColor\":\"" << EscapeJson(src.endColor) << "\",\"barColor\":\""
-		  << EscapeJson(src.barColor) << "\",\"hideAt\":\"" << EscapeJson(src.hideAt)
+		  << EscapeJson(src.category) << "\",\"icon\":\"" << EscapeJson(src.icon) << "\",";
+		CogRegistryJson::AppendColorRampJson(o, "iconColor", src.iconColor);
+		o << ",";
+		CogRegistryJson::AppendColorRampJson(o, "barColor", src.barColor);
+		o << ",\"hideAt\":\"" << EscapeJson(src.hideAt)
 		  << "\",\"hudLinkedElement\":\"" << EscapeJson(src.hudLinkedElement)
 		  << "\",\"hudHideDuplicate\":" << (src.hudHideDuplicate ? "true" : "false") << ",\"type\":\""
 		  << TypeKey(src.type) << "\",\"value\":" << src.value;
@@ -390,8 +395,7 @@ std::string CogRegistry::BuildSnapshotJson()
 	  << EscapeJson(_general.hideToggleKey) << "\",\"hideIncludesFlash\":"
 	  << (_general.hideIncludesFlash ? "true" : "false") << ",\"uiHidden\":" << (_uiHidden ? "true" : "false")
 	  << ",\"fillColor\":\"" << EscapeJson(_general.fillColor) << "\",\"borderColor\":\""
-	  << EscapeJson(_general.borderColor) << "\",\"iconStartColor\":\"" << EscapeJson(_general.iconStartColor)
-	  << "\",\"iconEndColor\":\"" << EscapeJson(_general.iconEndColor)
+	  << EscapeJson(_general.borderColor) << "\",\"iconColor\":\"" << EscapeJson(_general.iconColor)
 	  << "\",\"neutralIconMode\":\"" << EscapeJson(_general.neutralIconMode)
 	  << "\",\"gadgetFont\":\"" << EscapeJson(_general.gadgetFont)
 	  << "\"},\"groups\":[";
@@ -600,6 +604,12 @@ std::string CogRegistry::BuildSnapshotJson()
 					}
 					return a.section < b.section;
 				}
+				// Multi-icon packs after still frames in the same folder.
+				const bool aPack = Lower(a.path).ends_with(".json");
+				const bool bPack = Lower(b.path).ends_with(".json");
+				if (aPack != bPack) {
+					return !aPack;
+				}
 				return a.path < b.path;
 			});
 			first = true;
@@ -659,9 +669,11 @@ std::string CogRegistry::BuildLivePatchJson()
 		first = false;
 		o << "{\"receipt\":" << src.receipt << ",\"mod\":\"" << EscapeJson(src.mod) << "\",\"name\":\""
 		  << EscapeJson(src.name) << "\",\"display\":\"" << EscapeJson(src.display) << "\",\"category\":\""
-		  << EscapeJson(src.category) << "\",\"icon\":\"" << EscapeJson(src.icon) << "\",\"startColor\":\""
-		  << EscapeJson(src.startColor) << "\",\"endColor\":\"" << EscapeJson(src.endColor) << "\",\"barColor\":\""
-		  << EscapeJson(src.barColor) << "\",\"hideAt\":\"" << EscapeJson(src.hideAt)
+		  << EscapeJson(src.category) << "\",\"icon\":\"" << EscapeJson(src.icon) << "\",";
+		CogRegistryJson::AppendColorRampJson(o, "iconColor", src.iconColor);
+		o << ",";
+		CogRegistryJson::AppendColorRampJson(o, "barColor", src.barColor);
+		o << ",\"hideAt\":\"" << EscapeJson(src.hideAt)
 		  << "\",\"hudLinkedElement\":\"" << EscapeJson(src.hudLinkedElement)
 		  << "\",\"hudHideDuplicate\":" << (src.hudHideDuplicate ? "true" : "false") << ",\"type\":\""
 		  << TypeKey(src.type) << "\",\"value\":" << src.value;

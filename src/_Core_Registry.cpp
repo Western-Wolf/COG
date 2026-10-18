@@ -264,8 +264,8 @@ std::int32_t CogRegistry::Register(
 	std::string display,
 	std::string category,
 	std::string icon,
-	std::string startColor,
-	std::string endColor,
+	std::string iconColor,
+	std::string legacyEndColor,
 	std::string barColor,
 	std::string hideAt,
 	std::string hudLinkedElement,
@@ -280,9 +280,8 @@ std::int32_t CogRegistry::Register(
 		return 0;
 	}
 	icon = NormalizeIcon(std::move(icon));
-	startColor = OptionalHexColor(std::move(startColor));
-	endColor = OptionalHexColor(std::move(endColor));
-	barColor = OptionalHexColor(std::move(barColor));
+	iconColor = CogRegistryJson::NormalizeRegisterIconColor(std::move(iconColor), std::move(legacyEndColor));
+	barColor = CogRegistryJson::NormalizeColorRamp(std::move(barColor));
 	hideAt = NormalizeHideAt(std::move(hideAt), type);
 	hudLinkedElement = TrimCopy(std::move(hudLinkedElement));
 	std::lock_guard lock(_mutex);
@@ -305,8 +304,7 @@ std::int32_t CogRegistry::Register(
 			src.icon = kFallbackIcon;
 			usedFallbackIcon = true;
 		}
-		AssignIfProvided(src.startColor, std::move(startColor));
-		AssignIfProvided(src.endColor, std::move(endColor));
+		AssignIfProvided(src.iconColor, std::move(iconColor));
 		AssignIfProvided(src.barColor, std::move(barColor));
 		AssignIfProvided(src.hideAt, std::move(hideAt));
 		AssignIfProvided(src.hudLinkedElement, std::move(hudLinkedElement));
@@ -326,8 +324,7 @@ std::int32_t CogRegistry::Register(
 		} else {
 		src.icon = std::move(icon);
 		}
-		src.startColor = std::move(startColor);
-		src.endColor = std::move(endColor);
+		src.iconColor = std::move(iconColor);
 		src.barColor = std::move(barColor);
 		src.hideAt = std::move(hideAt);
 		src.hudLinkedElement = std::move(hudLinkedElement);
@@ -348,8 +345,7 @@ std::int32_t CogRegistry::Register(
 	CogGearAppearance appearance;
 	appearance.display = src.display;
 	appearance.icon = src.icon;
-	appearance.startColor = src.startColor;
-	appearance.endColor = src.endColor;
+	appearance.iconColor = src.iconColor;
 	appearance.barColor = src.barColor;
 	appearance.hideAt = src.hideAt;
 	appearance.hudLinkedElement = src.hudLinkedElement;
@@ -835,12 +831,12 @@ void CogRegistry::EnsureBuiltinSources()
 	Register("COG.Builtin", "SecondaryWeaponCharge", "percent", "Secondary Weapon Charge", "Charge", "Actions/hand-left.svg", "", "", "", "<0.01", "hud.leftcharge", true);
 	Register("COG.Builtin", "Shout", "timer", "Shout Cooldown", "Charge", "Actions/shout.svg", "", "", "#5ba4f9", "", "hud.casting", true);
 	Register("COG.Builtin", "Howl", "timer", "Howl Cooldown", "Charge", "Werewolf/wolf-side.svg");
-	Register("COG.Builtin", "FireResist", "percent", "Fire Resistance", "Resistance", "Survival/fire.svg", "#ffffff", "#ffffff");
-	Register("COG.Builtin", "FrostResist", "percent", "Frost Resistance", "Resistance", "Weather/snowflake.svg", "#ffffff", "#ffffff");
-	Register("COG.Builtin", "ShockResist", "percent", "Shock Resistance", "Resistance", "Weather/lightning.svg", "#ffffff", "#ffffff");
-	Register("COG.Builtin", "PoisonResist", "percent", "Poison Resistance", "Resistance", "Alchemy/skull-and-bones.svg", "#ffffff", "#ffffff");
-	Register("COG.Builtin", "MagicResist", "percent", "Magic Resistance", "Resistance", "Magic/sparkles.svg", "#ffffff", "#ffffff");
-	Register("COG.Builtin", "DiseaseResist", "percent", "Disease Resistance", "Resistance", "Survival/virus.svg", "#ffffff", "#ffffff");
+	Register("COG.Builtin", "FireResist", "percent", "Fire Resistance", "Resistance", "Survival/fire.svg", "#ffffff");
+	Register("COG.Builtin", "FrostResist", "percent", "Frost Resistance", "Resistance", "Weather/snowflake.svg", "#ffffff");
+	Register("COG.Builtin", "ShockResist", "percent", "Shock Resistance", "Resistance", "Weather/lightning.svg", "#ffffff");
+	Register("COG.Builtin", "PoisonResist", "percent", "Poison Resistance", "Resistance", "Alchemy/skull-and-bones.svg", "#ffffff");
+	Register("COG.Builtin", "MagicResist", "percent", "Magic Resistance", "Resistance", "Magic/sparkles.svg", "#ffffff");
+	Register("COG.Builtin", "DiseaseResist", "percent", "Disease Resistance", "Resistance", "Survival/virus.svg", "#ffffff");
 	EndRegister("COG.Builtin");
 }
 

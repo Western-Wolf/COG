@@ -502,6 +502,7 @@ function fillShoutMeterGizmoEditor(panel, gizmo) {
 	const fontInput = fontField.querySelector("input");
 	fontInput.value = gizmo.settings.fontSize > 0 ? String(Math.round(gizmo.settings.fontSize)) : "";
 	bindNumberField(fontInput, {
+		suffix: "px",
 		parse: (raw) => {
 			if (String(raw).trim() === "") {
 				return 0;
@@ -538,10 +539,11 @@ function fillShoutMeterGizmoEditor(panel, gizmo) {
 	troughRow.className = "style-row";
 	const trough = document.createElement("label");
 	trough.className = "pos-field compact";
-	trough.innerHTML = `<span>Trough opacity %</span><input type="number" min="0" max="100" step="1" data-role="troughOpacity">`;
+	trough.innerHTML = `<span>Trough opacity</span><input type="number" min="0" max="100" step="1" data-role="troughOpacity">`;
 	const troughInput = trough.querySelector("input");
 	troughInput.value = fmtDec(gizmo.settings.troughOpacity, 0);
 	bindNumberField(troughInput, {
+		suffix: "%",
 		parse: (raw) => Math.max(0, Math.min(100, Number(raw) || 0)),
 		apply: (v) => patchGizmo(gid, { troughOpacity: v }),
 		decimals: 0,

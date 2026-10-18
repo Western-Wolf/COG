@@ -1094,9 +1094,9 @@ function fillGaugeEditor(panel, gauge) {
 	const pos = document.createElement("div");
 	pos.className = "pos-row";
 	pos.innerHTML = `
-		<label class="pos-field"><span>X %</span><input type="number" min="0" max="100" step="0.1" data-role="x"></label>
-		<label class="pos-field"><span>Y %</span><input type="number" min="0" max="100" step="0.1" data-role="y"></label>
-		<label class="pos-field"><span>${isFrame ? "Frame Rotation°" : "Rotation°"}</span><input type="number" min="-180" max="180" step="0.1" data-role="rotation"></label>
+		<label class="pos-field"><span>X</span><input type="number" min="0" max="100" step="0.1" data-role="x"></label>
+		<label class="pos-field"><span>Y</span><input type="number" min="0" max="100" step="0.1" data-role="y"></label>
+		<label class="pos-field"><span>${isFrame ? "Frame Rotation" : "Rotation"}</span><input type="number" min="-180" max="180" step="0.1" data-role="rotation"></label>
 		<label class="pos-field"><span>Width</span><input type="number" min="8" max="2000" step="1" data-role="width"></label>
 		<label class="pos-field"><span>Height</span><input type="number" min="4" max="512" step="1" data-role="height"></label>`;
 	panel.appendChild(pos);
@@ -1120,6 +1120,7 @@ function fillGaugeEditor(panel, gauge) {
 	wInput.value = String(Math.round(gauge.width));
 	hInput.value = String(Math.round(gauge.height));
 	bindNumberField(xInput, {
+		suffix: "%",
 		parse: (raw) => {
 			if (String(raw).trim() === "" || raw === "." || raw === "-") {
 				return null;
@@ -1141,6 +1142,7 @@ function fillGaugeEditor(panel, gauge) {
 		}
 	});
 	bindNumberField(yInput, {
+		suffix: "%",
 		parse: (raw) => {
 			if (String(raw).trim() === "" || raw === "." || raw === "-") {
 				return null;
@@ -1162,6 +1164,7 @@ function fillGaugeEditor(panel, gauge) {
 		}
 	});
 	bindNumberField(rotInput, {
+		suffix: "°",
 		parse: (raw) => {
 			if (String(raw).trim() === "" || raw === "-" || raw === "." || raw === "-.") {
 				return null;
@@ -1180,12 +1183,14 @@ function fillGaugeEditor(panel, gauge) {
 		current: () => live().rotation || 0
 	});
 	bindNumberField(wInput, {
+		suffix: "px",
 		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(MIN_GAUGE_WIDTH, Math.min(2000, Number(raw) || 0))),
 		apply: (v) => patchGauge(gid, { width: v }),
 		format: (v) => String(Math.round(v)),
 		current: () => live().width
 	});
 	bindNumberField(hInput, {
+		suffix: "px",
 		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(MIN_GAUGE_HEIGHT, Math.min(512, Number(raw) || 0))),
 		apply: (v) => patchGauge(gid, { height: v }),
 		format: (v) => String(Math.round(v)),
@@ -1330,10 +1335,11 @@ function fillGaugeEditor(panel, gauge) {
 
 		const thick = document.createElement("label");
 		thick.className = "pos-field compact mid border-thickness-field";
-		thick.innerHTML = `<span>Border Thickness %</span><input type="number" min="0" max="50" step="0.5" data-role="borderThickness">`;
+		thick.innerHTML = `<span>Border Thickness</span><input type="number" min="0" max="50" step="0.5" data-role="borderThickness">`;
 		const thickInput = thick.querySelector("input");
 		thickInput.value = fmtDec(gauge.borderThickness, 1);
 		bindNumberField(thickInput, {
+			suffix: "%",
 			parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(50, Number(raw) || 0))),
 			apply: (v) => patchGauge(gid, { borderThickness: v }),
 			decimals: 1,
@@ -1383,10 +1389,11 @@ function fillGaugeEditor(panel, gauge) {
 			const overlap = document.createElement("label");
 			overlap.className = "pos-field compact mid overlap-cap-field";
 			overlap.dataset.role = "endCapOverlapWrap";
-			overlap.innerHTML = `<span>Overlap %</span><input type="number" min="0" max="45" step="0.5" data-role="endCapOverlap">`;
+			overlap.innerHTML = `<span>Overlap</span><input type="number" min="0" max="45" step="0.5" data-role="endCapOverlap">`;
 			const overlapInput = overlap.querySelector("input");
 			overlapInput.value = fmtDec(gauge.endCapOverlap, 1);
 			bindNumberField(overlapInput, {
+				suffix: "%",
 				parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(45, Number(raw) || 0))),
 				apply: (v) => patchGauge(gid, { endCapOverlap: v }),
 				decimals: 1,
@@ -1400,10 +1407,11 @@ function fillGaugeEditor(panel, gauge) {
 		rowC.className = "style-row";
 		const trough = document.createElement("label");
 		trough.className = "pos-field compact mid";
-		trough.innerHTML = `<span>Trough Opacity %</span><input type="number" min="0" max="100" step="1" data-role="troughOpacity">`;
+		trough.innerHTML = `<span>Trough Opacity</span><input type="number" min="0" max="100" step="1" data-role="troughOpacity">`;
 		const troughInput = trough.querySelector("input");
 		troughInput.value = fmtDec(gauge.troughOpacity, 0);
 		bindNumberField(troughInput, {
+			suffix: "%",
 			parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(100, Number(raw) || 0))),
 			apply: (v) => patchGauge(gid, { troughOpacity: v }),
 			decimals: 0,

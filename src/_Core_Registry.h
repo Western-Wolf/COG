@@ -33,8 +33,8 @@ struct CogSource
 	double current = 0.0;
 	double maximum = 0.0;
 	std::string icon;
-	std::string startColor;
-	std::string endColor;
+	/** Hex (#RRGGBB) or compact JSON stop array; empty = unset. */
+	std::string iconColor;
 	std::string barColor;
 	std::string hideAt;
 	std::string hudLinkedElement;
@@ -51,8 +51,7 @@ struct CogGroupStyle
 	std::string fillFromHidden;
 	std::string numberFormat = "barPercent";
 	bool useGroupColors = false;
-	std::string startColor;
-	std::string endColor;
+	std::string iconColor;
 	std::string barColor;
 	std::string borderColor;
 	std::string neutralIconMode = "white";
@@ -62,8 +61,7 @@ struct CogGearAppearance
 {
 	std::string display;
 	std::string icon;
-	std::string startColor;
-	std::string endColor;
+	std::string iconColor;
 	std::string barColor;
 	std::string hideAt;
 	std::string hudLinkedElement;
@@ -198,8 +196,8 @@ struct CogGeneral
 	bool hideIncludesFlash = true;
 	std::string fillColor = "#c4a35a";
 	std::string borderColor = "#e8d2a0";
-	std::string iconStartColor = "#ffffff";
-	std::string iconEndColor = "#ffffff";
+	/** Single backup icon tint when gear/group iconColor is unset. */
+	std::string iconColor = "#ffffff";
 	std::string neutralIconMode = "white";
 	std::string gadgetFont = "Roboto";
 	/** Undocumented support toggle: "info" (default) or "debug". Not pushed to the editor UI. */
@@ -236,8 +234,8 @@ public:
 		std::string display,
 		std::string category,
 		std::string icon = {},
-		std::string startColor = {},
-		std::string endColor = {},
+		std::string iconColor = {},
+		std::string legacyEndColor = {},
 		std::string barColor = {},
 		std::string hideAt = {},
 		std::string hudLinkedElement = {},

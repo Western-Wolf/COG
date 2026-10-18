@@ -1,5 +1,6 @@
 -- COG iWant compatibility pack (stub Widgets + Status Bars bridge + icon import DLL).
-local deploy_root = [[G:\Games\Skyrim\MO2 Instances\Mod - COG\mods\COG - iWant Integration]]
+-- Stages under repo `_stage/`; release.ps1 builds the FOMOD zip from there (no MO2 mod folder).
+local deploy_root = path.join(os.projectdir(), "_stage", "COG - iWant Integration")
 local addon_dir = os.scriptdir()
 
 target("COG_iWant")

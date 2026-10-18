@@ -21,6 +21,22 @@ namespace CogRegistryJson
 	std::string NormalizeHideAt(std::string raw, std::string_view varType);
 	std::string NormalizeHexColor(std::string raw, const char* fallback);
 	std::string OptionalHexColor(std::string raw);
+	/** True if raw is a plain #hex (not a JSON array). */
+	bool LooksLikePlainHexColor(std::string_view raw);
+	/** Hex, JSON stop array, or "" — empty if invalid/unset. Migrates legacy start/end when iconColor empty. */
+	std::string NormalizeColorRamp(std::string raw);
+	std::string MigrateLegacyIconPair(std::string startColor, std::string endColor);
+	/** RegisterGear: legacyEnd hex + plain icon hex → two-stop ramp; else normalize iconColor alone. */
+	std::string NormalizeRegisterIconColor(std::string iconColor, std::string legacyEndColor);
+	/** Read iconColor / barColor field (string or array); apply start/end migration for icon. */
+	std::string ReadColorRampField(
+		const CogJson::Value& obj,
+		CogJson::ParseContext& ctx,
+		std::string_view key,
+		bool migrateLegacyIconPair = false);
+	void WriteColorRampField(CogJson::Writer& w, std::string_view key, const std::string& ramp);
+	/** Append `"key":<hex|array>` into a snapshot stream (empty → `""`). */
+	void AppendColorRampJson(std::ostringstream& o, std::string_view key, const std::string& ramp);
 	std::string NormalizeEditorKey(const std::string& raw);
 	std::string NormalizeNeutralIconMode(std::string raw);
 	std::string NormalizeGizmoType(std::string raw);

@@ -67,8 +67,8 @@ namespace
 
 	bool AppearanceEmpty(const CogGearAppearance& a)
 	{
-		return a.display.empty() && a.icon.empty() && a.startColor.empty() && a.endColor.empty() &&
-			   a.barColor.empty() && a.hideAt.empty();
+		return a.display.empty() && a.icon.empty() && a.iconColor.empty() && a.barColor.empty() &&
+			   a.hideAt.empty();
 	}
 
 	void ReturnPickerContainerToPlayer(RE::TESObjectREFR* container)
@@ -506,8 +506,8 @@ void CogInventory::RegisterFromSaved()
 			display,
 			"Inventory",
 			icon,
-			gear.settings.startColor.empty() ? gear.defaults.startColor : gear.settings.startColor,
-			gear.settings.endColor.empty() ? gear.defaults.endColor : gear.settings.endColor,
+			gear.settings.iconColor.empty() ? gear.defaults.iconColor : gear.settings.iconColor,
+			"",
 			gear.settings.barColor.empty() ? gear.defaults.barColor : gear.settings.barColor,
 			gear.settings.hideAt.empty() ? gear.defaults.hideAt : gear.settings.hideAt,
 			{},

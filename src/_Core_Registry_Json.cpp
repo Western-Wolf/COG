@@ -270,6 +270,185 @@ namespace CogRegistryJson
 		return NormalizeHexColor(std::move(raw), "");
 	}
 
+	bool LooksLikePlainHexColor(std::string_view raw)
+	{
+		std::string t(raw);
+		while (!t.empty() && std::isspace(static_cast<unsigned char>(t.front()))) {
+			t.erase(t.begin());
+		}
+		while (!t.empty() && std::isspace(static_cast<unsigned char>(t.back()))) {
+			t.pop_back();
+		}
+		if (t.empty() || t.front() != '#') {
+			return false;
+		}
+		return !OptionalHexColor(t).empty();
+	}
+
+	namespace
+	{
+		struct ColorStop
+		{
+			double pct = 0;
+			std::string color;
+		};
+
+		std::string FormatColorRamp(std::vector<ColorStop> stops)
+		{
+			if (stops.empty()) {
+				return {};
+			}
+			std::sort(stops.begin(), stops.end(), [](const ColorStop& a, const ColorStop& b) {
+				return a.pct < b.pct;
+			});
+			// Collapse duplicate pct — last wins.
+			std::vector<ColorStop> uniq;
+			uniq.reserve(stops.size());
+			for (const auto& s : stops) {
+				if (!uniq.empty() && std::abs(uniq.back().pct - s.pct) < 1e-9) {
+					uniq.back() = s;
+				} else {
+					uniq.push_back(s);
+				}
+			}
+			if (uniq.size() == 1) {
+				return uniq.front().color;
+			}
+			std::ostringstream o;
+			o << "[";
+			for (std::size_t i = 0; i < uniq.size(); ++i) {
+				if (i) {
+					o << ",";
+				}
+				o << "{\"pct\":" << uniq[i].pct << ",\"color\":\"" << EscapeJson(uniq[i].color) << "\"}";
+			}
+			o << "]";
+			return o.str();
+		}
+
+		std::vector<ColorStop> ParseColorStopsJson(std::string_view json)
+		{
+			CogJson::Value root;
+			std::string err;
+			if (!CogJson::Parse(std::string(json), root, err) || !root.IsArray()) {
+				return {};
+			}
+			std::vector<ColorStop> stops;
+			stops.reserve(root.arrayValue.size());
+			for (const auto& item : root.arrayValue) {
+				if (!item.IsObject()) {
+					continue;
+				}
+				const auto* colorVal = item.Find("color");
+				if (!colorVal || !colorVal->IsString()) {
+					continue;
+				}
+				auto color = OptionalHexColor(colorVal->stringValue);
+				if (color.empty()) {
+					continue;
+				}
+				double pct = 0;
+				if (const auto* pctKey = item.Find("pct"); pctKey && pctKey->IsNumber()) {
+					pct = pctKey->numberValue;
+				} else if (const auto* percentKey = item.Find("percent"); percentKey && percentKey->IsNumber()) {
+					pct = percentKey->numberValue;
+				}
+				if (pct < 0) {
+					pct = 0;
+				}
+				if (pct > 100) {
+					pct = 100;
+				}
+				stops.push_back(ColorStop{ pct, std::move(color) });
+			}
+			return stops;
+		}
+	}
+
+	std::string MigrateLegacyIconPair(std::string startColor, std::string endColor)
+	{
+		auto start = OptionalHexColor(std::move(startColor));
+		auto end = OptionalHexColor(std::move(endColor));
+		if (start.empty() && end.empty()) {
+			return {};
+		}
+		if (start.empty()) {
+			return end;
+		}
+		if (end.empty() || end == start) {
+			return start;
+		}
+		return FormatColorRamp({ { 0, start }, { 100, end } });
+	}
+
+	std::string NormalizeColorRamp(std::string raw)
+	{
+		raw = TrimCopy(std::move(raw));
+		if (raw.empty()) {
+			return {};
+		}
+		if (raw.front() == '[') {
+			auto stops = ParseColorStopsJson(raw);
+			return FormatColorRamp(std::move(stops));
+		}
+		return OptionalHexColor(std::move(raw));
+	}
+
+	std::string NormalizeRegisterIconColor(std::string iconColor, std::string legacyEndColor)
+	{
+		auto end = OptionalHexColor(std::move(legacyEndColor));
+		const auto trimmed = TrimCopy(iconColor);
+		if (!end.empty() && LooksLikePlainHexColor(trimmed)) {
+			return MigrateLegacyIconPair(trimmed, end);
+		}
+		return NormalizeColorRamp(std::move(iconColor));
+	}
+
+	std::string ReadColorRampField(
+		const CogJson::Value& obj,
+		CogJson::ParseContext& ctx,
+		std::string_view key,
+		bool migrateLegacyIconPair)
+	{
+		std::string ramp;
+		if (const auto* v = obj.Find(std::string(key)); v) {
+			if (v->IsString()) {
+				ramp = NormalizeColorRamp(v->stringValue);
+			} else if (v->IsArray()) {
+				ramp = NormalizeColorRamp(ctx.GetRawJson(obj, key, "[]"));
+			}
+		}
+		if (ramp.empty() && migrateLegacyIconPair) {
+			ramp = MigrateLegacyIconPair(ctx.GetString(obj, "startColor"), ctx.GetString(obj, "endColor"));
+		}
+		return ramp;
+	}
+
+	void WriteColorRampField(CogJson::Writer& w, std::string_view key, const std::string& ramp)
+	{
+		if (ramp.empty()) {
+			w.KeyString(key, "");
+			return;
+		}
+		if (!ramp.empty() && ramp.front() == '[') {
+			w.KeyRaw(key, ramp);
+			return;
+		}
+		w.KeyString(key, ramp);
+	}
+
+	void AppendColorRampJson(std::ostringstream& o, std::string_view key, const std::string& ramp)
+	{
+		o << "\"" << key << "\":";
+		if (ramp.empty()) {
+			o << "\"\"";
+		} else if (ramp.front() == '[') {
+			o << ramp;
+		} else {
+			o << "\"" << EscapeJson(ramp) << "\"";
+		}
+	}
+
 	std::string TrimCopy(std::string raw)
 	{
 		while (!raw.empty() && std::isspace(static_cast<unsigned char>(raw.front()))) {
@@ -506,8 +685,8 @@ namespace CogRegistryJson
 
 	bool AppearanceEmpty(const CogGearAppearance& a)
 	{
-		return a.display.empty() && a.icon.empty() && a.startColor.empty() && a.endColor.empty() &&
-		       a.barColor.empty() && a.hideAt.empty();
+		return a.display.empty() && a.icon.empty() && a.iconColor.empty() && a.barColor.empty() &&
+		       a.hideAt.empty();
 	}
 
 	CogGearAppearance ParseAppearance(const CogJson::Value& obj, CogJson::ParseContext& ctx)
@@ -515,9 +694,8 @@ namespace CogRegistryJson
 		CogGearAppearance a;
 		a.display = ctx.GetString(obj, "display");
 		a.icon = NormalizeIcon(ctx.GetString(obj, "icon"));
-		a.startColor = ctx.GetString(obj, "startColor");
-		a.endColor = ctx.GetString(obj, "endColor");
-		a.barColor = ctx.GetString(obj, "barColor");
+		a.iconColor = ReadColorRampField(obj, ctx, "iconColor", true);
+		a.barColor = ReadColorRampField(obj, ctx, "barColor", false);
 		a.hideAt = ctx.GetString(obj, "hideAt");
 		a.hudLinkedElement = ctx.GetString(obj, "hudLinkedElement");
 		a.hudHideDuplicate = ctx.GetBool(obj, "hudHideDuplicate", false);
@@ -529,9 +707,8 @@ namespace CogRegistryJson
 		w.BeginObject();
 		w.KeyString("display", a.display);
 		w.KeyString("icon", a.icon);
-		w.KeyString("startColor", a.startColor);
-		w.KeyString("endColor", a.endColor);
-		w.KeyString("barColor", a.barColor);
+		WriteColorRampField(w, "iconColor", a.iconColor);
+		WriteColorRampField(w, "barColor", a.barColor);
 		w.KeyString("hideAt", a.hideAt);
 		w.KeyString("hudLinkedElement", a.hudLinkedElement);
 		w.KeyBool("hudHideDuplicate", a.hudHideDuplicate);
@@ -576,9 +753,8 @@ namespace CogRegistryJson
 			g.style.fillFromHidden = NormalizeFillFromHidden(ctx.GetString(*style, "fillFromHidden"));
 			g.style.numberFormat = NormalizeNumberFormat(*style, ctx);
 			g.style.useGroupColors = ctx.GetBool(*style, "useGroupColors", false);
-			g.style.startColor = ctx.GetString(*style, "startColor");
-			g.style.endColor = ctx.GetString(*style, "endColor");
-			g.style.barColor = ctx.GetString(*style, "barColor");
+			g.style.iconColor = ReadColorRampField(*style, ctx, "iconColor", true);
+			g.style.barColor = ReadColorRampField(*style, ctx, "barColor", false);
 			g.style.borderColor = ctx.GetString(*style, "borderColor");
 			g.style.neutralIconMode = NormalizeNeutralIconMode(ctx.GetString(*style, "neutralIconMode"));
 		}
@@ -1379,9 +1555,8 @@ namespace CogRegistryJson
 		w.KeyString("fillFromHidden", g.style.fillFromHidden);
 		w.KeyString("numberFormat", g.style.numberFormat);
 		w.KeyBool("useGroupColors", g.style.useGroupColors);
-		w.KeyString("startColor", g.style.startColor);
-		w.KeyString("endColor", g.style.endColor);
-		w.KeyString("barColor", g.style.barColor);
+		WriteColorRampField(w, "iconColor", g.style.iconColor);
+		WriteColorRampField(w, "barColor", g.style.barColor);
 		w.KeyString("borderColor", g.style.borderColor);
 		w.KeyString("neutralIconMode", g.style.neutralIconMode);
 		w.EndObject();

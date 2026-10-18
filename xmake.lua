@@ -1,5 +1,5 @@
--- COG core SKSE plugin + Prisma view deploy.
-local deploy_root = [[G:\Games\Skyrim\MO2 Instances\Mod - COG\mods\COG - Custom Overlay Gadgets]]
+-- COG core SKSE plugin + Prisma view deploy (repo staging; release.ps1 zips from here).
+local deploy_root = path.join(os.projectdir(), "_stage", "COG - Custom Overlay Gadgets")
 local cog_dir = os.scriptdir()
 
 target("COG")

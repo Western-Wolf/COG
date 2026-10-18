@@ -1,7 +1,7 @@
 // COG overlay - Core (snapshot, bridges, HUD utilities, boot)
 // Classic script; loads last after all section scripts.
 
-let snapshot = { sources: [], shoutMeter: null, general: { showDefaultGroup: true, editorKey: "F3", hideToggleKey: "", hideIncludesFlash: true, uiHidden: false, fillColor: "#c4a35a", borderColor: "#e8d2a0", iconStartColor: "#ffffff", iconEndColor: "#ffffff", neutralIconMode: "white", gadgetFont: "Roboto" }, groups: [], gears: [], gauges: [], gizmos: [], gizmoTypes: [], icons: [], importedIcons: [], fonts: [], suppressions: [] };
+let snapshot = { sources: [], shoutMeter: null, general: { showDefaultGroup: true, editorKey: "F3", hideToggleKey: "", hideIncludesFlash: true, uiHidden: false, fillColor: "#c4a35a", borderColor: "#e8d2a0", iconColor: "#ffffff", neutralIconMode: "white", gadgetFont: "Roboto" }, groups: [], gears: [], gauges: [], gizmos: [], gizmoTypes: [], icons: [], importedIcons: [], fonts: [], suppressions: [] };
 let saveTimer = null;
 let activeTab = "general";
 let drag = null;
@@ -266,8 +266,18 @@ function normalizeSnapshot() {
 	document.body.classList.toggle("ui-hidden", !!snapshot.general.uiHidden);
 	snapshot.general.fillColor = optionalHex(snapshot.general.fillColor);
 	snapshot.general.borderColor = optionalHex(snapshot.general.borderColor);
-	snapshot.general.iconStartColor = optionalHex(snapshot.general.iconStartColor);
-	snapshot.general.iconEndColor = optionalHex(snapshot.general.iconEndColor);
+	{
+		let icon = optionalHex(snapshot.general.iconColor);
+		if (!icon) {
+			icon = optionalHex(snapshot.general.iconStartColor);
+		}
+		if (!icon) {
+			icon = optionalHex(snapshot.general.iconEndColor);
+		}
+		snapshot.general.iconColor = icon || (typeof defaultIconColor === "function" ? defaultIconColor() : "#ffffff");
+		delete snapshot.general.iconStartColor;
+		delete snapshot.general.iconEndColor;
+	}
 	snapshot.general.neutralIconMode = normalizeNeutralIconMode(snapshot.general.neutralIconMode);
 	if (!Array.isArray(snapshot.fonts)) {
 		snapshot.fonts = [];
@@ -775,8 +785,7 @@ function flushSave() {
 			hideIncludesFlash: snapshot.general?.hideIncludesFlash !== false,
 			fillColor: snapshot.general?.fillColor,
 			borderColor: snapshot.general?.borderColor,
-			iconStartColor: snapshot.general?.iconStartColor,
-			iconEndColor: snapshot.general?.iconEndColor,
+			iconColor: snapshot.general?.iconColor,
 			neutralIconMode: snapshot.general?.neutralIconMode,
 			gadgetFont: snapshot.general?.gadgetFont
 		},

@@ -107,8 +107,7 @@ function emptyAppearance() {
 	return {
 		display: "",
 		icon: "",
-		startColor: "",
-		endColor: "",
+		iconColor: "",
 		barColor: "",
 		hideAt: "",
 		hudLinkedElement: "",
@@ -121,9 +120,8 @@ function normalizeAppearance(raw) {
 	return {
 		display: String(a.display || ""),
 		icon: normalizeIconRelPath(String(a.icon || "")),
-		startColor: String(a.startColor || ""),
-		endColor: String(a.endColor || ""),
-		barColor: String(a.barColor || ""),
+		iconColor: normalizeColorRampValue(a.iconColor, a.startColor, a.endColor),
+		barColor: normalizeColorRampValue(a.barColor, "", ""),
 		hideAt: String(a.hideAt || ""),
 		hudLinkedElement: String(a.hudLinkedElement || ""),
 		hudHideDuplicate: !!a.hudHideDuplicate
@@ -140,7 +138,7 @@ function ensureGearAppearance(gear) {
 }
 
 function isEmptyAppearance(a) {
-	return !a || !(a.display || a.icon || a.startColor || a.endColor || a.barColor || a.hideAt);
+	return !a || !(a.display || a.icon || a.iconColor || a.barColor || a.hideAt);
 }
 
 function appearanceOf(gear, src) {
@@ -150,20 +148,22 @@ function appearanceOf(gear, src) {
 		return {
 			display: s.display || (src && (src.display || src.name)) || (gear && gear.name) || "",
 			icon: s.icon || "",
-			startColor: s.startColor || "",
-			endColor: s.endColor || "",
+			iconColor: s.iconColor || "",
 			barColor: s.barColor || "",
 			hideAt: s.hideAt || "",
 			hudLinkedElement: s.hudLinkedElement || "",
 			hudHideDuplicate: !!s.hudHideDuplicate
 		};
 	}
+	const srcIcon = src
+		? normalizeColorRampValue(src.iconColor, src.startColor, src.endColor)
+		: "";
+	const srcBar = src ? normalizeColorRampValue(src.barColor, "", "") : "";
 	return {
 		display: (src && (src.display || src.name)) || (gear && gear.name) || "",
 		icon: (src && src.icon) || "",
-		startColor: (src && src.startColor) || "",
-		endColor: (src && src.endColor) || "",
-		barColor: (src && src.barColor) || "",
+		iconColor: srcIcon,
+		barColor: srcBar,
 		hideAt: (src && src.hideAt) || "",
 		hudLinkedElement: (src && src.hudLinkedElement) || "",
 		hudHideDuplicate: !!(src && src.hudHideDuplicate)
@@ -178,27 +178,38 @@ function usesGroupColors(gear, group) {
 	return !!(style.useGroupColors && !gear.exemptFromGroupColors);
 }
 
+function meterPercent(src) {
+	return Math.max(0, Math.min(100, Number(src && src.value) || 0));
+}
+
 function resolvedPalette(src, gear, group) {
+	const pct = meterPercent(src);
 	if (usesGroupColors(gear, group)) {
 		const style = ensureGroupStyle(group);
+		const iconRamp = normalizeColorRampValue(style.iconColor, style.startColor, style.endColor);
+		const barRamp = normalizeColorRampValue(style.barColor, "", "");
 		return {
-			startColor: optionalHex(style.startColor) || themeIconStart(),
-			endColor: optionalHex(style.endColor) || themeIconEnd(),
-			barColor: optionalHex(style.barColor) || themeFill(),
-			borderColor: optionalHex(style.borderColor) || themeBorder()
+			iconColor: iconRamp,
+			barColor: barRamp,
+			borderColor: optionalHex(style.borderColor) || themeBorder(),
+			iconSample: sampleColorRamp(iconRamp, pct) || themeIconColor(),
+			barSample: sampleColorRamp(barRamp, pct) || themeFill()
 		};
 	}
 	const look = appearanceOf(gear, src);
+	const iconRamp = look.iconColor || "";
+	const barRamp = look.barColor || "";
 	return {
-		startColor: optionalHex(look.startColor) || themeIconStart(),
-		endColor: optionalHex(look.endColor) || themeIconEnd(),
-		barColor: optionalHex(look.barColor) || themeFill(),
-		borderColor: themeBorder()
+		iconColor: iconRamp,
+		barColor: barRamp,
+		borderColor: themeBorder(),
+		iconSample: sampleColorRamp(iconRamp, pct) || themeIconColor(),
+		barSample: sampleColorRamp(barRamp, pct) || themeFill()
 	};
 }
 
 function sourceBarColor(src, gear, group) {
-	return resolvedPalette(src, gear, group).barColor;
+	return resolvedPalette(src, gear, group).barSample;
 }
 
 function sourceBorderColor(src, gear, group) {
@@ -210,22 +221,7 @@ function parseHexRgb(hex) {
 }
 
 function mixHex(a, b, t) {
-	const ca = parseHexRgb(a);
-	const cb = parseHexRgb(b);
-	if (!ca && !cb) {
-		return "";
-	}
-	if (!ca) {
-		return b;
-	}
-	if (!cb) {
-		return a;
-	}
-	const u = Math.max(0, Math.min(1, Number(t) || 0));
-	const ch = (x, y) => Math.round(x + (y - x) * u);
-	return `#${[ch(ca.r, cb.r), ch(ca.g, cb.g), ch(ca.b, cb.b)]
-		.map((n) => n.toString(16).padStart(2, "0"))
-		.join("")}`;
+	return typeof mixHexColors === "function" ? mixHexColors(a, b, t) : a || b || "";
 }
 
 function iconRatio(src) {
@@ -246,31 +242,26 @@ function neutralIconPaint(palette, mode) {
 		return "#ffffff";
 	}
 	if (mode === "bar") {
-		return palette.barColor || "";
+		return palette.barSample || "";
 	}
 	if (mode === "border") {
 		return palette.borderColor || "";
 	}
 	if (mode === "icon0") {
-		return palette.startColor || palette.endColor || "";
+		return sampleColorRamp(palette.iconColor, 0) || themeIconColor();
 	}
 	if (mode === "icon100") {
-		return palette.endColor || palette.startColor || "";
+		return sampleColorRamp(palette.iconColor, 100) || themeIconColor();
 	}
 	if (mode === "icon50") {
-		const start = palette.startColor;
-		const end = palette.endColor;
-		if (start && end) {
-			return mixHex(start, end, 0.5);
-		}
-		return start || end || "";
+		return sampleColorRamp(palette.iconColor, 50) || themeIconColor();
 	}
 	return "#ffffff";
 }
 
 function sourceIconPaint(src, gear, group) {
 	const href = sourceIconPath(src, gear);
-	// Animated rasters: blank ends mean native colour (see rasterIconColorPlan).
+	// Animated rasters: blank ramp means native colour (see rasterIconColorPlan).
 	if (iconHrefIsAnimated(href)) {
 		const plan = rasterIconColorPlan(src, gear, group);
 		return plan.kind === "tint" ? plan.color : "";
@@ -281,69 +272,34 @@ function sourceIconPaint(src, gear, group) {
 	if (src && src.type === "count") {
 		return neutralIconPaint(palette, mode);
 	}
-	const start = palette.startColor;
-	const end = palette.endColor;
-	if (!start && !end) {
-		return "";
-	}
-	if (!start) {
-		return end;
-	}
-	if (!end || start === end) {
-		return start;
-	}
-	return mixHex(start, end, iconRatio(src));
+	return palette.iconSample || "";
 }
 
-/** User icon 0%/100% colours only — no General theme fallback (blank = native for GIF/WebP). */
-function iconTintEnds(src, gear, group) {
+/** User iconColor ramp only — no General theme fallback (blank = native for GIF/WebP). */
+function iconTintRamp(src, gear, group) {
 	if (usesGroupColors(gear, group)) {
 		const style = ensureGroupStyle(group);
-		return {
-			start: optionalHex(style.startColor) || "",
-			end: optionalHex(style.endColor) || ""
-		};
+		return normalizeColorRampValue(style.iconColor, style.startColor, style.endColor);
 	}
-	const look = appearanceOf(gear, src);
-	return {
-		start: optionalHex(look.startColor) || "",
-		end: optionalHex(look.endColor) || ""
-	};
+	return appearanceOf(gear, src).iconColor || "";
 }
 
 /**
  * GIF/WebP colour at the current meter value.
- * - both blank → native
- * - both set → solid tint lerped between them
- * - one set → blend native ↔ that colour by meter position
+ * - blank ramp → native
+ * - otherwise → solid tint sampled from the ramp
  */
 function rasterIconColorPlan(src, gear, group) {
-	const { start, end } = iconTintEnds(src, gear, group);
+	const ramp = iconTintRamp(src, gear, group);
 	const t = iconRatio(src);
-	if (!start && !end) {
+	if (!ramp) {
 		return { kind: "native" };
 	}
-	if (start && end) {
-		return { kind: "tint", color: mixHex(start, end, t) || start };
-	}
-	if (start && !end) {
-		// Chosen at 0% → native at 100%.
-		if (t <= 0) {
-			return { kind: "tint", color: start };
-		}
-		if (t >= 1) {
-			return { kind: "native" };
-		}
-		return { kind: "blend", color: start, tintAmount: 1 - t };
-	}
-	// Native at 0% → chosen at 100%.
-	if (t <= 0) {
+	const color = sampleColorRamp(ramp, t * 100);
+	if (!color) {
 		return { kind: "native" };
 	}
-	if (t >= 1) {
-		return { kind: "tint", color: end };
-	}
-	return { kind: "blend", color: end, tintAmount: t };
+	return { kind: "tint", color };
 }
 
 function iconHrefIsAnimated(href) {
@@ -476,14 +432,17 @@ function applyIconPaint(el, src, gear, group) {
 		return;
 	}
 	const paint = sourceIconPaint(src, gear, group);
-	if (!paint) {
+	if (!paint || !href) {
 		return;
 	}
-	const face = icon.querySelector(".gear-icon-face");
-	if (face) {
-		face.style.background = paint;
-	} else {
-		icon.style.background = paint;
+	// Live percent ticks used to recolor only; pack frames need the mask/src refreshed too.
+	paintMaskedFace(icon, "gear-icon-face", { color: paint, href });
+	const img = icon.querySelector("img");
+	if (img) {
+		img.hidden = true;
+		if (img.getAttribute("src") !== href) {
+			img.src = href;
+		}
 	}
 }
 
@@ -491,19 +450,19 @@ function iconPaintSig(src, gear, group) {
 	const style = group ? ensureGroupStyle(group) : null;
 	const look = appearanceOf(gear, src);
 	const mode = neutralIconModeFor(gear, group);
+	const palette = resolvedPalette(src, gear, group);
 	return [
 		gear && gear.exemptFromGroupColors ? "1" : "0",
 		style && style.useGroupColors ? "1" : "0",
 		src && src.type === "count" ? mode : "ratio",
-		optionalHex(style && style.startColor),
-		optionalHex(style && style.endColor),
-		optionalHex(style && style.barColor),
+		style && style.iconColor,
+		style && style.barColor,
 		optionalHex(style && style.borderColor),
-		optionalHex(look.startColor),
-		optionalHex(look.endColor),
-		optionalHex(look.barColor),
-		themeIconStart(),
-		themeIconEnd(),
+		look.iconColor,
+		look.barColor,
+		palette.iconSample,
+		palette.barSample,
+		themeIconColor(),
 		themeFill(),
 		themeBorder()
 	].join("|");
@@ -1868,6 +1827,11 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 		hidePctInput.max = "100";
 		hidePctInput.step = "0.001";
 	}
+	if (hideType === "timer") {
+		wrapInputAffix(hidePctInput, { suffix: "s" });
+	} else if (!hideAbsolute) {
+		wrapInputAffix(hidePctInput, { suffix: "%" });
+	}
 	const hideParts = hideAtEditorParts(look.hideAt || "", hideType);
 	hideOpSel.value = hideParts.op;
 	hidePctInput.value = hideParts.value;
@@ -1921,9 +1885,17 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 		})
 	);
 	const colors = form.querySelector('[data-role="colors"]');
-	colors.appendChild(makeGearColorField("Icon at 0%", gear.id, "startColor", look.startColor, themeIconStart()));
-	colors.appendChild(makeGearColorField("Icon at 100%", gear.id, "endColor", look.endColor, themeIconEnd()));
-	colors.appendChild(makeGearColorField("Bar", gear.id, "barColor", look.barColor, themeFill()));
+	colors.classList.add("color-ramp-stack");
+	colors.appendChild(
+		makeColorRampEditor("Icon colours", look.iconColor, themeIconColor(), (ramp, live) => {
+			patchGearSettings(gear.id, { iconColor: ramp }, live);
+		})
+	);
+	colors.appendChild(
+		makeColorRampEditor("Bar colours", look.barColor, themeFill(), (ramp, live) => {
+			patchGearSettings(gear.id, { barColor: ramp }, live);
+		})
+	);
 	const commitText = (key, el) => {
 		patchGearSettings(gear.id, { [key]: el.value.trim() });
 		form.querySelector('[data-role="heading"]').textContent = `${sourceTitle(sourceFor(gear.mod, gear.name), gear.name, gear)} · ${effectiveGroupId(gear) ? groupDisplayName(effectiveGroupId(gear)) : "Unplaced"}`;
@@ -2078,9 +2050,8 @@ function addGear(src, groupId) {
 		const look = {
 			display: src.display || src.name || "",
 			icon: src.icon || "",
-			startColor: src.startColor || "",
-			endColor: src.endColor || "",
-			barColor: src.barColor || "",
+			iconColor: normalizeColorRampValue(src.iconColor, src.startColor, src.endColor),
+			barColor: normalizeColorRampValue(src.barColor, "", ""),
 			hideAt: src.hideAt || "",
 			hudLinkedElement: src.hudLinkedElement || "",
 			hudHideDuplicate: !!src.hudHideDuplicate
@@ -2179,9 +2150,8 @@ function resetGearSettings(id) {
 		gear.defaults = {
 			display: src.display || src.name || "",
 			icon: src.icon || "",
-			startColor: src.startColor || "",
-			endColor: src.endColor || "",
-			barColor: src.barColor || "",
+			iconColor: normalizeColorRampValue(src.iconColor, src.startColor, src.endColor),
+			barColor: normalizeColorRampValue(src.barColor, "", ""),
 			hideAt: src.hideAt || "",
 			hudLinkedElement: src.hudLinkedElement || "",
 			hudHideDuplicate: !!src.hudHideDuplicate

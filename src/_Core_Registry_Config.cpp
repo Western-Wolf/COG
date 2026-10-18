@@ -21,6 +21,7 @@ using CogRegistryJson::FileStem;
 using CogRegistryJson::Lower;
 using CogRegistryJson::NormalizeEditorKey;
 using CogRegistryJson::NormalizeHexColor;
+using CogRegistryJson::OptionalHexColor;
 using CogRegistryJson::NormalizeIcon;
 using CogRegistryJson::NormalizeNeutralIconMode;
 using CogRegistryJson::ParseGauge;
@@ -521,8 +522,16 @@ void CogRegistry::LoadGeneralFile(bool& repaired)
 	_general.hideIncludesFlash = ctx.GetBool(root, "hideIncludesFlash", true);
 	_general.fillColor = NormalizeHexColor(ctx.GetString(root, "fillColor"), "#c4a35a");
 	_general.borderColor = NormalizeHexColor(ctx.GetString(root, "borderColor"), "#e8d2a0");
-	_general.iconStartColor = NormalizeHexColor(ctx.GetString(root, "iconStartColor"), "#ffffff");
-	_general.iconEndColor = NormalizeHexColor(ctx.GetString(root, "iconEndColor"), "#ffffff");
+	{
+		auto icon = OptionalHexColor(ctx.GetString(root, "iconColor"));
+		if (icon.empty()) {
+			icon = OptionalHexColor(ctx.GetString(root, "iconStartColor"));
+		}
+		if (icon.empty()) {
+			icon = OptionalHexColor(ctx.GetString(root, "iconEndColor"));
+		}
+		_general.iconColor = icon.empty() ? "#ffffff" : std::move(icon);
+	}
 	_general.neutralIconMode = NormalizeNeutralIconMode(ctx.GetString(root, "neutralIconMode"));
 	{
 		auto font = ctx.GetString(root, "gadgetFont");
@@ -826,11 +835,12 @@ bool CogRegistry::ApplyStateJson(const std::string& json)
 		if (ctx.Has(*src, "borderColor")) {
 			_general.borderColor = NormalizeHexColor(ctx.GetString(*src, "borderColor"), "#e8d2a0");
 		}
-		if (ctx.Has(*src, "iconStartColor")) {
-			_general.iconStartColor = NormalizeHexColor(ctx.GetString(*src, "iconStartColor"), "#ffffff");
-		}
-		if (ctx.Has(*src, "iconEndColor")) {
-			_general.iconEndColor = NormalizeHexColor(ctx.GetString(*src, "iconEndColor"), "#ffffff");
+		if (ctx.Has(*src, "iconColor")) {
+			_general.iconColor = NormalizeHexColor(ctx.GetString(*src, "iconColor"), "#ffffff");
+		} else if (ctx.Has(*src, "iconStartColor")) {
+			_general.iconColor = NormalizeHexColor(ctx.GetString(*src, "iconStartColor"), "#ffffff");
+		} else if (ctx.Has(*src, "iconEndColor")) {
+			_general.iconColor = NormalizeHexColor(ctx.GetString(*src, "iconEndColor"), "#ffffff");
 		}
 		if (ctx.Has(*src, "neutralIconMode")) {
 			_general.neutralIconMode = NormalizeNeutralIconMode(ctx.GetString(*src, "neutralIconMode"));
@@ -955,8 +965,7 @@ void CogRegistry::SaveConfigUnlocked() const
 			<< "\",\n\t\"hideIncludesFlash\": " << (_general.hideIncludesFlash ? "true" : "false")
 			<< ",\n\t\"fillColor\": \"" << EscapeJson(_general.fillColor)
 			<< "\",\n\t\"borderColor\": \"" << EscapeJson(_general.borderColor)
-			<< "\",\n\t\"iconStartColor\": \"" << EscapeJson(_general.iconStartColor)
-			<< "\",\n\t\"iconEndColor\": \"" << EscapeJson(_general.iconEndColor)
+			<< "\",\n\t\"iconColor\": \"" << EscapeJson(_general.iconColor)
 			<< "\",\n\t\"neutralIconMode\": \"" << EscapeJson(_general.neutralIconMode)
 			<< "\",\n\t\"gadgetFont\": \"" << EscapeJson(_general.gadgetFont)
 			<< "\",\n\t\"logLevel\": \"" << EscapeJson(NormalizeLogLevel(_general.logLevel)) << "\"\n}\n";

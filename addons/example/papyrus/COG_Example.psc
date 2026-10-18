@@ -74,11 +74,12 @@ Function COGRegisterExamples()
 
 	; RegisterGear: create/update a live source. Returns a session receipt for Update*.
 	; Args: sourceMod, varName, type (count|percent|timer), displayName, category, icon
-	; [, startColor, endColor, barColor, ...]. Colours are optional — omit them (as on Count /
-	; Timer) for white icons / theme bar fill, or pass #RRGGBB as on Percent below.
+	; [, iconColor, legacyEndColor, barColor, ...]. Colours are optional — omit them (as on Count /
+	; Timer) for theme icon/bar, or pass #RRGGBB / JSON stops. Two plain hexes (icon + legacyEnd)
+	; still build a 0%/100% icon ramp (compat with older start/end callers).
 	; Same sourceMod+varName on a later call replaces the receipt (safe after every load).
 	CountReceipt = COG_API.RegisterGear(SourceMod, "count", "count", "Example Count", "Example", IconPath)
-	; Percent: icon lerps startColor→endColor with fill; barColor tints the meter.
+	; Percent: icon lerps red→green; barColor tints the meter.
 	PercentReceipt = COG_API.RegisterGear(SourceMod, "percent", "percent", "Example Percent", "Example", IconPath, "#DF2020", "#20DF20", "#C4A35A")
 	TimerReceipt = COG_API.RegisterGear(SourceMod, "timer", "timer", "Example Timer", "Example", IconPath)
 

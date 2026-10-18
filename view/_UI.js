@@ -140,7 +140,7 @@ function isIconPackPath(raw) {
 	return /\.json$/i.test(iconRelBasename(raw));
 }
 
-/** Parsed pack cache: lowercased rel path → { frames: [{ path, min, max }], href } */
+/** Parsed pack cache: lowercased rel path → { frames: [{ path, pct }], href } */
 const iconPackCache = new Map();
 const iconPackFetchInflight = new Map();
 
@@ -170,8 +170,9 @@ function clampIconPercent(pct) {
 }
 
 /**
- * Expand pack JSON into frames with concrete min/max.
- * Bare packs (no min/max on any row) get equal-step bands.
+ * Expand pack JSON into sorted stops { path, pct }.
+ * Same shape as colour ramps: each stop is active from its pct until the next.
+ * Bare packs (no pct on any row) get equal-width starts (0, 100/n, …).
  */
 function expandIconPackFrames(rawIcons) {
 	const list = Array.isArray(rawIcons) ? rawIcons : [];
@@ -180,7 +181,7 @@ function expandIconPackFrames(rawIcons) {
 		if (typeof item === "string") {
 			const path = stripIconRootPrefixes(item);
 			if (path) {
-				staged.push({ path, min: null, max: null });
+				staged.push({ path, pct: null });
 			}
 			continue;
 		}
@@ -191,76 +192,53 @@ function expandIconPackFrames(rawIcons) {
 		if (!path) {
 			continue;
 		}
-		const hasMin = item.min != null && item.min !== "" && Number.isFinite(Number(item.min));
-		const hasMax = item.max != null && item.max !== "" && Number.isFinite(Number(item.max));
+		const pctRaw = item.pct != null ? item.pct : item.percent;
+		const hasPct = pctRaw != null && pctRaw !== "" && Number.isFinite(Number(pctRaw));
 		staged.push({
 			path,
-			min: hasMin ? clampIconPercent(item.min) : null,
-			max: hasMax ? clampIconPercent(item.max) : null
+			pct: hasPct ? clampIconPercent(pctRaw) : null
 		});
 	}
 	if (!staged.length) {
 		return [];
 	}
-	const anyBound = staged.some((f) => f.min != null || f.max != null);
+	const anyPct = staged.some((f) => f.pct != null);
 	const n = staged.length;
-	const denom = Math.max(n - 1, 1);
-	if (!anyBound) {
+	if (!anyPct) {
 		for (let i = 0; i < n; i += 1) {
-			const lo = (i * 100) / denom;
-			const hi = i + 1 < n ? ((i + 1) * 100) / denom : 100;
-			staged[i].min = lo;
-			staged[i].max = hi;
+			staged[i].pct = (i * 100) / n;
 		}
-		return staged;
+	} else {
+		for (const f of staged) {
+			if (f.pct == null) {
+				f.pct = 0;
+			}
+		}
+		staged.sort((a, b) => a.pct - b.pct);
 	}
+	const uniq = [];
 	for (const f of staged) {
-		if (f.min == null && f.max == null) {
-			f.min = 0;
-			f.max = 100;
-		} else if (f.min == null) {
-			f.min = 0;
-		} else if (f.max == null) {
-			f.max = 100;
-		}
-		if (f.min > f.max) {
-			const t = f.min;
-			f.min = f.max;
-			f.max = t;
+		if (uniq.length && Math.abs(uniq[uniq.length - 1].pct - f.pct) < 1e-9) {
+			uniq[uniq.length - 1] = f;
+		} else {
+			uniq.push(f);
 		}
 	}
-	return staged;
+	return uniq;
 }
 
+/** Active frame = last stop whose pct ≤ gear percent (holds through 100). */
 function pickIconPackFrame(frames, percent) {
 	const pct = clampIconPercent(percent);
 	if (!frames || !frames.length) {
 		return "";
 	}
-	const hits = [];
-	for (let i = 0; i < frames.length; i += 1) {
-		const f = frames[i];
-		if (pct + 1e-9 >= f.min && pct - 1e-9 <= f.max) {
-			hits.push({ i, f, width: f.max - f.min });
-		}
-	}
-	if (hits.length) {
-		// Narrowest interval wins; tie-break = last in file order.
-		hits.sort((a, b) => {
-			if (a.width !== b.width) {
-				return a.width - b.width;
-			}
-			return b.i - a.i;
-		});
-		return hits[0].f.path;
-	}
 	let best = frames[0];
-	let bestDist = Infinity;
-	for (const f of frames) {
-		const dist = pct < f.min ? f.min - pct : pct > f.max ? pct - f.max : 0;
-		if (dist < bestDist) {
-			bestDist = dist;
-			best = f;
+	for (let i = 0; i < frames.length; i += 1) {
+		if (frames[i].pct <= pct + 1e-9) {
+			best = frames[i];
+		} else {
+			break;
 		}
 	}
 	return best.path || "";
@@ -457,11 +435,22 @@ function paintIconPackPreview(btn, packRel, resolveHref = resolveIconHref) {
 	ensureIconPackLoaded(packRel);
 	applyPct(0);
 	let t = 0;
+	let holdAtTop = 0;
+	const topHoldTicks = 10; // ~500ms at 100% so the peak frame reads clearly before loop
 	btn._cogPackTimer = setInterval(() => {
-		t = (t + 2) % 101;
-		if (t === 0) {
+		if (t >= 100) {
+			holdAtTop += 1;
+			applyPct(100);
+			if (holdAtTop < topHoldTicks) {
+				return;
+			}
+			holdAtTop = 0;
+			t = 0;
 			ensureIconPackLoaded(packRel);
+			applyPct(0);
+			return;
 		}
+		t = Math.min(100, t + 2);
 		applyPct(t);
 	}, 50);
 }
@@ -784,7 +773,7 @@ function defaultEndCapArtPath() {
 	const paths = iconsInFolder("Endcaps")
 		.map((icon) => icon.path)
 		.filter(Boolean)
-		.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+		.sort(compareIconPaths);
 	return paths[0] || "";
 }
 
@@ -879,15 +868,109 @@ function normalizeHexColor(value, fallback) {
 	return fallback;
 }
 
+/** Digits only for hex fields that show a permanent # affix. */
+function bareHexDigits(value) {
+	return String(value == null ? "" : value)
+		.trim()
+		.replace(/\s+/g, "")
+		.replace(/^#+/, "")
+		.toLowerCase();
+}
+
+function sanitizeHexDigits(raw, maxLen) {
+	const limit = Number.isFinite(maxLen) ? maxLen : 6;
+	return String(raw == null ? "" : raw).replace(/[^0-9a-fA-F]/g, "").slice(0, limit);
+}
+
 /** Full #rrggbb only — 3-digit shorthand expands on Enter / blur, not while typing. */
 function isFullHexColor(value) {
-	const bare = String(value == null ? "" : value).trim().replace(/\s+/g, "").replace(/^#+/, "");
+	const bare = bareHexDigits(value);
 	return /^[0-9a-fA-F]{6}$/i.test(bare);
 }
 
 function isShorthandHexColor(value) {
-	const bare = String(value == null ? "" : value).trim().replace(/\s+/g, "").replace(/^#+/, "");
+	const bare = bareHexDigits(value);
 	return /^[0-9a-fA-F]{3}$/i.test(bare);
+}
+
+/**
+ * Wrap an input with a faded permanent prefix/suffix (e.g. # / % / s).
+ * Moves `input` into the wrapper in-place. Idempotent.
+ */
+function wrapInputAffix(input, opts) {
+	if (!input) {
+		return null;
+	}
+	const existing = input.closest(".field-affix");
+	if (existing) {
+		return existing;
+	}
+	const prefix = opts && opts.prefix ? String(opts.prefix) : "";
+	const suffix = opts && opts.suffix ? String(opts.suffix) : "";
+	if (!prefix && !suffix) {
+		return null;
+	}
+	const wrap = document.createElement("span");
+	wrap.className = "field-affix";
+	if (prefix) {
+		wrap.classList.add("has-prefix");
+	}
+	if (suffix) {
+		wrap.classList.add("has-suffix");
+	}
+	if (input.parentNode) {
+		input.parentNode.insertBefore(wrap, input);
+	}
+	if (prefix) {
+		const mark = document.createElement("span");
+		mark.className = "field-affix-mark field-affix-prefix";
+		mark.textContent = prefix;
+		mark.setAttribute("aria-hidden", "true");
+		wrap.appendChild(mark);
+	}
+	wrap.appendChild(input);
+	if (suffix) {
+		const mark = document.createElement("span");
+		mark.className = "field-affix-mark field-affix-suffix";
+		mark.textContent = suffix;
+		mark.setAttribute("aria-hidden", "true");
+		wrap.appendChild(mark);
+	}
+	return wrap;
+}
+
+/** Keep only 0-9a-f in a hex digit field; preserve caret when possible. */
+function bindHexDigitFilter(input) {
+	if (!input || input.dataset.hexFilter === "1") {
+		return;
+	}
+	input.dataset.hexFilter = "1";
+	input.maxLength = 6;
+	input.spellcheck = false;
+	input.autocomplete = "off";
+	input.addEventListener("beforeinput", (ev) => {
+		if (ev.inputType && ev.inputType.indexOf("insert") === 0 && ev.data != null && /[^0-9a-fA-F]/.test(ev.data)) {
+			ev.preventDefault();
+		}
+	});
+	input.addEventListener("input", () => {
+		const start = input.selectionStart;
+		const before = input.value;
+		const cleaned = sanitizeHexDigits(before, 6);
+		if (cleaned === before) {
+			return;
+		}
+		input.value = cleaned;
+		if (typeof start === "number") {
+			const delta = before.length - cleaned.length;
+			const next = Math.max(0, start - delta);
+			try {
+				input.setSelectionRange(next, next);
+			} catch {
+				/* ignore */
+			}
+		}
+	});
 }
 
 function defaultFillColor() {
@@ -1047,16 +1130,169 @@ function themeFill() {
 	return normalizeHexColor(snapshot.general && snapshot.general.fillColor, defaultFillColor());
 }
 
+function defaultIconColor() {
+	return "#ffffff";
+}
+
+/** Single General backup icon tint (migrates legacy iconStart/iconEnd). */
+function themeIconColor() {
+	const g = snapshot.general || {};
+	const direct = normalizeHexColor(g.iconColor, "");
+	if (direct) {
+		return direct;
+	}
+	const start = normalizeHexColor(g.iconStartColor, "");
+	if (start) {
+		return start;
+	}
+	return normalizeHexColor(g.iconEndColor, defaultIconColor()) || defaultIconColor();
+}
+
 function themeIconStart() {
-	return normalizeHexColor(snapshot.general && snapshot.general.iconStartColor, defaultIconStartColor());
+	return themeIconColor();
 }
 
 function themeIconEnd() {
-	return normalizeHexColor(snapshot.general && snapshot.general.iconEndColor, defaultIconEndColor());
+	return themeIconColor();
 }
 
 function optionalHex(value) {
 	return normalizeHexColor(value, "") || "";
+}
+
+function migrateLegacyIconPair(startColor, endColor) {
+	const start = optionalHex(startColor);
+	const end = optionalHex(endColor);
+	if (!start && !end) {
+		return "";
+	}
+	if (!start) {
+		return end;
+	}
+	if (!end || end === start) {
+		return start;
+	}
+	return formatColorRamp([
+		{ pct: 0, color: start },
+		{ pct: 100, color: end }
+	]);
+}
+
+/** Parse hex or JSON stop array → sorted [{pct,color}, …]. */
+function parseColorRamp(raw) {
+	if (raw == null) {
+		return [];
+	}
+	if (Array.isArray(raw)) {
+		const stops = [];
+		for (const item of raw) {
+			if (!item || typeof item !== "object") {
+				continue;
+			}
+			const color = optionalHex(item.color);
+			if (!color) {
+				continue;
+			}
+			let pct = Number(item.pct != null ? item.pct : item.percent);
+			if (!Number.isFinite(pct)) {
+				pct = 0;
+			}
+			pct = Math.max(0, Math.min(100, pct));
+			stops.push({ pct, color });
+		}
+		stops.sort((a, b) => a.pct - b.pct);
+		const uniq = [];
+		for (const s of stops) {
+			if (uniq.length && Math.abs(uniq[uniq.length - 1].pct - s.pct) < 1e-9) {
+				uniq[uniq.length - 1] = s;
+			} else {
+				uniq.push(s);
+			}
+		}
+		return uniq;
+	}
+	const text = String(raw).trim();
+	if (!text) {
+		return [];
+	}
+	if (text.charAt(0) === "[") {
+		try {
+			return parseColorRamp(JSON.parse(text));
+		} catch {
+			return [];
+		}
+	}
+	const hex = optionalHex(text);
+	return hex ? [{ pct: 0, color: hex }] : [];
+}
+
+function formatColorRamp(stops) {
+	const list = parseColorRamp(Array.isArray(stops) ? stops : []);
+	if (!list.length) {
+		return "";
+	}
+	if (list.length === 1) {
+		return list[0].color;
+	}
+	return JSON.stringify(list.map((s) => ({ pct: s.pct, color: s.color })));
+}
+
+/** Normalize wire value (hex, array, or legacy start/end) → hex or JSON string. */
+function normalizeColorRampValue(raw, legacyStart, legacyEnd) {
+	if (raw != null && raw !== "") {
+		const stops = parseColorRamp(raw);
+		if (stops.length) {
+			return formatColorRamp(stops);
+		}
+	}
+	return migrateLegacyIconPair(legacyStart, legacyEnd);
+}
+
+function mixHexColors(a, b, t) {
+	const ca = hexToRgb(a);
+	const cb = hexToRgb(b);
+	if (!ca && !cb) {
+		return "";
+	}
+	if (!ca) {
+		return optionalHex(b);
+	}
+	if (!cb) {
+		return optionalHex(a);
+	}
+	const u = Math.max(0, Math.min(1, Number(t) || 0));
+	const ch = (x, y) => Math.round(x + (y - x) * u);
+	return `#${[ch(ca.r, cb.r), ch(ca.g, cb.g), ch(ca.b, cb.b)]
+		.map((n) => n.toString(16).padStart(2, "0"))
+		.join("")}`;
+}
+
+function sampleColorRamp(stopsOrRaw, percent) {
+	const stops = Array.isArray(stopsOrRaw) ? parseColorRamp(stopsOrRaw) : parseColorRamp(stopsOrRaw);
+	if (!stops.length) {
+		return "";
+	}
+	if (stops.length === 1) {
+		return stops[0].color;
+	}
+	const pct = Math.max(0, Math.min(100, Number(percent) || 0));
+	if (pct <= stops[0].pct) {
+		return stops[0].color;
+	}
+	const last = stops[stops.length - 1];
+	if (pct >= last.pct) {
+		return last.color;
+	}
+	for (let i = 0; i < stops.length - 1; i += 1) {
+		const a = stops[i];
+		const b = stops[i + 1];
+		if (pct + 1e-9 >= a.pct && pct - 1e-9 <= b.pct) {
+			const span = b.pct - a.pct;
+			const t = span <= 1e-9 ? 0 : (pct - a.pct) / span;
+			return mixHexColors(a.color, b.color, t) || a.color;
+		}
+	}
+	return last.color;
 }
 
 function clampByte(n) {
@@ -1292,7 +1528,7 @@ function openColorPicker(anchor, opts) {
 		</div>
 		<div class="ccp-preview-row">
 			<span class="ccp-preview"></span>
-			<label class="ccp-hex-wrap">Hex <input type="text" class="ccp-hex" spellcheck="false" maxlength="7"></label>
+			<label class="ccp-hex-wrap">Hex <input type="text" class="ccp-hex" spellcheck="false" maxlength="6" autocomplete="off"></label>
 		</div>
 		<div class="ccp-rgb-row">
 			<label>R <input type="number" class="ccp-r" min="0" max="255" step="1"></label>
@@ -1307,6 +1543,8 @@ function openColorPicker(anchor, opts) {
 	const hueThumb = pop.querySelector(".ccp-hue-thumb");
 	const preview = pop.querySelector(".ccp-preview");
 	const hexInput = pop.querySelector(".ccp-hex");
+	wrapInputAffix(hexInput, { prefix: "#" });
+	bindHexDigitFilter(hexInput);
 	const rInput = pop.querySelector(".ccp-r");
 	const gInput = pop.querySelector(".ccp-g");
 	const bInput = pop.querySelector(".ccp-b");
@@ -1346,7 +1584,7 @@ function openColorPicker(anchor, opts) {
 		hueThumb.style.left = `${(hsv.h / 360) * 100}%`;
 		preview.style.background = hex;
 		if (rewriteHex !== false) {
-			hexInput.value = hex;
+			hexInput.value = bareHexDigits(hex);
 		}
 		rInput.value = String(rgb.r);
 		gInput.value = String(rgb.g);
@@ -1423,7 +1661,7 @@ function openColorPicker(anchor, opts) {
 	bindDrag(hueEl, (x) => pickHue(x));
 
 	const commitPickerHex = (raw, expandShorthand) => {
-		const t = String(raw == null ? "" : raw).trim();
+		const t = sanitizeHexDigits(raw, 6);
 		if (allowEmpty && !t) {
 			emitCommit("");
 			preview.style.background = "transparent";
@@ -1431,11 +1669,11 @@ function openColorPicker(anchor, opts) {
 		}
 		const ok = isFullHexColor(t) || (expandShorthand && isShorthandHexColor(t));
 		if (!ok || !setFromHex(normalizeHexColor(t, current || fallback), "commit", true)) {
-			hexInput.value = current || "";
+			hexInput.value = bareHexDigits(current);
 		}
 	};
 	hexInput.addEventListener("input", () => {
-		const t = hexInput.value.trim();
+		const t = sanitizeHexDigits(hexInput.value, 6);
 		if (isFullHexColor(t)) {
 			// Apply colour without rewriting the hex field (preserves backspace / caret).
 			setFromHex(normalizeHexColor(t, current || fallback), "live", false);
@@ -1547,10 +1785,12 @@ function makeColorControl(opts) {
 	field.innerHTML = `<span>${label}</span>
 		<span class="color-controls">
 			<button type="button" class="color-swatch" aria-label="${label} colour picker"></button>
-			<input type="text" class="color-hex" spellcheck="false" maxlength="7" aria-label="${label}">
+			<input type="text" class="color-hex" spellcheck="false" maxlength="6" aria-label="${label}" autocomplete="off">
 		</span>`;
 	const swatch = field.querySelector(".color-swatch");
 	const text = field.querySelector(".color-hex");
+	wrapInputAffix(text, { prefix: "#" });
+	bindHexDigitFilter(text);
 	let hexFocused = false;
 
 	const swatchDisplayColor = (hex) => {
@@ -1578,16 +1818,16 @@ function makeColorControl(opts) {
 	const paint = (hex, rewriteText) => {
 		value = hex;
 		if (rewriteText || !hexFocused) {
-			text.value = hex || "";
+			text.value = bareHexDigits(hex);
 		}
 		paintSwatch(hex);
 		if (allowEmpty && opts.placeholder) {
-			text.placeholder = opts.placeholder;
+			text.placeholder = bareHexDigits(opts.placeholder);
 		}
 	};
 
 	const commit = (raw, expandShorthand) => {
-		const trimmed = String(raw == null ? "" : raw).trim();
+		const trimmed = sanitizeHexDigits(raw, 6);
 		if (allowEmpty && !trimmed) {
 			const changed = value !== "";
 			paint("", true);
@@ -1614,14 +1854,14 @@ function makeColorControl(opts) {
 
 	paint(value, true);
 	if (allowEmpty) {
-		text.placeholder = opts.placeholder || fallback || "";
+		text.placeholder = bareHexDigits(opts.placeholder || fallback || "");
 	}
 
 	text.addEventListener("focus", () => {
 		hexFocused = true;
 	});
 	text.addEventListener("input", () => {
-		const t = text.value.trim();
+		const t = sanitizeHexDigits(text.value, 6);
 		if (allowEmpty && t === "") {
 			value = "";
 			paintSwatch("");
@@ -1630,7 +1870,7 @@ function makeColorControl(opts) {
 			}
 			return;
 		}
-		// Live-apply full #rrggbb only — never rewrite the field (keeps caret / backspace intact).
+		// Live-apply full rrggbb only — never rewrite the field (keeps caret / backspace intact).
 		if (isFullHexColor(t)) {
 			const next = normalizeHexColor(t, value || fallback);
 			if (!next) {
@@ -1705,6 +1945,188 @@ function makeOptionalColorField(label, value, fallback, onCommit) {
 	});
 }
 
+/**
+ * Multi-stop colour ramp editor (iconColor / barColor).
+ * Single-line chips (colour + % + ×) with inline +. Empty stops → inherit fallback.
+ */
+function makeColorRampEditor(label, value, fallback, onCommit) {
+	const wrap = document.createElement("div");
+	wrap.className = "color-ramp-editor";
+	const heading = document.createElement("div");
+	heading.className = "color-ramp-heading";
+	heading.textContent = label;
+	wrap.appendChild(heading);
+	const hint = document.createElement("p");
+	hint.className = "lede color-ramp-hint";
+	hint.textContent = "Empty inherits the backup. Multiple stops fade between percentages.";
+	wrap.appendChild(hint);
+	const list = document.createElement("div");
+	list.className = "color-ramp-stops";
+	wrap.appendChild(list);
+	let stops = parseColorRamp(value);
+
+	const emit = (live) => {
+		if (typeof onCommit === "function") {
+			onCommit(formatColorRamp(stops), !!live);
+		}
+	};
+
+	const hasHundredStop = () => stops.some((s) => s.pct >= 100 - 1e-9);
+	const ADD_CAP_TIP = "Already has a 100% stop — lower one first to add another.";
+	let addBtn = null;
+	let addWrap = null;
+
+	const closeAddCapTip = () => {
+		if (!addWrap) {
+			return;
+		}
+		closeInfoTipWrap(addWrap);
+	};
+
+	const syncAddBtn = () => {
+		if (!addBtn || !addWrap) {
+			return;
+		}
+		const atCap = hasHundredStop();
+		addBtn.disabled = atCap;
+		addBtn.removeAttribute("title");
+		addBtn.setAttribute("aria-label", atCap ? "Cannot add — already has a 100% stop" : "Add colour stop");
+		addWrap.classList.toggle("is-capped", atCap);
+		if (!atCap) {
+			closeAddCapTip();
+		}
+	};
+
+	const addStop = () => {
+		if (hasHundredStop()) {
+			return;
+		}
+		const lastPct = stops.length ? stops[stops.length - 1].pct : 0;
+		const nextPct = stops.length ? Math.min(100, lastPct + (stops.length === 1 ? 100 : 25)) : 0;
+		stops.push({
+			pct: stops.length ? nextPct : 0,
+			color: optionalHex(fallback) || "#ffffff"
+		});
+		if (stops.length === 2 && stops[0].pct === 0 && stops[1].pct === 0) {
+			stops[1].pct = 100;
+		}
+		stops = parseColorRamp(stops);
+		emit(false);
+		rebuild();
+	};
+
+	const rebuild = () => {
+		closeAddCapTip();
+		list.innerHTML = "";
+		stops.forEach((stop, index) => {
+			const card = document.createElement("div");
+			card.className = "color-ramp-card";
+
+			card.appendChild(
+				makeColorControl({
+					label: "Colour",
+					value: stop.color,
+					fallback: fallback || "#ffffff",
+					allowEmpty: false,
+					onCommit: (hex, live) => {
+						stops[index] = {
+							...stops[index],
+							color: hex || optionalHex(fallback) || "#ffffff"
+						};
+						emit(!!live);
+					}
+				})
+			);
+
+			const pctLab = document.createElement("label");
+			pctLab.className = "color-ramp-pct";
+			const pctInput = document.createElement("input");
+			pctInput.type = "text";
+			pctInput.inputMode = "decimal";
+			pctInput.spellcheck = false;
+			pctInput.value = String(stop.pct);
+			pctInput.setAttribute("aria-label", "Percentage");
+			pctInput.addEventListener("input", () => {
+				let n = Number(pctInput.value);
+				if (!Number.isFinite(n)) {
+					return;
+				}
+				n = Math.max(0, Math.min(100, n));
+				stops[index] = { ...stops[index], pct: n };
+				syncAddBtn();
+				emit(true);
+			});
+			pctInput.addEventListener("change", () => {
+				let n = Number(pctInput.value);
+				if (!Number.isFinite(n)) {
+					n = 0;
+				}
+				n = Math.max(0, Math.min(100, n));
+				pctInput.value = String(n);
+				stops[index] = { ...stops[index], pct: n };
+				stops = parseColorRamp(stops);
+				emit(false);
+				rebuild();
+			});
+			pctLab.appendChild(pctInput);
+			wrapInputAffix(pctInput, { suffix: "%" });
+			card.appendChild(pctLab);
+
+			const remove = document.createElement("button");
+			remove.type = "button";
+			remove.className = "clock-token-remove";
+			remove.title = "Remove";
+			remove.setAttribute("aria-label", "Remove colour stop");
+			remove.textContent = "×";
+			remove.addEventListener("click", () => {
+				stops.splice(index, 1);
+				emit(false);
+				rebuild();
+			});
+			card.appendChild(remove);
+			list.appendChild(card);
+		});
+
+		addWrap = document.createElement("span");
+		addWrap.className = "color-ramp-add-wrap info-tip";
+		addBtn = document.createElement("button");
+		addBtn.type = "button";
+		addBtn.className = "color-ramp-add";
+		addBtn.textContent = "+";
+		addBtn.addEventListener("click", addStop);
+		const tipPanel = document.createElement("span");
+		tipPanel.className = "info-tip-panel";
+		tipPanel.hidden = true;
+		tipPanel.textContent = ADD_CAP_TIP;
+		addWrap._cogPanel = tipPanel;
+		const showCapTip = () => {
+			if (!hasHundredStop() || addWrap.classList.contains("is-open")) {
+				return;
+			}
+			beginEditorPopup("info");
+			addWrap.classList.add("is-open");
+			const place = () => placeAnchoredPopup(tipPanel, addBtn, { gap: 6, align: "start" });
+			addWrap._cogPopupId = registerEditorPopup("info", {
+				close: () => closeInfoTipWrap(addWrap),
+				reposition: place,
+				retain: tipPanel
+			});
+			place();
+		};
+		addWrap.addEventListener("pointerenter", showCapTip);
+		addWrap.addEventListener("pointerleave", closeAddCapTip);
+		tipPanel.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+		tipPanel.addEventListener("click", (ev) => ev.stopPropagation());
+		addWrap.appendChild(addBtn);
+		addWrap.appendChild(tipPanel);
+		syncAddBtn();
+		list.appendChild(addWrap);
+	};
+
+	rebuild();
+	return wrap;
+}
+
 function appendEditorRule(parent) {
 	const hr = document.createElement("hr");
 	hr.className = "editor-rule";
@@ -1749,11 +2171,21 @@ function iconsInFolder(folder) {
 	return iconCatalog().filter((entry) => String(entry.section || "").toLowerCase() === lower);
 }
 
+/** Within a folder: still frames first, then .json packs; alpha within each group. */
+function compareIconPaths(a, b) {
+	const aPack = /\.json$/i.test(String(a || "")) ? 1 : 0;
+	const bPack = /\.json$/i.test(String(b || "")) ? 1 : 0;
+	if (aPack !== bPack) {
+		return aPack - bPack;
+	}
+	return String(a || "").localeCompare(String(b || ""), undefined, { sensitivity: "base" });
+}
+
 function firstIconInFolder(folder) {
 	const paths = iconsInFolder(folder)
 		.map((entry) => entry.path)
 		.filter(Boolean)
-		.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+		.sort(compareIconPaths);
 	return paths[0] || "";
 }
 
@@ -1778,7 +2210,7 @@ function iconSections(folder) {
 	});
 	return sections.map((name) => ({
 		name,
-		paths: map.get(name).slice().sort((a, b) => a.localeCompare(b))
+		paths: map.get(name).slice().sort(compareIconPaths)
 	}));
 }
 
@@ -2213,7 +2645,7 @@ function currentEditorKey() {
 	const gizmos = (snapshot.gizmos || []).map((z) =>
 		`${z.id}:${z.name || ""}:${z.type || ""}:${z.visibility || ""}:${z.width || ""}:${z.height || ""}:${typeof z.settingsJson === "string" ? z.settingsJson : JSON.stringify(z.settings || {})}`
 	).join("|");
-	return `${activeTab}|${helpMode ? "help" : "main"}|${helpSubTab}|${snapshot.general.showDefaultGroup}|${snapshot.general.editorKey}|${snapshot.general.hideToggleKey || ""}|${snapshot.general.hideIncludesFlash !== false}|${!!window.__cogHideKeyListening}|${snapshot.general.fillColor}|${snapshot.general.borderColor}|${snapshot.general.iconStartColor}|${snapshot.general.iconEndColor}|${snapshot.general.neutralIconMode}|${snapshot.general.gadgetFont}|${groups}|${gears}|${gauges}|${gizmos}|${typeof suppressionsFingerprint === "function" ? suppressionsFingerprint() : ""}`;
+	return `${activeTab}|${helpMode ? "help" : "main"}|${helpSubTab}|${snapshot.general.showDefaultGroup}|${snapshot.general.editorKey}|${snapshot.general.hideToggleKey || ""}|${snapshot.general.hideIncludesFlash !== false}|${!!window.__cogHideKeyListening}|${snapshot.general.fillColor}|${snapshot.general.borderColor}|${snapshot.general.iconColor || themeIconColor()}|${snapshot.general.neutralIconMode}|${snapshot.general.gadgetFont}|${groups}|${gears}|${gauges}|${gizmos}|${typeof suppressionsFingerprint === "function" ? suppressionsFingerprint() : ""}`;
 }
 
 function closeCogSelectWrap(wrap) {
@@ -2652,15 +3084,18 @@ function renderGeneral(body) {
 	body.appendChild(colorHeading);
 	const colorLede = document.createElement("p");
 	colorLede.className = "lede";
-	colorLede.textContent = "Used when a gear or group does not set its own. Bar is the meter fill; border is the bar trough. Icon 0% / 100% tint meter icons by value. Neutral icon colour is only for count gears (no meter) — Always White, or Bar / Border / Icon 0%–100% from the backup set above.";
+	colorLede.textContent =
+		"Used when a gear or group does not set its own. Bar is the meter fill; border is the bar trough; icon is a single tint for meter icons. Fancy multi-stop colours belong on a gear or group. Neutral icon colour is only for count gears — Always White, or Bar / Border / Icon 0%–100% sampled from the effective ramp.";
 	body.appendChild(colorLede);
 
 	const colors = document.createElement("div");
 	colors.className = "color-row";
+	if (!snapshot.general.iconColor && (snapshot.general.iconStartColor || snapshot.general.iconEndColor)) {
+		snapshot.general.iconColor = themeIconColor();
+	}
 	colors.appendChild(makeColorField("Backup bar", "fillColor", snapshot.general.fillColor, defaultFillColor()));
 	colors.appendChild(makeColorField("Backup border", "borderColor", snapshot.general.borderColor, defaultBorderColor()));
-	colors.appendChild(makeColorField("Backup icon 0%", "iconStartColor", snapshot.general.iconStartColor, defaultIconStartColor()));
-	colors.appendChild(makeColorField("Backup icon 100%", "iconEndColor", snapshot.general.iconEndColor, defaultIconEndColor()));
+	colors.appendChild(makeColorField("Backup icon", "iconColor", snapshot.general.iconColor || themeIconColor(), defaultIconColor()));
 	colors.appendChild(
 		makeNeutralIconField(
 			makeNeutralIconSelect(snapshot.general.neutralIconMode, (mode) => {
@@ -2679,8 +3114,9 @@ function renderGeneral(body) {
 	reset.addEventListener("click", () => {
 		snapshot.general.fillColor = defaultFillColor();
 		snapshot.general.borderColor = defaultBorderColor();
-		snapshot.general.iconStartColor = defaultIconStartColor();
-		snapshot.general.iconEndColor = defaultIconEndColor();
+		snapshot.general.iconColor = defaultIconColor();
+		delete snapshot.general.iconStartColor;
+		delete snapshot.general.iconEndColor;
 		snapshot.general.neutralIconMode = "white";
 		applyTheme();
 		scheduleSave(true);
@@ -2790,6 +3226,12 @@ function clampPx(n, min, max) {
 }
 
 function bindNumberField(el, opts) {
+	if (!el || !opts) {
+		return;
+	}
+	if (opts.prefix || opts.suffix) {
+		wrapInputAffix(el, { prefix: opts.prefix || "", suffix: opts.suffix || "" });
+	}
 	const decimals = opts.decimals != null && Number.isFinite(Number(opts.decimals)) ? Number(opts.decimals) : null;
 	const format =
 		opts.format ||

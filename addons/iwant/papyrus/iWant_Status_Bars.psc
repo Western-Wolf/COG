@@ -185,19 +185,39 @@ Int Function _registerWithCog(String sourceMod, String asIconName, String[] file
 	EndIf
 
 	String displayName = asIconName
-	; Multi-state widgets → icon pack JSON (deduped assets, consecutive paths collapsed).
+	; Multi-state → pack JSON when assets differ; one unique file (colour states only) → plain icon.
 	String iconPath = COG_iWant.ImportIconPack(sourceMod, asIconName, files)
 	If iconPath == ""
 		iconPath = COG_iWant.ImportIcon(sourceMod, asIconName, files[last])
 	EndIf
-	String startHex = "#FFFFFF"
-	String endHex = "#FFFFFF"
+	; Every Status Bars colour step → iconColor ramp (colour is gear-owned; icon file/pack is separate).
+	String iconColor = "#FFFFFF"
 	If r && g && b && r.Length > 0
-		startHex = _toHex(r[0], g[0], b[0])
-		If r.Length > last
-			endHex = _toHex(r[last], g[last], b[last])
-		Else
-			endHex = startHex
+		Int n = r.Length
+		If g.Length < n
+			n = g.Length
+		EndIf
+		If b.Length < n
+			n = b.Length
+		EndIf
+		If files && files.Length < n
+			n = files.Length
+		EndIf
+		If n < 1
+			n = 1
+		EndIf
+		String rgbLines = ""
+		Int ci = 0
+		While ci < n
+			If ci > 0
+				rgbLines += "\n"
+			EndIf
+			rgbLines += (r[ci] As String) + "," + (g[ci] As String) + "," + (b[ci] As String)
+			ci += 1
+		EndWhile
+		String built = COG_iWant.BuildIconColorRamp(rgbLines)
+		If built != ""
+			iconColor = built
 		EndIf
 	EndIf
 
@@ -205,7 +225,7 @@ Int Function _registerWithCog(String sourceMod, String asIconName, String[] file
 
 	COG_API.BeginRegister(sourceMod, "")
 	; Category is fixed so all bridge gears group together; mod stays as sourceMod.
-	Int receipt = COG_API.RegisterGear(sourceMod, asIconName, "percent", displayName, "iWant Integration", iconPath, startHex, endHex, "", "<0.01", "", false)
+	Int receipt = COG_API.RegisterGear(sourceMod, asIconName, "percent", displayName, "iWant Integration", iconPath, iconColor, "", "", "<0.01", "", false)
 	; Do not EndRegister here — consumers load icons one-at-a-time; EndRegister would prune siblings.
 	; Do not seed UpdatePercent(0.1) here — Ready re-pulses / loadIcon refreshes would fight the
 	; Last Seed continuous feed and Frostfall setIconStatus and flicker every meter after load.
