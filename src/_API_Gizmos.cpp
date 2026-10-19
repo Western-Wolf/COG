@@ -2,6 +2,7 @@
 #include "_API_Gizmos.h"
 #include "_API_Core.h"
 #include "_Core_Registry.h"
+#include "_Gizmo_Storage.h"
 
 namespace
 {
@@ -38,6 +39,13 @@ namespace
 	{
 		CogRegistry::Get().UpdateGizmoPayload(receipt, std::move(payloadJson));
 	}
+
+	/** Relative path under SKSE/Plugins/COG (e.g. "gizmos/cog-feed"); creates the folder. */
+	std::string GizmoStorage(RE::StaticFunctionTag*, std::string typeId)
+	{
+		CogGizmoStorage::EnsureDir(typeId);
+		return CogGizmoStorage::Relative(typeId);
+	}
 }
 
 bool CogApiGizmos::Bind(RE::BSScript::IVirtualMachine* vm)
@@ -47,5 +55,6 @@ bool CogApiGizmos::Bind(RE::BSScript::IVirtualMachine* vm)
 	}
 	vm->RegisterFunction("RegisterGizmo", "COG_API", RegisterGizmo);
 	vm->RegisterFunction("UpdateGizmo", "COG_API", UpdateGizmo);
+	vm->RegisterFunction("GizmoStorage", "COG_API", GizmoStorage);
 	return true;
 }

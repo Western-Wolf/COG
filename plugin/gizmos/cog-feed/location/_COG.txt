@@ -1,5 +1,5 @@
 # COG location feed icon rules
-# Location: Data/SKSE/Plugins/COG/gizmos/feed/location/
+# Location: Data/SKSE/Plugins/COG/gizmos/cog-feed/location/
 # Last wins: later-named *.txt files and later lines override earlier matches.
 #
 # Grammar (base kinds name + form, plus section extra `kind`):

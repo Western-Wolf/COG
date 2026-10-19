@@ -3,6 +3,7 @@
 #include "_Core_Registry_Json.h"
 #include "_Assets_IconImport.h"
 #include "_Gears_Inventory.h"
+#include "_Gizmo_Storage.h"
 #include "_UI_CogUi.h"
 #include "_UI_KeyNames.h"
 #include "_Core_Json.h"
@@ -208,8 +209,79 @@ void CogRegistry::EnsureDirs() const
 	std::filesystem::create_directories(root / "gears", ec);
 	std::filesystem::create_directories(root / "gauges", ec);
 	std::filesystem::create_directories(root / "gizmos", ec);
-	std::filesystem::create_directories(root / "gizmos" / "feed" / "inventory", ec);
 	std::filesystem::create_directories(root / "gizmoTypes", ec);
+	// Per-type data roots (Feed icon maps, future translations, …) via CogGizmoStorage.
+	CogGizmoStorage::EnsureDir("cog-feed");
+}
+
+// Migration Code for Transition from v1.01 or earlier to v1.1:
+// One-time rename moves gizmos/feed/ → gizmos/cog-feed/ when the legacy tree still holds section rule *.txt files.
+void CogRegistry::MigrateLegacyFeedDataDir() const
+{
+	const auto root = DataRoot();
+	const auto legacy = root / "gizmos" / "feed";
+	const auto modern = root / "gizmos" / "cog-feed";
+	std::error_code ec;
+	if (!std::filesystem::is_directory(legacy, ec)) {
+		return;
+	}
+	bool hasTxt = false;
+	for (std::filesystem::recursive_directory_iterator it(legacy, ec), end; !ec && it != end; it.increment(ec)) {
+		if (it->is_regular_file(ec) && it->path().extension() == ".txt") {
+			hasTxt = true;
+			break;
+		}
+	}
+	if (!hasTxt) {
+		return;
+	}
+	if (!std::filesystem::exists(modern, ec)) {
+		std::filesystem::create_directories(modern.parent_path(), ec);
+		ec.clear();
+		std::filesystem::rename(legacy, modern, ec);
+		if (ec) {
+			logger::error(
+				"COG: Migration Code for Transition from v1.01 or earlier to v1.1: failed to rename gizmos/feed → gizmos/cog-feed ({})",
+				ec.message());
+			return;
+		}
+		logger::info(
+			"COG: Migration Code for Transition from v1.01 or earlier to v1.1: renamed gizmos/feed → gizmos/cog-feed");
+		return;
+	}
+	// Both trees present: copy any missing legacy files into cog-feed, then remove the legacy tree.
+	for (std::filesystem::recursive_directory_iterator it(legacy, ec), end; !ec && it != end; it.increment(ec)) {
+		if (!it->is_regular_file(ec)) {
+			continue;
+		}
+		const auto rel = std::filesystem::relative(it->path(), legacy, ec);
+		if (ec || rel.empty()) {
+			continue;
+		}
+		const auto dest = modern / rel;
+		if (std::filesystem::exists(dest, ec)) {
+			continue;
+		}
+		std::filesystem::create_directories(dest.parent_path(), ec);
+		ec.clear();
+		std::filesystem::copy_file(it->path(), dest, ec);
+		if (ec) {
+			logger::warn(
+				"COG: Migration Code for Transition from v1.01 or earlier to v1.1: could not copy {} ({})",
+				it->path().string(),
+				ec.message());
+		}
+	}
+	ec.clear();
+	std::filesystem::remove_all(legacy, ec);
+	if (ec) {
+		logger::warn(
+			"COG: Migration Code for Transition from v1.01 or earlier to v1.1: left gizmos/feed after merge ({})",
+			ec.message());
+	} else {
+		logger::info(
+			"COG: Migration Code for Transition from v1.01 or earlier to v1.1: merged gizmos/feed into gizmos/cog-feed");
+	}
 }
 
 void CogRegistry::LoadSeenFile(bool& repaired)
@@ -1046,6 +1118,7 @@ void CogRegistry::LoadConfig()
 			return;
 		}
 		_configLoaded = true;
+		MigrateLegacyFeedDataDir();
 		EnsureDirs();
 		bool repaired = false;
 		LoadGeneralFile(repaired);

@@ -354,6 +354,8 @@ private:
 
 	std::filesystem::path DataRoot() const;
 	void EnsureDirs() const;
+	/** Migration Code for Transition from v1.01 or earlier to v1.1: gizmos/feed → gizmos/cog-feed. */
+	void MigrateLegacyFeedDataDir() const;
 	/** Ensure Default Group exists in memory. Returns true if it was newly inserted. */
 	bool EnsureDefaultGroup();
 	void ReconcileGroupMembership();

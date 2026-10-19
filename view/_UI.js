@@ -1134,7 +1134,8 @@ function defaultIconColor() {
 	return "#ffffff";
 }
 
-/** Single General backup icon tint (migrates legacy iconStart/iconEnd). */
+/** Single General backup icon tint.
+ * Migration Code for Transition from v1.01 or earlier to v1.1: iconStartColor/iconEndColor → iconColor. */
 function themeIconColor() {
 	const g = snapshot.general || {};
 	const direct = normalizeHexColor(g.iconColor, "");
@@ -1160,6 +1161,8 @@ function optionalHex(value) {
 	return normalizeHexColor(value, "") || "";
 }
 
+/** Migration Code for Transition from v1.01 or earlier to v1.1:
+ * Older startColor/endColor pairs become iconColor (single hex or 0%/100% ramp). */
 function migrateLegacyIconPair(startColor, endColor) {
 	const start = optionalHex(startColor);
 	const end = optionalHex(endColor);
@@ -1237,7 +1240,8 @@ function formatColorRamp(stops) {
 	return JSON.stringify(list.map((s) => ({ pct: s.pct, color: s.color })));
 }
 
-/** Normalize wire value (hex, array, or legacy start/end) → hex or JSON string. */
+/** Normalize wire value (hex, array, or legacy start/end) → hex or JSON string.
+ * Migration Code for Transition from v1.01 or earlier to v1.1: legacyStart/legacyEnd fill empty iconColor. */
 function normalizeColorRampValue(raw, legacyStart, legacyEnd) {
 	if (raw != null && raw !== "") {
 		const stops = parseColorRamp(raw);

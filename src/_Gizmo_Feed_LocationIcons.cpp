@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "_Gizmo_Feed_LocationIcons.h"
 #include "_Gizmo_Feed_UtilityIconRegistry.h"
+#include "_Gizmo_Storage.h"
 
 #include <filesystem>
 #include <mutex>
@@ -12,8 +13,7 @@ namespace
 
 	std::filesystem::path LocationIconRulesDir()
 	{
-		return std::filesystem::current_path() / "Data" / "SKSE" / "Plugins" / "COG" / "gizmos" / "feed" /
-			   "location";
+		return CogGizmoStorage::EnsureDir("cog-feed") / "location";
 	}
 }
 

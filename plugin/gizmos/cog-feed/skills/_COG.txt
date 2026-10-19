@@ -1,5 +1,5 @@
 # COG skills feed icon rules
-# Location: Data/SKSE/Plugins/COG/gizmos/feed/skills/
+# Location: Data/SKSE/Plugins/COG/gizmos/cog-feed/skills/
 # Last wins: later-named *.txt files and later lines override earlier matches.
 #
 # Grammar (name and form only for this section):

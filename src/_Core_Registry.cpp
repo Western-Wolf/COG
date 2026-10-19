@@ -8,6 +8,7 @@
 #include "_Gears_LiveStats.h"
 #include "_Gears_Inventory.h"
 #include "_Gizmo_Feed.h"
+#include "_Gizmo_Storage.h"
 #include "_API_Core.h"
 
 #include "_Core_Json.h"
@@ -626,6 +627,8 @@ std::int32_t CogRegistry::RegisterGizmo(
 		_gizmoTypeReceiptIndex[typeId] = receipt;
 		_gizmoTypeReceipts[receipt] = typeId;
 	}
+	// Ensure type-owned data folder (gizmos/<typeId>/) exists for icon maps, translations, etc.
+	CogGizmoStorage::EnsureDir(typeId);
 	return receipt;
 }
 
@@ -720,6 +723,7 @@ void CogRegistry::RegisterBuiltinGizmoTypesUnlocked()
 		slot->defaultVisibility = NormalizeGizmoVisibility(defaultVisibility);
 		slot->viewScript.clear();
 		slot->settingsSchemaJson = schema;
+		CogGizmoStorage::EnsureDir(typeId);
 	};
 	upsert("cog-clock", "Clock", "Actions/wait.svg", 275.0f, 40.0f, "hud",
 		R"([

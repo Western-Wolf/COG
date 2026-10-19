@@ -267,6 +267,8 @@ function normalizeSnapshot() {
 	snapshot.general.fillColor = optionalHex(snapshot.general.fillColor);
 	snapshot.general.borderColor = optionalHex(snapshot.general.borderColor);
 	{
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Older general.iconStartColor / iconEndColor migrate to general.iconColor (prefer start).
 		let icon = optionalHex(snapshot.general.iconColor);
 		if (!icon) {
 			icon = optionalHex(snapshot.general.iconStartColor);

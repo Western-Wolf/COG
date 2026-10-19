@@ -106,3 +106,8 @@ Int Function RegisterGizmo(String sourceMod, String typeId, String displayName, 
 ; Stashed on the type (session-only) so delete/recreate and late placements still get it.
 ; Your view script reads gizmo.livePayload (or livePayloadJson) in update().
 Function UpdateGizmo(Int receipt, String payloadJson) Global Native
+; Type-owned data folder under SKSE/Plugins/COG, relative path e.g. "gizmos/cog-feed" or "gizmos/mymod-compass".
+; COG creates the folder if missing (also on RegisterGizmo). Build subpaths in your own code
+; (translations, icon maps, …), e.g. GizmoStorage(typeId) + "/translations".
+; View scripts: window.CogGizmoStorage(typeId) returns the same relative string.
+String Function GizmoStorage(String typeId) Global Native

@@ -3,6 +3,7 @@
 #include "_Gizmo_Feed_UtilityIconRegistry.h"
 #include "_Gizmo_Feed_UtilityStrings.h"
 #include "_Gizmo_Feed.h"
+#include "_Gizmo_Storage.h"
 #include "_Core_Registry.h"
 
 #include "RE/B/BGSBipedObjectForm.h"
@@ -38,8 +39,7 @@ namespace
 
 	std::filesystem::path InventoryIconRulesDir()
 	{
-		return std::filesystem::current_path() / "Data" / "SKSE" / "Plugins" / "COG" / "gizmos" / "feed" /
-			   "inventory";
+		return CogGizmoStorage::EnsureDir("cog-feed") / "inventory";
 	}
 
 	const char* WeaponTypeName(RE::WEAPON_TYPE wt)

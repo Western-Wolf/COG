@@ -1778,6 +1778,8 @@ function appendFeedSectionNotes(section, hideTargets, iconFolder, opts) {
 function fillFeedGizmoEditor(panel, gizmo) {
 	const gid = gizmo.id;
 	const live = () => gizmoFor(gid) || gizmo;
+	const feedStorage =
+		typeof CogGizmoStorage === "function" ? CogGizmoStorage("cog-feed") : "gizmos/cog-feed";
 
 	const intro = document.createElement("p");
 	intro.className = "hint";
@@ -2199,7 +2201,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		);
 		fxSection.appendChild(iconRow);
 
-		appendFeedSectionNotes(fxSection, "hud.activeEffects", "gizmos/feed/effects/");
+		appendFeedSectionNotes(fxSection, "hud.activeEffects", `${feedStorage}/effects/`);
 		panel.appendChild(fxSection);
 	}
 
@@ -2263,7 +2265,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		});
 		iconRow.appendChild(invIconsField);
 		invDefaults.appendChild(iconRow);
-		appendFeedSectionNotes(invDefaults, "", "gizmos/feed/inventory/", {
+		appendFeedSectionNotes(invDefaults, "", `${feedStorage}/inventory/`, {
 			hideNote:
 				"When enabled, this section tracks inventory changes, soft-hides hud.inventory (TrueHUD Recent Loot), and diverts inventory-style notifications from hud.notifications."
 		});
@@ -2394,7 +2396,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 			locNoteParts.length > 0
 				? `When enabled, this section ${locNoteParts.join(" and ")}.`
 				: "When enabled, this section hides hud.currentLocation and diverts location discovery from hud.questUpdates.";
-		appendFeedSectionNotes(locDefaults, "", "gizmos/feed/location/", { hideNote: locHideNote });
+		appendFeedSectionNotes(locDefaults, "", `${feedStorage}/location/`, { hideNote: locHideNote });
 		panel.appendChild(locDefaults);
 	}
 
@@ -2466,7 +2468,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		});
 		togglesRow.appendChild(progressField);
 		skillsSection.appendChild(togglesRow);
-		appendFeedSectionNotes(skillsSection, "", "gizmos/feed/skills/", {
+		appendFeedSectionNotes(skillsSection, "", `${feedStorage}/skills/`, {
 			hideNote:
 				"When enabled, this section diverts skill / level-up banners from hud.questUpdates."
 		});
@@ -2583,7 +2585,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 				"allowModNotificationColor"
 			)
 		);
-		appendFeedSectionNotes(notifSection, "hud.notifications", "gizmos/feed/notifications/", {
+		appendFeedSectionNotes(notifSection, "hud.notifications", `${feedStorage}/notifications/`, {
 			notificationsApi: true
 		});
 		panel.appendChild(notifSection);

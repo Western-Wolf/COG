@@ -64,6 +64,19 @@ window.CogRegisterGizmoRenderer = function (typeId, api) {
 	}
 };
 
+/**
+ * Type-owned data folder under SKSE/Plugins/COG (relative), e.g. "gizmos/cog-feed".
+ * Matches Papyrus COG_API.GizmoStorage / C++ CogGizmoStorage::Relative.
+ * COG creates the absolute folder on register/load; view code builds subpaths off this string
+ * (e.g. CogGizmoStorage("cog-feed") + "/effects").
+ */
+window.CogGizmoStorage = function (typeId) {
+	if (!String(typeId || "").trim()) {
+		return "";
+	}
+	return `gizmos/${normalizeGizmoType(typeId)}`;
+};
+
 function gizmoRendererApi(typeId) {
 	return gizmoRenderers.get(normalizeGizmoType(typeId)) || null;
 }

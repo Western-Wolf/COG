@@ -1,5 +1,5 @@
 # COG inventory feed icon rules
-# Location: Data/SKSE/Plugins/COG/gizmos/feed/inventory/
+# Location: Data/SKSE/Plugins/COG/gizmos/cog-feed/inventory/
 # Last wins: later-named *.txt files and later lines override earlier matches.
 # Put broad rules above; specific equals / form pins below.
 # Armor weight/slots are listed after material name heuristics so clothing/armor

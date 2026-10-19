@@ -365,6 +365,8 @@ namespace CogRegistryJson
 		}
 	}
 
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Older startColor/endColor (and Register legacyEndColor) pairs become iconColor (single hex or 0%/100% ramp).
 	std::string MigrateLegacyIconPair(std::string startColor, std::string endColor)
 	{
 		auto start = OptionalHexColor(std::move(startColor));
@@ -394,6 +396,8 @@ namespace CogRegistryJson
 		return OptionalHexColor(std::move(raw));
 	}
 
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Register callers that still pass plain hex iconColor + legacyEndColor become a two-stop ramp.
 	std::string NormalizeRegisterIconColor(std::string iconColor, std::string legacyEndColor)
 	{
 		auto end = OptionalHexColor(std::move(legacyEndColor));
@@ -418,6 +422,8 @@ namespace CogRegistryJson
 				ramp = NormalizeColorRamp(ctx.GetRawJson(obj, key, "[]"));
 			}
 		}
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Disk JSON with startColor/endColor and no iconColor migrates into iconColor.
 		if (ramp.empty() && migrateLegacyIconPair) {
 			ramp = MigrateLegacyIconPair(ctx.GetString(obj, "startColor"), ctx.GetString(obj, "endColor"));
 		}

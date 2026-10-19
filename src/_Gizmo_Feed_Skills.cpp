@@ -2,6 +2,7 @@
 #include "_Gizmo_Feed_Skills.h"
 #include "_Gizmo_Feed.h"
 #include "_Gizmo_Feed_UtilityIconRegistry.h"
+#include "_Gizmo_Storage.h"
 #include "_Core_Registry.h"
 #include "_UI_CogUi.h"
 
@@ -49,8 +50,7 @@ namespace
 
 	std::filesystem::path SkillIconRulesDir()
 	{
-		return std::filesystem::current_path() / "Data" / "SKSE" / "Plugins" / "COG" / "gizmos" / "feed" /
-			   "skills";
+		return CogGizmoStorage::EnsureDir("cog-feed") / "skills";
 	}
 
 	std::string EscapeJson(std::string_view raw)

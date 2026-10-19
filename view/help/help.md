@@ -97,7 +97,7 @@ The Suppressor is editor-only. The visual element is there just to let the user 
 +++ What's with the icons in the Feed Gizmo?
 
 Icons are on by default for each feed section, but can be turned off for any or all of them.
-* Notifications have a default icon, and mod authors can send their own via the Notify API (if you allow mod icons). Disk rules under `gizmos/feed/notifications/` only apply when no API icon was set.
+* Notifications have a default icon, and mod authors can send their own via the Notify API (if you allow mod icons). Disk rules under `gizmos/cog-feed/notifications/` only apply when no API icon was set.
 * Inventory, Location, Active Effects, and Skills share the same icon-rule system (see "For Mod Authors"). You'll only see each section's gizmo default icon when no rule matches.
  +++
 

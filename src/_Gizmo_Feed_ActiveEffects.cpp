@@ -3,6 +3,7 @@
 
 #include "_Core_Registry.h"
 #include "_Gizmo_Feed_UtilityIconRegistry.h"
+#include "_Gizmo_Storage.h"
 #include "_UI_CogUi.h"
 
 #include <RE/A/ActorValueList.h>
@@ -52,8 +53,7 @@ namespace
 
 	std::filesystem::path EffectIconRulesDir()
 	{
-		return std::filesystem::current_path() / "Data" / "SKSE" / "Plugins" / "COG" / "gizmos" / "feed" /
-			   "effects";
+		return CogGizmoStorage::EnsureDir("cog-feed") / "effects";
 	}
 
 	void PushAv(CogFeed::IconRegistry::Candidates& c, RE::ActorValue av)
