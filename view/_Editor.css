@@ -525,6 +525,21 @@ body.is-focused #editor {
 	font-size: 0.85em;
 }
 
+/* Missing-translation highlight (general.highlightMissingTranslations). */
+#editor-panel .translation-fallback-badge {
+	margin-left: 0.25em;
+	font-size: 0.7em;
+	font-weight: 600;
+	color: #c9a227;
+	letter-spacing: 0.02em;
+	vertical-align: super;
+}
+
+#editor-panel .has-translation-fallback-attr {
+	outline: 1px dashed rgba(201, 162, 39, 0.55);
+	outline-offset: 1px;
+}
+
 #editor-panel .hint.feed-section-note {
 	opacity: 0.5;
 	margin-top: 0.45em;

@@ -78,6 +78,23 @@ window.applySnapshot = (jsonStr) => {
 			if (Array.isArray(incoming.suppressionAliases)) {
 				snapshot.suppressionAliases = incoming.suppressionAliases;
 			}
+			if (Array.isArray(incoming.languages)) {
+				snapshot.languages = incoming.languages;
+			}
+			if (incoming.translations && typeof incoming.translations === "object") {
+				snapshot.translations = incoming.translations;
+			}
+			if (incoming.gizmoTranslations && typeof incoming.gizmoTranslations === "object") {
+				snapshot.gizmoTranslations = incoming.gizmoTranslations;
+			}
+			if (incoming.general && typeof incoming.general === "object") {
+				if (incoming.general.language != null) {
+					snapshot.general.language = incoming.general.language;
+				}
+				if (typeof incoming.general.highlightMissingTranslations === "boolean") {
+					snapshot.general.highlightMissingTranslations = incoming.general.highlightMissingTranslations;
+				}
+			}
 			if (Array.isArray(incoming.gizmos) && Array.isArray(snapshot.gizmos)) {
 				const byId = new Map(incoming.gizmos.map((z) => [z.id, z]));
 				for (const z of snapshot.gizmos) {
@@ -144,10 +161,15 @@ window.applySnapshot = (jsonStr) => {
 		}
 		applyTheme();
 		layoutHydrated = true;
+		if (typeof syncDocumentLang === "function") {
+			syncDocumentLang();
+		}
 		if (!drag) {
 			renderGears();
 			if (currentEditorKey() !== prevEditor) {
 				renderEditor(false);
+			} else if (typeof applyTranslations === "function") {
+				applyTranslations(document.getElementById("editor-panel") || document);
 			}
 		}
 	} catch (e) {
@@ -285,6 +307,21 @@ function normalizeSnapshot() {
 		snapshot.fonts = [];
 	}
 	snapshot.general.gadgetFont = normalizeGadgetFont(snapshot.general.gadgetFont);
+	if (!snapshot.general.language || !String(snapshot.general.language).trim()) {
+		snapshot.general.language = typeof COG_FALLBACK_LANG !== "undefined" ? COG_FALLBACK_LANG : "en-CA";
+	}
+	if (typeof snapshot.general.highlightMissingTranslations !== "boolean") {
+		snapshot.general.highlightMissingTranslations = false;
+	}
+	if (!Array.isArray(snapshot.languages)) {
+		snapshot.languages = [];
+	}
+	if (!snapshot.translations || typeof snapshot.translations !== "object") {
+		snapshot.translations = {};
+	}
+	if (!snapshot.gizmoTranslations || typeof snapshot.gizmoTranslations !== "object") {
+		snapshot.gizmoTranslations = {};
+	}
 	if (!Array.isArray(snapshot.groups)) {
 		snapshot.groups = [];
 	}

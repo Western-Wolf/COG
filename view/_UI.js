@@ -3702,6 +3702,9 @@ function renderEditor(force) {
 	body.innerHTML = "";
 	if (helpMode) {
 		renderHelpTab(body);
+		if (typeof applyTranslations === "function") {
+			applyTranslations(body);
+		}
 		return;
 	}
 	if (activeTab === "general") {
@@ -3717,6 +3720,9 @@ function renderEditor(force) {
 	}
 	// Project-wide custom dropdowns (matches Show Celestial Objects / Groups styling).
 	enhanceSelects(body);
+	if (typeof applyTranslations === "function") {
+		applyTranslations(body);
+	}
 }
 
 document.getElementById("tabs").addEventListener("click", (ev) => {
