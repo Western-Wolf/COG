@@ -359,7 +359,28 @@ std::string CogRegistry::BuildSnapshotJson()
 	const auto* sky = RE::Sky::GetSingleton();
 	const auto* cal = RE::Calendar::GetSingleton();
 	std::ostringstream o;
-	o << "{\"sources\":[";
+	// languages early so truncated/huge snapshots still expose available locales before catalogs.
+	{
+		std::vector<std::string> languages;
+		languages.push_back("en-CA");
+		CogTranslations::CollectLanguages(_translations, languages);
+		for (const auto& [typeId, cat] : _gizmoTranslations) {
+			(void)typeId;
+			CogTranslations::CollectLanguages(cat, languages);
+		}
+		std::sort(languages.begin(), languages.end());
+		languages.erase(std::unique(languages.begin(), languages.end()), languages.end());
+		o << "{\"languages\":[";
+		bool firstLang = true;
+		for (const auto& lang : languages) {
+			if (!firstLang) {
+				o << ",";
+			}
+			firstLang = false;
+			o << "\"" << EscapeJson(lang) << "\"";
+		}
+		o << "],\"sources\":[";
+	}
 	bool first = true;
 	for (const auto receipt : _order) {
 		auto srcIt = _sources.find(receipt);
@@ -397,8 +418,10 @@ std::string CogRegistry::BuildSnapshotJson()
 	  << ",\"fillColor\":\"" << EscapeJson(_general.fillColor) << "\",\"borderColor\":\""
 	  << EscapeJson(_general.borderColor) << "\",\"iconColor\":\"" << EscapeJson(_general.iconColor)
 	  << "\",\"neutralIconMode\":\"" << EscapeJson(_general.neutralIconMode)
-	  << "\",\"gadgetFont\":\"" << EscapeJson(_general.gadgetFont)
-	  << "\"},\"groups\":[";
+	  << "\",\"gadgetFont\":\"" << EscapeJson(_general.gadgetFont) << "\",\"language\":\""
+	  << EscapeJson(_general.language.empty() ? "en-CA" : _general.language)
+	  << "\",\"highlightMissingTranslations\":"
+	  << (_general.highlightMissingTranslations ? "true" : "false") << "},\"groups\":[";
 	first = true;
 	for (const auto& g : _groups) {
 		if (!first) {
@@ -643,6 +666,8 @@ std::string CogRegistry::BuildSnapshotJson()
 	}
 	o << ",\"suppressions\":" << CogHudSuppress::SuppressionsJson(*this);
 	o << ",\"suppressionAliases\":" << CogHudSuppress::KnownAliasesJson();
+	o << ",\"translations\":" << CogTranslations::CatalogToJson(_translations);
+	o << ",\"gizmoTranslations\":" << CogTranslations::GizmoCatalogsToJson(_gizmoTranslations);
 	o << "}";
 	return o.str();
 }

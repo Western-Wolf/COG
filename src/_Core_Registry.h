@@ -1,6 +1,7 @@
 #pragma once
 
 #include "_Core_HudSuppress.h"
+#include "_Core_Translations.h"
 #include "_Gears_Inventory.h"
 
 #include <chrono>
@@ -200,6 +201,10 @@ struct CogGeneral
 	std::string iconColor = "#ffffff";
 	std::string neutralIconMode = "white";
 	std::string gadgetFont = "Roboto";
+	/** Editor UI language (BCP 47). Default en-CA. */
+	std::string language = "en-CA";
+	/** When on, missing catalog strings show a gold en-CA badge in the editor. */
+	bool highlightMissingTranslations = false;
 	/** Undocumented support toggle: "info" (default) or "debug". Not pushed to the editor UI. */
 	std::string logLevel = "info";
 };
@@ -364,6 +369,7 @@ private:
 	void EnsureGearDefinitionUnlocked(const std::string& mod, const std::string& name, const CogGearAppearance& appearance);
 	void LoadGeneralFile(bool& repaired);
 	void ApplyLogLevelUnlocked() const;
+	void LoadTranslationsUnlocked();
 	void LoadGroupFiles(bool& repaired);
 	void LoadGearFiles(bool& repaired);
 	void LoadGaugeFiles(bool& repaired);
@@ -388,6 +394,10 @@ private:
 	CogGeneral _general;
 	/** Session only — not written to general.json. */
 	bool _uiHidden = false;
+	/** Global editor catalogs (translations/*.json). */
+	CogTranslations::Catalog _translations;
+	/** Per-type catalogs (gizmos/<typeId>/translations/*.json). */
+	std::unordered_map<std::string, CogTranslations::Catalog> _gizmoTranslations;
 	std::vector<CogGroup> _groups;
 	std::vector<CogGear> _gears;
 	std::vector<CogGauge> _gauges;

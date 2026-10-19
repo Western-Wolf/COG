@@ -149,6 +149,12 @@ target("COG")
 		os.mkdir(path.join(cog_data, "gizmos", "cog-feed", "effects"))
 		os.mkdir(path.join(cog_data, "gizmos", "cog-feed", "skills"))
 		os.mkdir(path.join(cog_data, "gizmos", "cog-feed", "location"))
+		os.mkdir(path.join(cog_data, "translations"))
+		local translations_src = path.join(cog_dir, "plugin/translations/_COG.json")
+		if os.isfile(translations_src) then
+			os.cp(translations_src, path.join(cog_data, "translations", "_COG.json"))
+		end
+
 		-- Drop legacy assets/endcaps deploy (now icons/Endcaps).
 		local legacy_endcaps = path.join(view_dir, "assets", "endcaps")
 		if os.isdir(legacy_endcaps) then

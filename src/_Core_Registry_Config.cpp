@@ -4,6 +4,7 @@
 #include "_Assets_IconImport.h"
 #include "_Gears_Inventory.h"
 #include "_Gizmo_Storage.h"
+#include "_Core_Translations.h"
 #include "_UI_CogUi.h"
 #include "_UI_KeyNames.h"
 #include "_Core_Json.h"
@@ -210,7 +211,8 @@ void CogRegistry::EnsureDirs() const
 	std::filesystem::create_directories(root / "gauges", ec);
 	std::filesystem::create_directories(root / "gizmos", ec);
 	std::filesystem::create_directories(root / "gizmoTypes", ec);
-	// Per-type data roots (Feed icon maps, future translations, …) via CogGizmoStorage.
+	std::filesystem::create_directories(root / "translations", ec);
+	// Per-type data roots (Feed icon maps, translations, …) via CogGizmoStorage.
 	CogGizmoStorage::EnsureDir("cog-feed");
 }
 
@@ -609,12 +611,53 @@ void CogRegistry::LoadGeneralFile(bool& repaired)
 		auto font = ctx.GetString(root, "gadgetFont");
 		_general.gadgetFont = font.empty() ? "Roboto" : std::move(font);
 	}
+	{
+		auto lang = ctx.GetString(root, "language");
+		_general.language = lang.empty() ? "en-CA" : std::move(lang);
+	}
+	_general.highlightMissingTranslations = ctx.GetBool(root, "highlightMissingTranslations", false);
 	if (ctx.Has(root, "logLevel")) {
 		_general.logLevel = NormalizeLogLevel(ctx.GetString(root, "logLevel"));
 	} else {
 		_general.logLevel = "info";
 	}
 	repaired = repaired || ctx.repaired;
+}
+
+void CogRegistry::LoadTranslationsUnlocked()
+{
+	_translations.clear();
+	_gizmoTranslations.clear();
+	const auto root = DataRoot();
+	CogTranslations::LoadDir(_translations, root / "translations");
+
+	// Per-type packs under gizmos/<typeId>/translations/ (directory name = type id).
+	std::error_code ec;
+	const auto gizmosRoot = root / "gizmos";
+	if (std::filesystem::is_directory(gizmosRoot, ec)) {
+		for (const auto& entry : std::filesystem::directory_iterator(gizmosRoot, ec)) {
+			if (ec || !entry.is_directory(ec)) {
+				continue;
+			}
+			const auto typeId = entry.path().filename().string();
+			if (typeId.empty() || typeId.find("..") != std::string::npos) {
+				continue;
+			}
+			CogTranslations::Catalog cat;
+			CogTranslations::LoadDir(cat, entry.path() / "translations");
+			if (!cat.empty()) {
+				_gizmoTranslations[typeId] = std::move(cat);
+			}
+		}
+	}
+	// Also ensure registered types get a storage folder (even if empty catalogs).
+	for (const auto& t : _gizmoTypes) {
+		CogGizmoStorage::EnsureDir(t.typeId);
+	}
+	logger::info(
+		"COG: translations — globalTags={} gizmoTypesWithPacks={}",
+		_translations.size(),
+		_gizmoTranslations.size());
 }
 
 void CogRegistry::ApplyLogLevelUnlocked() const
@@ -921,6 +964,13 @@ bool CogRegistry::ApplyStateJson(const std::string& json)
 			auto font = ctx.GetString(*src, "gadgetFont");
 			_general.gadgetFont = font.empty() ? "Roboto" : std::move(font);
 		}
+		if (ctx.Has(*src, "language")) {
+			auto lang = ctx.GetString(*src, "language");
+			_general.language = lang.empty() ? "en-CA" : std::move(lang);
+		}
+		if (ctx.Has(*src, "highlightMissingTranslations")) {
+			_general.highlightMissingTranslations = ctx.GetBool(*src, "highlightMissingTranslations", false);
+		}
 		if (ctx.Has(*src, "logLevel")) {
 			_general.logLevel = NormalizeLogLevel(ctx.GetString(*src, "logLevel"));
 			ApplyLogLevelUnlocked();
@@ -1040,7 +1090,10 @@ void CogRegistry::SaveConfigUnlocked() const
 			<< "\",\n\t\"iconColor\": \"" << EscapeJson(_general.iconColor)
 			<< "\",\n\t\"neutralIconMode\": \"" << EscapeJson(_general.neutralIconMode)
 			<< "\",\n\t\"gadgetFont\": \"" << EscapeJson(_general.gadgetFont)
-			<< "\",\n\t\"logLevel\": \"" << EscapeJson(NormalizeLogLevel(_general.logLevel)) << "\"\n}\n";
+			<< "\",\n\t\"language\": \"" << EscapeJson(_general.language.empty() ? "en-CA" : _general.language)
+			<< "\",\n\t\"highlightMissingTranslations\": "
+			<< (_general.highlightMissingTranslations ? "true" : "false")
+			<< ",\n\t\"logLevel\": \"" << EscapeJson(NormalizeLogLevel(_general.logLevel)) << "\"\n}\n";
 	WriteAll(root / "general.json", general.str());
 
 	std::unordered_set<std::string> groupStems;
@@ -1138,6 +1191,7 @@ void CogRegistry::LoadConfig()
 		LoadGizmoTypeFiles(repaired);
 		RegisterBuiltinGizmoTypesUnlocked();
 		LoadGizmoFiles(repaired);
+		LoadTranslationsUnlocked();
 		ReconcileGroupMembership();
 		ReconcileGaugeBindingsUnlocked();
 		PruneMissingPluginsUnlocked();
