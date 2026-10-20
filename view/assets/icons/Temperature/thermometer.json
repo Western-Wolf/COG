@@ -1,9 +1,0 @@
-{
-	"icons": [
-		{ "path": "Temperature/thermometer-000.svg", "pct": 0 },
-		{ "path": "Temperature/thermometer-025.svg", "pct": 20 },
-		{ "path": "Temperature/thermometer-050.svg", "pct": 40 },
-		{ "path": "Temperature/thermometer-075.svg", "pct": 60 },
-		{ "path": "Temperature/thermometer-100.svg", "pct": 80 }
-	]
-}

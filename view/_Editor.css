@@ -602,6 +602,10 @@ body.is-focused #editor {
 	margin: 0;
 }
 
+.gear-edit-form > [data-role="iconSlot"] {
+	margin: 0 0 0.55em;
+}
+
 .hide-at-row {
 	display: flex;
 	flex-wrap: wrap;
@@ -665,19 +669,6 @@ body.is-focused #editor {
 	align-items: center;
 	justify-content: center;
 	flex: 0 0 auto;
-}
-
-/* Multi-icon .json packs — distinct chrome so changers read as packs even when slow. */
-#editor-panel .icon-swatch.is-icon-pack,
-.cog-icon-picker .icon-swatch.is-icon-pack {
-	background: linear-gradient(145deg, rgba(70, 90, 110, 0.55), rgba(20, 28, 36, 0.75));
-	border-color: rgba(140, 190, 220, 0.65);
-}
-
-.cog-icon-picker .icon-swatch.is-icon-pack.is-selected,
-#editor-panel .icon-swatch.is-icon-pack.is-selected {
-	background: linear-gradient(145deg, rgba(90, 120, 150, 0.55), rgba(40, 55, 70, 0.8));
-	border-color: var(--cog-ctrl-selected-border, #c4a35a);
 }
 
 .icon-swatch img {
@@ -2314,6 +2305,19 @@ button.action:hover,
 
 .color-ramp-card .color-field > span:first-child {
 	display: none;
+}
+
+.color-ramp-card .icon-field > span:first-child {
+	display: none;
+}
+
+.color-ramp-card .icon-field {
+	margin: 0;
+}
+
+.icon-ramp-card .icon-swatch {
+	width: 1.75em;
+	height: 1.75em;
 }
 
 .color-ramp-card .color-controls {

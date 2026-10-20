@@ -185,12 +185,12 @@ Int Function _registerWithCog(String sourceMod, String asIconName, String[] file
 	EndIf
 
 	String displayName = asIconName
-	; Multi-state → pack JSON when assets differ; one unique file (colour states only) → plain icon.
+	; Multi-state → gear icon stops (JSON when assets differ); one unique/collapsed file → plain path.
 	String iconPath = COG_iWant.ImportIconPack(sourceMod, asIconName, files)
 	If iconPath == ""
 		iconPath = COG_iWant.ImportIcon(sourceMod, asIconName, files[last])
 	EndIf
-	; Every Status Bars colour step → iconColor ramp (colour is gear-owned; icon file/pack is separate).
+	; Every Status Bars colour step → iconColor ramp (separate from icon asset stops).
 	String iconColor = "#FFFFFF"
 	If r && g && b && r.Length > 0
 		Int n = r.Length

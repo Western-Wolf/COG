@@ -23,7 +23,8 @@ namespace CogRegistryJson
 	}
 
 	// Case-insensitive — older gear JSON used "stamina"/"magicka" while Register uses "Stamina"/"Magicka".
-	std::string NormalizeIcon(std::string raw)
+	/** Single asset path (not a JSON stop list). Rejects .json pack-file leftovers. */
+	std::string NormalizeIconPathOnly(std::string raw)
 	{
 		while (!raw.empty() && std::isspace(static_cast<unsigned char>(raw.front()))) {
 			raw.erase(raw.begin());
@@ -57,7 +58,96 @@ namespace CogRegistryJson
 		if (!raw.empty() && base.find('.') == std::string::npos) {
 			raw += ".svg";
 		}
+		if (Lower(base).ends_with(".json") || Lower(raw).ends_with(".json")) {
+			return {};
+		}
 		return raw;
+	}
+
+	std::string FormatIconRamp(
+		std::vector<std::pair<double, std::string>> stops)
+	{
+		if (stops.empty()) {
+			return {};
+		}
+		std::sort(stops.begin(), stops.end(), [](const auto& a, const auto& b) {
+			return a.first < b.first;
+		});
+		std::vector<std::pair<double, std::string>> uniq;
+		uniq.reserve(stops.size());
+		for (auto& s : stops) {
+			if (!uniq.empty() && std::abs(uniq.back().first - s.first) < 1e-9) {
+				uniq.back() = std::move(s);
+			} else {
+				uniq.push_back(std::move(s));
+			}
+		}
+		if (uniq.size() == 1) {
+			return uniq.front().second;
+		}
+		std::ostringstream o;
+		o << "[";
+		for (std::size_t i = 0; i < uniq.size(); ++i) {
+			if (i) {
+				o << ",";
+			}
+			o << "{\"pct\":" << uniq[i].first << ",\"path\":\"" << EscapeJson(uniq[i].second) << "\"}";
+		}
+		o << "]";
+		return o.str();
+	}
+
+	/** Plain path or JSON [{pct,path|icon}] stop list (mirrors iconColor ramps). */
+	std::string NormalizeIcon(std::string raw)
+	{
+		while (!raw.empty() && std::isspace(static_cast<unsigned char>(raw.front()))) {
+			raw.erase(raw.begin());
+		}
+		while (!raw.empty() && std::isspace(static_cast<unsigned char>(raw.back()))) {
+			raw.pop_back();
+		}
+		if (raw.empty()) {
+			return {};
+		}
+		if (raw.front() == '[') {
+			CogJson::Value root;
+			std::string err;
+			if (!CogJson::Parse(raw, root, err) || !root.IsArray()) {
+				return {};
+			}
+			std::vector<std::pair<double, std::string>> stops;
+			stops.reserve(root.arrayValue.size());
+			for (const auto& item : root.arrayValue) {
+				std::string path;
+				double pct = 0;
+				if (item.IsString()) {
+					path = NormalizeIconPathOnly(item.stringValue);
+				} else if (item.IsObject()) {
+					if (const auto* p = item.Find("path"); p && p->IsString()) {
+						path = NormalizeIconPathOnly(p->stringValue);
+					} else if (const auto* ic = item.Find("icon"); ic && ic->IsString()) {
+						path = NormalizeIconPathOnly(ic->stringValue);
+					}
+					if (const auto* pctKey = item.Find("pct"); pctKey && pctKey->IsNumber()) {
+						pct = pctKey->numberValue;
+					} else if (const auto* percentKey = item.Find("percent"); percentKey && percentKey->IsNumber()) {
+						pct = percentKey->numberValue;
+					}
+				}
+				if (path.empty()) {
+					continue;
+				}
+				if (pct < 0) {
+					pct = 0;
+				}
+				if (pct > 100) {
+					pct = 100;
+				}
+				stops.emplace_back(pct, std::move(path));
+			}
+			return FormatIconRamp(std::move(stops));
+		}
+		return NormalizeIconPathOnly(std::move(raw));
 	}
 
 	std::string NormalizeEndCapMode(std::string raw)

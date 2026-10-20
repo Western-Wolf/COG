@@ -17,21 +17,17 @@ namespace CogIWant
 	[[nodiscard]] std::string ResolveExportedIconPath(std::string exportedRelPath);
 
 	/**
-	 * Write a multi-icon pack JSON under PrismaUI/views/COG/assets/imports/icons/<Mod>/<Name>.json.
-	 * `cogPathsJoined` is one COG-relative icon path per line (repeats allowed). Consecutive
-	 * duplicate paths are collapsed into { pct, path } stops (aligned with setIconStatus).
-	 * Returns the pack rel path, or the single icon path when collapse leaves one asset
-	 * (no JSON written).
-	 */
-	[[nodiscard]] std::string WriteIconPack(
-		std::string sourceMod,
-		std::string iconName,
-		std::string cogPathsJoined);
-
-	/**
 	 * Build RegisterGear iconColor from Status Bars colour states.
 	 * `rgbLinesJoined`: one "r,g,b" line per state (0..n-1). Percents match
 	 * iWant_Status_Bars._statusToPercent. Single hex when all equal; else JSON stops.
 	 */
 	[[nodiscard]] std::string BuildIconColorRamp(std::string rgbLinesJoined);
+
+	/**
+	 * Build RegisterGear icon stop list from Status Bars state assets.
+	 * `cogPathsJoined`: one COG-relative icon path per line (repeats allowed).
+	 * Consecutive duplicate paths collapse to one stop (first pct of the run).
+	 * Single remaining asset → plain path; else JSON [{pct,path}].
+	 */
+	[[nodiscard]] std::string BuildIconAssetRamp(std::string cogPathsJoined);
 }

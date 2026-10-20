@@ -411,6 +411,7 @@ function applyIconPaint(el, src, gear, group) {
 	}
 	const href = sourceIconPath(src, gear);
 	if (icon.classList.contains("is-fill-hidden")) {
+		// Fill-from-hidden rebuilds masks from sourceIconPath in applyIconFillFromHidden.
 		if (icon.classList.contains("is-fill-raster")) {
 			return;
 		}
@@ -428,14 +429,25 @@ function applyIconPaint(el, src, gear, group) {
 		applyRasterIconLook(icon, href, rasterIconColorPlan(src, gear, group));
 		return;
 	}
-	if (!icon.classList.contains("is-painted")) {
-		return;
-	}
 	const paint = sourceIconPaint(src, gear, group);
-	if (!paint || !href) {
+	if (!href) {
 		return;
 	}
-	// Live percent ticks used to recolor only; pack frames need the mask/src refreshed too.
+	if (!paint) {
+		icon.classList.remove("is-painted");
+		let img = icon.querySelector("img");
+		if (!img) {
+			img = document.createElement("img");
+			img.alt = "";
+			icon.appendChild(img);
+		}
+		img.hidden = false;
+		if (img.getAttribute("src") !== href) {
+			img.src = href;
+		}
+		return;
+	}
+	icon.classList.add("is-painted");
 	paintMaskedFace(icon, "gear-icon-face", { color: paint, href });
 	const img = icon.querySelector("img");
 	if (img) {
@@ -455,6 +467,8 @@ function iconPaintSig(src, gear, group) {
 		gear && gear.exemptFromGroupColors ? "1" : "0",
 		style && style.useGroupColors ? "1" : "0",
 		src && src.type === "count" ? mode : "ratio",
+		look.icon,
+		sourceIconRel(src, gear),
 		style && style.iconColor,
 		style && style.barColor,
 		optionalHex(style && style.borderColor),
@@ -1800,8 +1814,8 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 		<p class="lede" data-role="heading"></p>
 		<div class="gear-edit-identity">
 			<label class="pos-field grow"><span>Display name</span><input type="text" data-role="display" spellcheck="false"></label>
-			<div data-role="iconSlot"></div>
 		</div>
+		<div data-role="iconSlot"></div>
 		<div class="color-row" data-role="colors"></div>
 		<div class="hide-at-row" data-role="hideAtRow">
 			<label class="pos-field compact hide-at-op"><span>Hide when</span>
@@ -1964,16 +1978,22 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 			hudLinkInput.blur();
 		}
 	});
-	const iconCtrl = makeIconControl({
-		label: "Icon",
-		value: look.icon || "",
-		showName: true,
-		onCommit: (icon) => {
-			patchGearSettings(gear.id, { icon });
-		}
+	const iconSlot = form.querySelector('[data-role="iconSlot"]');
+	iconSlot.classList.add("color-ramp-stack");
+	const iconRamp = makeIconRampEditor("Icon", look.icon || "", FALLBACK_ICON_REL, (ramp) => {
+		patchGearSettings(gear.id, { icon: ramp });
 	});
-	tagFieldLabel(iconCtrl, "cog-icon", "Icon");
-	form.querySelector('[data-role="iconSlot"]').appendChild(iconCtrl);
+	const iconHeading = iconRamp.querySelector(".color-ramp-heading");
+	const iconHint = iconRamp.querySelector(".color-ramp-hint");
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(iconHeading, "cog-icon", "Icon");
+		setTranslatedText(
+			iconHint,
+			"cog-icon-ramp-hint",
+			"Each stop switches the icon at that percentage. Icons do not fade between stops."
+		);
+	}
+	iconSlot.appendChild(iconRamp);
 	const colors = form.querySelector('[data-role="colors"]');
 	colors.classList.add("color-ramp-stack");
 	const tagColorRamp = (editor, headingTag, headingFallback) => {

@@ -55,59 +55,6 @@ namespace
 		return rel.generic_string();
 	}
 
-	std::string SanitizeToken(std::string_view in)
-	{
-		std::string out;
-		out.reserve(in.size());
-		for (unsigned char c : in) {
-			if (std::isalnum(c) || c == '-' || c == '_' || c == '.') {
-				out.push_back(static_cast<char>(c));
-			} else if (c == ' ') {
-				out.push_back('_');
-			} else {
-				out.push_back('_');
-			}
-		}
-		if (out.empty()) {
-			out = "_";
-		}
-		return out;
-	}
-
-	std::string JsonEscape(std::string_view in)
-	{
-		std::string out;
-		out.reserve(in.size() + 8);
-		for (unsigned char c : in) {
-			switch (c) {
-			case '\\':
-				out += "\\\\";
-				break;
-			case '"':
-				out += "\\\"";
-				break;
-			case '\n':
-				out += "\\n";
-				break;
-			case '\r':
-				out += "\\r";
-				break;
-			case '\t':
-				out += "\\t";
-				break;
-			default:
-				out.push_back(static_cast<char>(c));
-				break;
-			}
-		}
-		return out;
-	}
-
-	struct PackFrame
-	{
-		std::string path;
-		double pct = 0;
-	};
 }
 
 namespace CogIWant
@@ -198,105 +145,6 @@ namespace CogIWant
 		return dataRel;
 	}
 
-	std::string WriteIconPack(
-		std::string sourceMod,
-		std::string iconName,
-		std::string cogPathsJoined)
-	{
-		if (!g_ready) {
-			logger::warn("COG_iWant WriteIconPack failed: called before data ready");
-			return {};
-		}
-		std::vector<std::string> paths;
-		{
-			std::stringstream ss(cogPathsJoined);
-			std::string line;
-			while (std::getline(ss, line)) {
-				while (!line.empty() && (line.back() == '\r' || line.back() == ' ' || line.back() == '\t')) {
-					line.pop_back();
-				}
-				while (!line.empty() && (line.front() == ' ' || line.front() == '\t')) {
-					line.erase(line.begin());
-				}
-				std::replace(line.begin(), line.end(), '\\', '/');
-				if (!line.empty()) {
-					paths.push_back(std::move(line));
-				}
-			}
-		}
-		if (paths.empty()) {
-			logger::warn("COG_iWant WriteIconPack failed: no paths (mod='{}' icon='{}')", sourceMod, iconName);
-			return {};
-		}
-
-		const std::size_t n = paths.size();
-		// Match BuildIconColorRamp / iWant_Status_Bars._statusToPercent landmarks.
-		const double denom = static_cast<double>(n > 1 ? n - 1 : 1);
-		std::vector<PackFrame> bands;
-		bands.reserve(n);
-		for (std::size_t i = 0; i < n; ++i) {
-			const double pct = 0.1 + static_cast<double>(i) * (99.9 / denom);
-			bands.push_back(PackFrame{ paths[i], pct });
-		}
-
-		std::vector<PackFrame> collapsed;
-		collapsed.reserve(bands.size());
-		for (const auto& band : bands) {
-			if (!collapsed.empty() && collapsed.back().path == band.path) {
-				continue;
-			}
-			collapsed.push_back(band);
-		}
-
-		// One unique asset (e.g. same .dds for every colour state) → plain icon, no pack JSON.
-		if (collapsed.size() <= 1) {
-			const auto& only = collapsed.empty() ? paths.front() : collapsed.front().path;
-			logger::info(
-				"COG_iWant WriteIconPack skipped ({} states → 1 asset '{}', mod='{}' icon='{}')",
-				n,
-				only,
-				sourceMod,
-				iconName);
-			return only;
-		}
-
-		const auto modTok = SanitizeToken(sourceMod);
-		const auto nameTok = SanitizeToken(iconName);
-		const auto rel = modTok + "/" + nameTok + ".json";
-		const auto abs =
-			DataRoot() / "PrismaUI" / "views" / "COG" / "assets" / "imports" / "icons" / modTok /
-			(nameTok + ".json");
-
-		std::error_code ec;
-		std::filesystem::create_directories(abs.parent_path(), ec);
-		{
-			std::ofstream out(abs, std::ios::binary | std::ios::trunc);
-			if (!out) {
-				logger::warn("COG_iWant WriteIconPack failed: open {} (mod='{}' icon='{}')", abs.string(), sourceMod, iconName);
-				return {};
-			}
-			out << "{\n\t\"icons\": [\n";
-			for (std::size_t i = 0; i < collapsed.size(); ++i) {
-				const auto& f = collapsed[i];
-				out << "\t\t{ \"path\": \"" << JsonEscape(f.path) << "\", \"pct\": " << f.pct << " }";
-				if (i + 1 < collapsed.size()) {
-					out << ",";
-				}
-				out << "\n";
-			}
-			out << "\t]\n}\n";
-		}
-
-		logger::info(
-			"COG_iWant WriteIconPack -> {} ({} states -> {} stops, mod='{}' icon='{}')",
-			rel,
-			n,
-			collapsed.size(),
-			sourceMod,
-			iconName);
-		return rel;
-	}
-
 	std::string BuildIconColorRamp(std::string rgbLinesJoined)
 	{
 		struct Rgb
@@ -360,6 +208,77 @@ namespace CogIWant
 			// Match iWant_Status_Bars._statusToPercent
 			const double pct = 0.1 + static_cast<double>(i) * (99.9 / denom);
 			o << "{\"pct\":" << pct << ",\"color\":\"" << toHex(colors[i]) << "\"}";
+		}
+		o << "]";
+		return o.str();
+	}
+
+	std::string BuildIconAssetRamp(std::string cogPathsJoined)
+	{
+		std::vector<std::string> paths;
+		{
+			std::stringstream ss(cogPathsJoined);
+			std::string line;
+			while (std::getline(ss, line)) {
+				while (!line.empty() && (line.back() == '\r' || line.back() == ' ' || line.back() == '\t')) {
+					line.pop_back();
+				}
+				while (!line.empty() && (line.front() == ' ' || line.front() == '\t')) {
+					line.erase(line.begin());
+				}
+				std::replace(line.begin(), line.end(), '\\', '/');
+				if (!line.empty()) {
+					paths.push_back(std::move(line));
+				}
+			}
+		}
+		if (paths.empty()) {
+			return {};
+		}
+		const std::size_t n = paths.size();
+		const double denom = static_cast<double>(n > 1 ? n - 1 : 1);
+		struct Stop
+		{
+			std::string path;
+			double pct = 0;
+		};
+		std::vector<Stop> collapsed;
+		collapsed.reserve(n);
+		for (std::size_t i = 0; i < n; ++i) {
+			const double pct = 0.1 + static_cast<double>(i) * (99.9 / denom);
+			if (!collapsed.empty() && collapsed.back().path == paths[i]) {
+				continue;
+			}
+			collapsed.push_back(Stop{ paths[i], pct });
+		}
+		if (collapsed.size() <= 1) {
+			return collapsed.empty() ? paths.front() : collapsed.front().path;
+		}
+		auto jsonEscape = [](std::string_view in) {
+			std::string out;
+			out.reserve(in.size() + 8);
+			for (unsigned char c : in) {
+				switch (c) {
+				case '\\':
+					out += "\\\\";
+					break;
+				case '"':
+					out += "\\\"";
+					break;
+				default:
+					out.push_back(static_cast<char>(c));
+					break;
+				}
+			}
+			return out;
+		};
+		std::ostringstream o;
+		o << "[";
+		for (std::size_t i = 0; i < collapsed.size(); ++i) {
+			if (i) {
+				o << ",";
+			}
+			o << "{\"pct\":" << collapsed[i].pct << ",\"path\":\"" << jsonEscape(collapsed[i].path) << "\"}";
 		}
 		o << "]";
 		return o.str();

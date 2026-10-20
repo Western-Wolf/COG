@@ -9,11 +9,12 @@ String Function ResolveExportedIconPath(String exportedRelPath) Global Native
 
 Bool Function IsReady() Global Native
 
-; Write imports/<Mod>/<Name>.json from newline-joined COG-relative paths (consecutive dupes collapsed).
-String Function WriteIconPack(String sourceMod, String iconName, String cogPathsJoined) Global Native
-
 ; Status Bars colour states → RegisterGear iconColor (hex or JSON stops). Lines are "r,g,b".
 String Function BuildIconColorRamp(String rgbLinesJoined) Global Native
+
+; Status Bars icon paths (newline-joined) → RegisterGear icon (plain path or JSON stops).
+; Consecutive duplicate paths collapse; percents match setIconStatus / BuildIconColorRamp.
+String Function BuildIconAssetRamp(String cogPathsJoined) Global Native
 
 ; Remap library icons, otherwise resolve under Interface/exported/ and ImportIcon via COG core.
 String Function ImportIcon(String sourceMod, String iconName, String exportedRelPath) Global
@@ -28,8 +29,8 @@ String Function ImportIcon(String sourceMod, String iconName, String exportedRel
 	Return COG_API.ImportIcon(sourceMod, iconName, dataRel)
 EndFunction
 
-; Import each state (dedupe assets). Multi-asset → .json pack; one unique asset → plain icon (no pack).
-; Addons like Stress and Fear pass the same .dds for every colour state — that must stay a single icon.
+; Import Status Bars state files into a gear icon value (plain path or multi-stop JSON on the gear).
+; Colour ramps stay separate via BuildIconColorRamp.
 String Function ImportIconPack(String sourceMod, String iconName, String[] files) Global
 	If !files || files.Length < 1
 		Return ""
@@ -37,12 +38,10 @@ String Function ImportIconPack(String sourceMod, String iconName, String[] files
 	If files.Length == 1
 		Return ImportIcon(sourceMod, iconName, files[0])
 	EndIf
-	; Papyrus requires a compile-time size for `new String[N]`.
 	If files.Length > 64
 		Return ""
 	EndIf
 
-	; Same export path repeated (colour/alpha states only) → one ImportIcon, no pack.
 	Bool allFilesSame = True
 	Int i = 1
 	While i < files.Length && allFilesSame
@@ -78,19 +77,6 @@ String Function ImportIconPack(String sourceMod, String iconName, String[] files
 		i += 1
 	EndWhile
 
-	; Different export paths that remap/import to one COG asset → plain icon, no pack.
-	Bool allCogSame = True
-	i = 1
-	While i < files.Length && allCogSame
-		If cogPaths[i] != cogPaths[0]
-			allCogSame = False
-		EndIf
-		i += 1
-	EndWhile
-	If allCogSame
-		Return cogPaths[0]
-	EndIf
-
 	String joined = ""
 	i = 0
 	While i < files.Length
@@ -100,15 +86,5 @@ String Function ImportIconPack(String sourceMod, String iconName, String[] files
 		joined += cogPaths[i]
 		i += 1
 	EndWhile
-
-	String packRel = WriteIconPack(sourceMod, iconName, joined)
-	If packRel == ""
-		Return ""
-	EndIf
-	; WriteIconPack returns a plain icon path when collapse leaves a single band.
-	Int packLen = StringUtil.GetLength(packRel)
-	If packLen >= 5 && StringUtil.Substring(packRel, packLen - 5) == ".json"
-		COG_API.RegisterImportedIcon(packRel)
-	EndIf
-	Return packRel
+	Return BuildIconAssetRamp(joined)
 EndFunction

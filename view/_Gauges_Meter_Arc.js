@@ -935,6 +935,18 @@ function patchGaugeArcLive(el, gauge, src, gear) {
 	const clipId = `gauge-arc-clip-${gauge.id}`;
 	const showSheen = pct > 0.0001 && !!src;
 	ensureGaugeArcFillSheen(svg, gauge, arcCore, fill.getAttribute("d") || arcBandPathD(arcCore), clipId, showSheen);
+	// Full paintGaugeArc is skipped on live ticks; still refresh icon path + tint.
+	if (typeof paintGaugeGearIcon === "function") {
+		const { W, band, layoutH } = arcCore;
+		const capLayout = gaugeArcCapLayout(gauge, band);
+		const arcGeom = gaugeArcCapGeometry(gauge, capLayout, arcCore);
+		const arcMetrics = gaugeArcLayoutMetrics(gauge, band, arcGeom, arcCore);
+		paintGaugeGearIcon(el, gauge, {
+			iconSize: capLayout.capH,
+			iconOffset: capLayout.capShift,
+			arcLayout: { layoutH, band, W, arcGeom, arcMetrics }
+		});
+	}
 }
 
 /** Live value/count/color patch without layout or chrome rebuild. */

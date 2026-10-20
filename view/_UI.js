@@ -113,36 +113,9 @@ function safeCall(where, fn, fallback) {
 }
 window.safeCall = safeCall;
 
-function sourceIconRel(src, gear) {
-	const raw = appearanceOf(gear, src).icon;
-	const pct =
-		typeof barPercent === "function"
-			? barPercent(src)
-			: Math.max(0, Math.min(100, Number(src && src.value) || 0));
-	return resolveActiveIconRel(raw, pct);
-}
-
-function sourceIconPath(src, gear) {
-	return resolveDisplayIconHref(sourceIconRel(src, gear));
-}
-
 function normalizeIconRelPath(raw) {
 	return String(raw || "").trim().replace(/\\/g, "/");
 }
-
-function iconRelBasename(rel) {
-	const n = normalizeIconRelPath(rel);
-	const slash = n.lastIndexOf("/");
-	return slash >= 0 ? n.slice(slash + 1) : n;
-}
-
-function isIconPackPath(raw) {
-	return /\.json$/i.test(iconRelBasename(raw));
-}
-
-/** Parsed pack cache: lowercased rel path → { frames: [{ path, pct }], href } */
-const iconPackCache = new Map();
-const iconPackFetchInflight = new Map();
 
 function stripIconRootPrefixes(rel) {
 	let out = normalizeIconRelPath(rel);
@@ -161,82 +134,108 @@ function stripIconRootPrefixes(rel) {
 	return out;
 }
 
-function clampIconPercent(pct) {
-	const n = Number(pct);
-	if (!Number.isFinite(n)) {
-		return 0;
+/** Clean a single icon asset path (rejects empty / traversal / .json pack leftovers). */
+function normalizeIconAssetPath(raw) {
+	let out = stripIconRootPrefixes(raw);
+	if (!out || out.includes("..") || out.includes(":")) {
+		return "";
 	}
-	return Math.max(0, Math.min(100, n));
+	const slash = out.lastIndexOf("/");
+	const base = slash >= 0 ? out.slice(slash + 1) : out;
+	if (base && base.indexOf(".") < 0) {
+		out += ".svg";
+	}
+	if (/\.json$/i.test(base) || /\.json$/i.test(out)) {
+		return "";
+	}
+	return out;
 }
 
 /**
- * Expand pack JSON into sorted stops { path, pct }.
- * Same shape as colour ramps: each stop is active from its pct until the next.
- * Bare packs (no pct on any row) get equal-width starts (0, 100/n, …).
+ * Icon stops mirror colour ramps: plain path or JSON [{ pct, path }].
+ * Sampling is discrete (hold until next stop) — no lerp between assets.
  */
-function expandIconPackFrames(rawIcons) {
-	const list = Array.isArray(rawIcons) ? rawIcons : [];
-	const staged = [];
-	for (const item of list) {
-		if (typeof item === "string") {
-			const path = stripIconRootPrefixes(item);
-			if (path) {
-				staged.push({ path, pct: null });
-			}
-			continue;
-		}
-		if (!item || typeof item !== "object") {
-			continue;
-		}
-		const path = stripIconRootPrefixes(item.path || item.icon || "");
-		if (!path) {
-			continue;
-		}
-		const pctRaw = item.pct != null ? item.pct : item.percent;
-		const hasPct = pctRaw != null && pctRaw !== "" && Number.isFinite(Number(pctRaw));
-		staged.push({
-			path,
-			pct: hasPct ? clampIconPercent(pctRaw) : null
-		});
-	}
-	if (!staged.length) {
+function parseIconRamp(raw) {
+	if (raw == null) {
 		return [];
 	}
-	const anyPct = staged.some((f) => f.pct != null);
-	const n = staged.length;
-	if (!anyPct) {
-		for (let i = 0; i < n; i += 1) {
-			staged[i].pct = (i * 100) / n;
+	if (Array.isArray(raw)) {
+		const stops = [];
+		for (const item of raw) {
+			if (typeof item === "string") {
+				const path = normalizeIconAssetPath(item);
+				if (path) {
+					stops.push({ pct: 0, path });
+				}
+				continue;
+			}
+			if (!item || typeof item !== "object") {
+				continue;
+			}
+			const path = normalizeIconAssetPath(item.path || item.icon || "");
+			if (!path) {
+				continue;
+			}
+			let pct = Number(item.pct != null ? item.pct : item.percent);
+			if (!Number.isFinite(pct)) {
+				pct = 0;
+			}
+			pct = Math.max(0, Math.min(100, pct));
+			stops.push({ pct, path });
 		}
-	} else {
-		for (const f of staged) {
-			if (f.pct == null) {
-				f.pct = 0;
+		stops.sort((a, b) => a.pct - b.pct);
+		const uniq = [];
+		for (const s of stops) {
+			if (uniq.length && Math.abs(uniq[uniq.length - 1].pct - s.pct) < 1e-9) {
+				uniq[uniq.length - 1] = s;
+			} else {
+				uniq.push(s);
 			}
 		}
-		staged.sort((a, b) => a.pct - b.pct);
+		return uniq;
 	}
-	const uniq = [];
-	for (const f of staged) {
-		if (uniq.length && Math.abs(uniq[uniq.length - 1].pct - f.pct) < 1e-9) {
-			uniq[uniq.length - 1] = f;
-		} else {
-			uniq.push(f);
+	const text = String(raw).trim();
+	if (!text) {
+		return [];
+	}
+	if (text.charAt(0) === "[") {
+		try {
+			return parseIconRamp(JSON.parse(text));
+		} catch {
+			return [];
 		}
 	}
-	return uniq;
+	const path = normalizeIconAssetPath(text);
+	return path ? [{ pct: 0, path }] : [];
 }
 
-/** Active frame = last stop whose pct ≤ gear percent (holds through 100). */
-function pickIconPackFrame(frames, percent) {
-	const pct = clampIconPercent(percent);
-	if (!frames || !frames.length) {
+function formatIconRamp(stops) {
+	const list = parseIconRamp(Array.isArray(stops) ? stops : []);
+	if (!list.length) {
 		return "";
 	}
-	let best = frames[0];
-	for (let i = 0; i < frames.length; i += 1) {
-		if (frames[i].pct <= pct + 1e-9) {
-			best = frames[i];
+	if (list.length === 1) {
+		return list[0].path;
+	}
+	return JSON.stringify(list.map((s) => ({ pct: s.pct, path: s.path })));
+}
+
+function normalizeIconRampValue(raw) {
+	const stops = parseIconRamp(raw);
+	return stops.length ? formatIconRamp(stops) : "";
+}
+
+/** Active icon path = last stop whose pct ≤ gear percent (holds through 100). */
+function pickIconRampFrame(stopsOrRaw, percent) {
+	const stops = Array.isArray(stopsOrRaw) ? parseIconRamp(stopsOrRaw) : parseIconRamp(stopsOrRaw);
+	if (!stops.length) {
+		return "";
+	}
+	const pct = Math.max(0, Math.min(100, Number(percent) || 0));
+	let best = stops[0];
+	for (let i = 0; i < stops.length; i += 1) {
+		if (stops[i].pct <= pct + 1e-9) {
+			best = stops[i];
 		} else {
 			break;
 		}
@@ -244,215 +243,17 @@ function pickIconPackFrame(frames, percent) {
 	return best.path || "";
 }
 
-function getCachedIconPack(rel) {
-	const key = stripIconRootPrefixes(rel).toLowerCase();
-	return iconPackCache.get(key) || null;
+function sourceIconRel(src, gear) {
+	const raw = appearanceOf(gear, src).icon;
+	const pct =
+		typeof barPercent === "function"
+			? barPercent(src)
+			: Math.max(0, Math.min(100, Number(src && src.value) || 0));
+	return pickIconRampFrame(raw, pct);
 }
 
-/** Seed pack cache from C++ catalog `frames` (Prisma CEF often cannot fetch local JSON). */
-function seedIconPackFromCatalogEntry(item) {
-	const path = String((item && item.path) || "")
-		.trim()
-		.replace(/\\/g, "/");
-	if (!isIconPackPath(path)) {
-		return null;
-	}
-	const cleaned = stripIconRootPrefixes(path);
-	const key = cleaned.toLowerCase();
-	const rawFrames = item && Array.isArray(item.frames) ? item.frames : null;
-	if (!rawFrames || !rawFrames.length) {
-		return null;
-	}
-	const frames = expandIconPackFrames(rawFrames);
-	if (!frames.length) {
-		return null;
-	}
-	const entry = { frames, href: resolveIconHref(cleaned), path: cleaned, fromCatalog: true };
-	iconPackCache.set(key, entry);
-	return entry;
-}
-
-function ensureIconPackLoaded(rel) {
-	const cleaned = stripIconRootPrefixes(rel);
-	if (!cleaned || !isIconPackPath(cleaned)) {
-		return null;
-	}
-	const key = cleaned.toLowerCase();
-	const hit = iconPackCache.get(key);
-	if (hit && hit.frames && hit.frames.length) {
-		return hit;
-	}
-	// Prefer frames embedded in the live catalog / importedIcons snapshot.
-	const catalog = Array.isArray(snapshot.icons) ? snapshot.icons : [];
-	for (const item of catalog) {
-		const p = stripIconRootPrefixes(String((item && item.path) || "")).toLowerCase();
-		if (p === key) {
-			const seeded = seedIconPackFromCatalogEntry(item);
-			if (seeded) {
-				return seeded;
-			}
-			break;
-		}
-	}
-	const imported = Array.isArray(snapshot.importedIcons) ? snapshot.importedIcons : [];
-	for (const item of imported) {
-		const p = stripIconRootPrefixes(String((item && item.path) || "")).toLowerCase();
-		if (p === key) {
-			const seeded = seedIconPackFromCatalogEntry(item);
-			if (seeded) {
-				return seeded;
-			}
-			break;
-		}
-	}
-	if (iconPackFetchInflight.has(key)) {
-		return null;
-	}
-	const href = resolveIconHref(cleaned);
-	if (!href) {
-		return null;
-	}
-	// Fallback only — Prisma CEF often cannot fetch view-relative JSON.
-	const fetchPromise = fetch(href, { cache: "no-cache" })
-		.then((res) => (res.ok ? res.json() : Promise.reject(new Error("pack fetch failed"))))
-		.then((data) => {
-			const frames = expandIconPackFrames(data && data.icons);
-			const entry = { frames, href, path: cleaned };
-			iconPackCache.set(key, entry);
-			iconPackFetchInflight.delete(key);
-			if (typeof renderGears === "function") {
-				try {
-					renderGears();
-				} catch (_) {
-					/* ignore */
-				}
-			}
-			return entry;
-		})
-		.catch(() => {
-			if (!iconPackCache.has(key) || !(iconPackCache.get(key).frames || []).length) {
-				iconPackCache.set(key, { frames: [], href, path: cleaned, failed: true });
-			}
-			iconPackFetchInflight.delete(key);
-			return null;
-		});
-	iconPackFetchInflight.set(key, fetchPromise);
-	return null;
-}
-
-/** Active frame rel path for a pack (or passthrough for normal icons). */
-function resolveActiveIconRel(raw, percent) {
-	const cleaned = stripIconRootPrefixes(raw);
-	if (!cleaned) {
-		return "";
-	}
-	if (!isIconPackPath(cleaned)) {
-		return cleaned;
-	}
-	const pack = getCachedIconPack(cleaned) || ensureIconPackLoaded(cleaned);
-	if (!pack || !pack.frames || !pack.frames.length) {
-		return FALLBACK_ICON_REL;
-	}
-	return pickIconPackFrame(pack.frames, percent) || FALLBACK_ICON_REL;
-}
-
-function prefetchIconPacksFromCatalog() {
-	const list = Array.isArray(snapshot.icons) ? snapshot.icons : [];
-	for (const item of list) {
-		if (item && Array.isArray(item.frames) && item.frames.length) {
-			seedIconPackFromCatalogEntry(item);
-		} else {
-			const path = String((item && item.path) || item || "")
-				.trim()
-				.replace(/\\/g, "/");
-			if (isIconPackPath(path)) {
-				ensureIconPackLoaded(path);
-			}
-		}
-	}
-	const imported = Array.isArray(snapshot.importedIcons) ? snapshot.importedIcons : [];
-	for (const item of imported) {
-		if (item && Array.isArray(item.frames) && item.frames.length) {
-			seedIconPackFromCatalogEntry(item);
-		} else {
-			const path = String((item && item.path) || item || "")
-				.trim()
-				.replace(/\\/g, "/");
-			if (isIconPackPath(path)) {
-				ensureIconPackLoaded(path);
-			}
-		}
-	}
-}
-
-/** Stop 0–100% pack preview timers on a button (or all under root). */
-function stopIconPackPreview(root) {
-	const nodes = [];
-	if (!root) {
-		return;
-	}
-	if (root.classList && root.classList.contains("icon-swatch")) {
-		nodes.push(root);
-	} else if (root.querySelectorAll) {
-		nodes.push(...root.querySelectorAll(".icon-swatch.is-icon-pack"));
-	}
-	for (const btn of nodes) {
-		if (btn._cogPackTimer) {
-			clearInterval(btn._cogPackTimer);
-			btn._cogPackTimer = null;
-		}
-	}
-}
-
-function paintIconPackPreview(btn, packRel, resolveHref = resolveIconHref) {
-	if (!btn) {
-		return;
-	}
-	stopIconPackPreview(btn);
-	btn.classList.add("is-icon-pack");
-	btn.classList.remove("is-empty", "has-name");
-	const name = iconDisplayName(packRel);
-	setIconButtonTip(btn, name || "Icon pack");
-	let img = btn.querySelector("img");
-	if (!img) {
-		btn.innerHTML = "";
-		img = document.createElement("img");
-		img.alt = "";
-		btn.appendChild(img);
-	}
-	const applyPct = (pct) => {
-		const frameRel = resolveActiveIconRel(packRel, pct);
-		const href = resolveDisplayIconHref(frameRel);
-		const animated =
-			typeof iconHrefIsAnimated === "function"
-				? iconHrefIsAnimated(href)
-				: /\.(gif|webp)(\?|#|$)/i.test(href);
-		btn.classList.toggle("is-raster-preview", !!animated);
-		if (img.getAttribute("src") !== href) {
-			img.src = href;
-		}
-	};
-	ensureIconPackLoaded(packRel);
-	applyPct(0);
-	let t = 0;
-	let holdAtTop = 0;
-	const topHoldTicks = 10; // ~500ms at 100% so the peak frame reads clearly before loop
-	btn._cogPackTimer = setInterval(() => {
-		if (t >= 100) {
-			holdAtTop += 1;
-			applyPct(100);
-			if (holdAtTop < topHoldTicks) {
-				return;
-			}
-			holdAtTop = 0;
-			t = 0;
-			ensureIconPackLoaded(packRel);
-			applyPct(0);
-			return;
-		}
-		t = Math.min(100, t + 2);
-		applyPct(t);
-	}, 50);
+function sourceIconPath(src, gear) {
+	return resolveDisplayIconHref(sourceIconRel(src, gear));
 }
 
 function iconHrefForRoot(rel, root) {
@@ -706,7 +507,6 @@ function rebuildIconRootMap() {
 			iconRootByPath.set(key, "imports/icons");
 		}
 	}
-	prefetchIconPacksFromCatalog();
 }
 
 /** Normalize endcap art paths under Endcaps/. */
@@ -2041,7 +1841,7 @@ function makeColorRampEditor(label, value, fallback, onCommit) {
 			return;
 		}
 		const lastPct = stops.length ? stops[stops.length - 1].pct : 0;
-		const nextPct = stops.length ? Math.min(100, lastPct + (stops.length === 1 ? 100 : 25)) : 0;
+		const nextPct = stops.length ? Math.min(100, lastPct + 10) : 0;
 		stops.push({
 			pct: stops.length ? nextPct : 0,
 			color: optionalHex(fallback) || "#ffffff"
@@ -2187,6 +1987,235 @@ function makeColorRampEditor(label, value, fallback, onCommit) {
 	return wrap;
 }
 
+/**
+ * Multi-stop icon ramp editor (gear.icon).
+ * Same chrome as colour ramps; assets switch at percentages (no fade).
+ */
+function makeIconRampEditor(label, value, fallbackPath, onCommit) {
+	const wrap = document.createElement("div");
+	wrap.className = "color-ramp-editor icon-ramp-editor";
+	const heading = document.createElement("div");
+	heading.className = "color-ramp-heading";
+	heading.textContent = label;
+	wrap.appendChild(heading);
+	const hint = document.createElement("p");
+	hint.className = "lede color-ramp-hint";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(
+			hint,
+			"cog-icon-ramp-hint",
+			"Each stop switches the icon at that percentage. Icons do not fade between stops."
+		);
+	} else {
+		hint.textContent =
+			"Each stop switches the icon at that percentage. Icons do not fade between stops.";
+	}
+	wrap.appendChild(hint);
+	const list = document.createElement("div");
+	list.className = "color-ramp-stops";
+	wrap.appendChild(list);
+	const defaultPath =
+		normalizeIconAssetPath(fallbackPath) ||
+		normalizeIconAssetPath(typeof FALLBACK_ICON_REL !== "undefined" ? FALLBACK_ICON_REL : "COG/cog.svg") ||
+		"COG/cog.svg";
+	let stops = parseIconRamp(value);
+
+	const emit = (live) => {
+		if (typeof onCommit === "function") {
+			onCommit(formatIconRamp(stops), !!live);
+		}
+	};
+
+	const hasHundredStop = () => stops.some((s) => s.pct >= 100 - 1e-9);
+	let addBtn = null;
+	let addWrap = null;
+
+	const closeAddCapTip = () => {
+		if (!addWrap) {
+			return;
+		}
+		closeInfoTipWrap(addWrap);
+	};
+
+	const syncAddBtn = () => {
+		if (!addBtn || !addWrap) {
+			return;
+		}
+		const atCap = hasHundredStop();
+		addBtn.disabled = atCap;
+		addBtn.removeAttribute("title");
+		if (typeof setTranslatedAriaLabel === "function") {
+			if (atCap) {
+				setTranslatedAriaLabel(
+					addBtn,
+					"cog-cannot-add-icon-stop",
+					"Cannot add \u2014 already has a 100% stop"
+				);
+			} else {
+				setTranslatedAriaLabel(addBtn, "cog-add-icon-stop", "Add icon stop");
+			}
+		} else {
+			addBtn.setAttribute(
+				"aria-label",
+				atCap ? "Cannot add \u2014 already has a 100% stop" : "Add icon stop"
+			);
+		}
+		addWrap.classList.toggle("is-capped", atCap);
+		if (!atCap) {
+			closeAddCapTip();
+		}
+	};
+
+	const addStop = () => {
+		if (hasHundredStop()) {
+			return;
+		}
+		const lastPct = stops.length ? stops[stops.length - 1].pct : 0;
+		const nextPct = stops.length ? Math.min(100, lastPct + 10) : 0;
+		const seedPath = stops.length ? stops[stops.length - 1].path : defaultPath;
+		stops.push({
+			pct: stops.length ? nextPct : 0,
+			path: seedPath || defaultPath
+		});
+		if (stops.length === 2 && stops[0].pct === 0 && stops[1].pct === 0) {
+			stops[1].pct = 100;
+		}
+		stops = parseIconRamp(stops);
+		emit(false);
+		rebuild();
+	};
+
+	const rebuild = () => {
+		closeAddCapTip();
+		list.innerHTML = "";
+		stops.forEach((stop, index) => {
+			const card = document.createElement("div");
+			card.className = "color-ramp-card icon-ramp-card";
+
+			const iconCtrl = makeIconControl({
+				label: "Icon",
+				value: stop.path,
+				showName: false,
+				onCommit: (path) => {
+					const cleaned = normalizeIconAssetPath(path) || defaultPath;
+					stops[index] = { ...stops[index], path: cleaned };
+					emit(false);
+					rebuild();
+				}
+			});
+			tagFieldLabel(iconCtrl, "cog-icon", "Icon");
+			card.appendChild(iconCtrl);
+
+			const pctLab = document.createElement("label");
+			pctLab.className = "color-ramp-pct";
+			const pctInput = document.createElement("input");
+			pctInput.type = "text";
+			pctInput.inputMode = "decimal";
+			pctInput.spellcheck = false;
+			pctInput.value = String(stop.pct);
+			if (typeof setTranslatedAriaLabel === "function") {
+				setTranslatedAriaLabel(pctInput, "cog-percentage", "Percentage");
+			} else {
+				pctInput.setAttribute("aria-label", "Percentage");
+			}
+			pctInput.addEventListener("input", () => {
+				let n = Number(pctInput.value);
+				if (!Number.isFinite(n)) {
+					return;
+				}
+				n = Math.max(0, Math.min(100, n));
+				stops[index] = { ...stops[index], pct: n };
+				syncAddBtn();
+				emit(true);
+			});
+			pctInput.addEventListener("change", () => {
+				let n = Number(pctInput.value);
+				if (!Number.isFinite(n)) {
+					n = 0;
+				}
+				n = Math.max(0, Math.min(100, n));
+				pctInput.value = String(n);
+				stops[index] = { ...stops[index], pct: n };
+				stops = parseIconRamp(stops);
+				emit(false);
+				rebuild();
+			});
+			pctLab.appendChild(pctInput);
+			wrapInputAffix(pctInput, { suffix: "%" });
+			card.appendChild(pctLab);
+
+			const remove = document.createElement("button");
+			remove.type = "button";
+			remove.className = "clock-token-remove";
+			if (typeof setTranslatedTitle === "function") {
+				setTranslatedTitle(remove, "cog-remove", "Remove");
+			} else {
+				remove.title = "Remove";
+			}
+			if (typeof setTranslatedAriaLabel === "function") {
+				setTranslatedAriaLabel(remove, "cog-remove-icon-stop", "Remove icon stop");
+			} else {
+				remove.setAttribute("aria-label", "Remove icon stop");
+			}
+			remove.textContent = "×";
+			remove.addEventListener("click", () => {
+				stops.splice(index, 1);
+				emit(false);
+				rebuild();
+			});
+			card.appendChild(remove);
+			list.appendChild(card);
+		});
+
+		addWrap = document.createElement("span");
+		addWrap.className = "color-ramp-add-wrap info-tip";
+		addBtn = document.createElement("button");
+		addBtn.type = "button";
+		addBtn.className = "color-ramp-add";
+		addBtn.textContent = "+";
+		addBtn.addEventListener("click", addStop);
+		const tipPanel = document.createElement("span");
+		tipPanel.className = "info-tip-panel";
+		tipPanel.hidden = true;
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(
+				tipPanel,
+				"cog-icon-ramp-at-cap",
+				"Already has a 100% stop \u2014 lower one first to add another."
+			);
+		} else {
+			tipPanel.textContent =
+				"Already has a 100% stop \u2014 lower one first to add another.";
+		}
+		addWrap._cogPanel = tipPanel;
+		const showCapTip = () => {
+			if (!hasHundredStop() || addWrap.classList.contains("is-open")) {
+				return;
+			}
+			beginEditorPopup("info");
+			addWrap.classList.add("is-open");
+			const place = () => placeAnchoredPopup(tipPanel, addBtn, { gap: 6, align: "start" });
+			addWrap._cogPopupId = registerEditorPopup("info", {
+				close: () => closeInfoTipWrap(addWrap),
+				reposition: place,
+				retain: tipPanel
+			});
+			place();
+		};
+		addWrap.addEventListener("pointerenter", showCapTip);
+		addWrap.addEventListener("pointerleave", closeAddCapTip);
+		tipPanel.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+		tipPanel.addEventListener("click", (ev) => ev.stopPropagation());
+		addWrap.appendChild(addBtn);
+		addWrap.appendChild(tipPanel);
+		syncAddBtn();
+		list.appendChild(addWrap);
+	};
+
+	rebuild();
+	return wrap;
+}
+
 function appendEditorRule(parent) {
 	const hr = document.createElement("hr");
 	hr.className = "editor-rule";
@@ -2231,13 +2260,7 @@ function iconsInFolder(folder) {
 	return iconCatalog().filter((entry) => String(entry.section || "").toLowerCase() === lower);
 }
 
-/** Within a folder: still frames first, then .json packs; alpha within each group. */
 function compareIconPaths(a, b) {
-	const aPack = /\.json$/i.test(String(a || "")) ? 1 : 0;
-	const bPack = /\.json$/i.test(String(b || "")) ? 1 : 0;
-	if (aPack !== bPack) {
-		return aPack - bPack;
-	}
 	return String(a || "").localeCompare(String(b || ""), undefined, { sensitivity: "base" });
 }
 
@@ -2277,7 +2300,6 @@ function iconSections(folder) {
 function closeIconPicker() {
 	const id = iconPickerState && iconPickerState.popupId;
 	if (iconPickerState && iconPickerState.el) {
-		stopIconPackPreview(iconPickerState.el);
 		if (iconPickerState.el.parentNode) {
 			iconPickerState.el.parentNode.removeChild(iconPickerState.el);
 		}
@@ -2288,14 +2310,9 @@ function closeIconPicker() {
 }
 
 function paintIconSwatch(btn, rel, _showName, resolveHref = resolveIconHref) {
-	stopIconPackPreview(btn);
 	btn.innerHTML = "";
-	btn.classList.remove("is-icon-pack", "is-raster-preview", "has-name");
+	btn.classList.remove("is-raster-preview", "has-name");
 	const cleaned = stripIconRootPrefixes(rel);
-	if (isIconPackPath(cleaned)) {
-		paintIconPackPreview(btn, cleaned, resolveHref);
-		return;
-	}
 	const href = resolveHref(cleaned || rel);
 	const name = iconDisplayName(cleaned || rel);
 	if (!href) {
@@ -2341,7 +2358,7 @@ function iconDisplayName(rel) {
 	if (!normalized) {
 		return "";
 	}
-	return normalized.replace(/\.(svg|json|png|gif|webp|jpg|jpeg|bmp)$/i, "");
+	return normalized.replace(/\.(svg|png|gif|webp|jpg|jpeg|bmp)$/i, "");
 }
 
 function setIconButtonTip(btn, tip) {
@@ -2352,14 +2369,6 @@ function setIconButtonTip(btn, tip) {
 		btn.dataset.tip = text;
 		if (typeof setTranslatedAriaLabel === "function") {
 			setTranslatedAriaLabel(btn, "cog-choose-icon", "Choose icon");
-		} else {
-			btn.setAttribute("aria-label", text);
-		}
-	} else if (raw === "Icon pack") {
-		const text = typeof t === "function" ? t("cog-icon-pack", "Icon pack") : "Icon pack";
-		btn.dataset.tip = text;
-		if (typeof setTranslatedAriaLabel === "function") {
-			setTranslatedAriaLabel(btn, "cog-icon-pack", "Icon pack");
 		} else {
 			btn.setAttribute("aria-label", text);
 		}
@@ -2501,15 +2510,9 @@ function openIconPicker(anchor, opts) {
 			for (const path of section.paths) {
 				const cell = document.createElement("button");
 				cell.type = "button";
-				const pack = isIconPackPath(path);
-				cell.className =
-					"icon-swatch" +
-					(pack ? " is-icon-pack" : "") +
-					(path === opts.value ? " is-selected" : "");
+				cell.className = "icon-swatch" + (path === opts.value ? " is-selected" : "");
 				setIconButtonTip(cell, iconDisplayName(path) || path);
-				if (pack) {
-					paintIconPackPreview(cell, path, resolvePathHref);
-				} else {
+				{
 					const img = document.createElement("img");
 					img.src = resolvePathHref(path);
 					img.alt = "";

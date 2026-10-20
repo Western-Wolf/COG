@@ -742,6 +742,18 @@ function patchGaugeBarLive(el, gauge, src, gear) {
 	if (typeof sizeBarSheen === "function") {
 		sizeBarSheen(fill);
 	}
+	// Full paintGaugeBar is skipped on live ticks; still refresh icon path + tint.
+	const capH = Math.round(gauge.height);
+	const capLayout =
+		typeof gaugeBarCapLayout === "function" ? gaugeBarCapLayout(gauge, capH) : { capShift: 0 };
+	if (typeof paintGaugeGearIcon === "function") {
+		paintGaugeGearIcon(el, gauge, {
+			iconSize: capH,
+			iconOffset: Number(capLayout.capShift) || 0,
+			barWidth: gauge.width,
+			barHeight: gauge.height
+		});
+	}
 }
 
 function gaugeBarChromeNodes(el) {

@@ -35,150 +35,6 @@ using CogRegistryJson::NormalizeGizmoVisibility;
 
 namespace
 {
-	std::string ReadFileText(const std::filesystem::path& path)
-	{
-		std::ifstream in(path, std::ios::binary);
-		if (!in) {
-			return {};
-		}
-		return std::string(
-			std::istreambuf_iterator<char>(in),
-			std::istreambuf_iterator<char>());
-	}
-
-	/** Parse a multi-icon pack JSON into snapshot frames ({ path, pct } stops). */
-	std::string BuildIconPackFramesJson(const std::filesystem::path& packPath)
-	{
-		const auto text = ReadFileText(packPath);
-		if (text.empty()) {
-			return "[]";
-		}
-		CogJson::Value root;
-		std::string err;
-		if (!CogJson::Parse(text, root, err) || !root.IsObject()) {
-			return "[]";
-		}
-		CogJson::ParseContext ctx;
-		ctx.path = packPath.filename().string();
-		const auto* icons = ctx.GetArray(root, "icons");
-		if (!icons || !icons->IsArray() || icons->arrayValue.empty()) {
-			return "[]";
-		}
-
-		struct Frame
-		{
-			std::string path;
-			double pct = 0;
-			bool hasPct = false;
-		};
-		std::vector<Frame> staged;
-		staged.reserve(icons->arrayValue.size());
-		for (const auto& item : icons->arrayValue) {
-			Frame f;
-			if (item.IsString()) {
-				f.path = item.stringValue;
-			} else if (item.IsObject()) {
-				f.path = ctx.GetString(item, "path");
-				if (f.path.empty()) {
-					f.path = ctx.GetString(item, "icon");
-				}
-				if (item.Find("pct") && item.Find("pct")->IsNumber()) {
-					f.pct = item.Find("pct")->numberValue;
-					f.hasPct = true;
-				} else if (item.Find("percent") && item.Find("percent")->IsNumber()) {
-					f.pct = item.Find("percent")->numberValue;
-					f.hasPct = true;
-				}
-			} else {
-				continue;
-			}
-			std::replace(f.path.begin(), f.path.end(), '\\', '/');
-			while (!f.path.empty() && (f.path.front() == '/' || f.path.starts_with("./"))) {
-				if (f.path.starts_with("./")) {
-					f.path.erase(0, 2);
-				} else {
-					f.path.erase(f.path.begin());
-				}
-			}
-			constexpr std::string_view kPrefixes[] = {
-				"assets/imports/icons/",
-				"imports/icons/",
-				"assets/icons/",
-				"icons/",
-			};
-			for (const auto prefix : kPrefixes) {
-				if (f.path.size() > prefix.size()) {
-					auto lower = f.path;
-					std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) {
-						return static_cast<char>(std::tolower(c));
-					});
-					std::string pLower{ prefix };
-					if (lower.rfind(pLower, 0) == 0) {
-						f.path = f.path.substr(prefix.size());
-						break;
-					}
-				}
-			}
-			if (f.path.empty() || f.path.find("..") != std::string::npos) {
-				continue;
-			}
-			if (f.hasPct) {
-				if (f.pct < 0) {
-					f.pct = 0;
-				}
-				if (f.pct > 100) {
-					f.pct = 100;
-				}
-			}
-			staged.push_back(std::move(f));
-		}
-		if (staged.empty()) {
-			return "[]";
-		}
-
-		const bool anyPct = std::any_of(staged.begin(), staged.end(), [](const Frame& f) {
-			return f.hasPct;
-		});
-		const std::size_t n = staged.size();
-		if (!anyPct) {
-			for (std::size_t i = 0; i < n; ++i) {
-				staged[i].pct = (static_cast<double>(i) * 100.0) / static_cast<double>(n);
-				staged[i].hasPct = true;
-			}
-		} else {
-			for (auto& f : staged) {
-				if (!f.hasPct) {
-					f.pct = 0;
-					f.hasPct = true;
-				}
-			}
-			std::sort(staged.begin(), staged.end(), [](const Frame& a, const Frame& b) {
-				return a.pct < b.pct;
-			});
-		}
-
-		std::vector<Frame> uniq;
-		uniq.reserve(staged.size());
-		for (auto& f : staged) {
-			if (!uniq.empty() && std::abs(uniq.back().pct - f.pct) < 1e-9) {
-				uniq.back() = std::move(f);
-			} else {
-				uniq.push_back(std::move(f));
-			}
-		}
-
-		std::ostringstream o;
-		o << "[";
-		for (std::size_t i = 0; i < uniq.size(); ++i) {
-			if (i) {
-				o << ",";
-			}
-			o << "{\"path\":\"" << EscapeJson(uniq[i].path) << "\",\"pct\":" << uniq[i].pct << "}";
-		}
-		o << "]";
-		return o.str();
-	}
-
 	std::string SkyModeKey(RE::Sky::Mode mode)
 	{
 		switch (mode) {
@@ -549,7 +405,6 @@ std::string CogRegistry::BuildSnapshotJson()
 				std::string path;
 				std::string section;
 				std::string root;
-				std::string framesJson;  // multi-icon pack frames, or empty
 			};
 			std::unordered_map<std::string, IconEntry> iconsByPath;
 			const auto assetsRoot =
@@ -580,7 +435,7 @@ std::string CogRegistry::BuildSnapshotJson()
 					}
 					auto ext = Lower(it->path().extension().string());
 					if (ext != ".svg" && ext != ".png" && ext != ".jpg" && ext != ".jpeg" && ext != ".gif" &&
-						ext != ".webp" && ext != ".bmp" && ext != ".json") {
+						ext != ".webp" && ext != ".bmp") {
 						continue;
 					}
 					std::error_code relEc;
@@ -588,18 +443,12 @@ std::string CogRegistry::BuildSnapshotJson()
 					if (relEc || rel.empty() || rel.starts_with("..") || rel.find(':') != std::string::npos) {
 						continue;
 					}
-					if (Lower(rel) == "manifest.json") {
-						continue;
-					}
 					std::string section = "General";
 					const auto slash = rel.find('/');
 					if (slash != std::string::npos && slash > 0) {
 						section = rel.substr(0, slash);
 					}
-					IconEntry entry{ rel, std::move(section), std::string(rootTag), {} };
-					if (ext == ".json") {
-						entry.framesJson = BuildIconPackFramesJson(it->path());
-					}
+					IconEntry entry{ rel, std::move(section), std::string(rootTag) };
 					const auto [itInsert, inserted] = iconsByPath.try_emplace(rel, entry);
 					if (!inserted && rootTag == "icons") {
 						itInsert->second = std::move(entry);
@@ -607,11 +456,10 @@ std::string CogRegistry::BuildSnapshotJson()
 				}
 			}
 			for (const auto& [path, section] : _importedIcons) {
-				IconEntry entry{ path, section.empty() ? "General" : section, "imports/icons", {} };
 				if (Lower(path).ends_with(".json")) {
-					const auto abs = assetsRoot / "imports" / "icons" / std::filesystem::path(path);
-					entry.framesJson = BuildIconPackFramesJson(abs);
+					continue;
 				}
+				IconEntry entry{ path, section.empty() ? "General" : section, "imports/icons" };
 				iconsByPath.try_emplace(path, std::move(entry));
 			}
 			std::vector<IconEntry> icons;
@@ -629,12 +477,6 @@ std::string CogRegistry::BuildSnapshotJson()
 					}
 					return a.section < b.section;
 				}
-				// Multi-icon packs after still frames in the same folder.
-				const bool aPack = Lower(a.path).ends_with(".json");
-				const bool bPack = Lower(b.path).ends_with(".json");
-				if (aPack != bPack) {
-					return !aPack;
-				}
 				return a.path < b.path;
 			});
 			first = true;
@@ -644,11 +486,7 @@ std::string CogRegistry::BuildSnapshotJson()
 				}
 				first = false;
 				o << "{\"path\":\"" << EscapeJson(icon.path) << "\",\"section\":\"" << EscapeJson(icon.section)
-				  << "\",\"root\":\"" << EscapeJson(icon.root) << "\"";
-				if (!icon.framesJson.empty() && icon.framesJson != "[]") {
-					o << ",\"frames\":" << icon.framesJson;
-				}
-				o << "}";
+				  << "\",\"root\":\"" << EscapeJson(icon.root) << "\"}";
 			}
 		}
 		o << "],\"importedIcons\":[";

@@ -19,21 +19,14 @@ namespace
 		return CogIWant::IsReady();
 	}
 
-	std::string WriteIconPack(
-		RE::StaticFunctionTag*,
-		std::string sourceMod,
-		std::string iconName,
-		std::string cogPathsJoined)
-	{
-		return CogIWant::WriteIconPack(
-			std::move(sourceMod),
-			std::move(iconName),
-			std::move(cogPathsJoined));
-	}
-
 	std::string BuildIconColorRamp(RE::StaticFunctionTag*, std::string rgbLinesJoined)
 	{
 		return CogIWant::BuildIconColorRamp(std::move(rgbLinesJoined));
+	}
+
+	std::string BuildIconAssetRamp(RE::StaticFunctionTag*, std::string cogPathsJoined)
+	{
+		return CogIWant::BuildIconAssetRamp(std::move(cogPathsJoined));
 	}
 }
 
@@ -45,7 +38,7 @@ bool CogIWantPapyrus::Bind(RE::BSScript::IVirtualMachine* vm)
 	vm->RegisterFunction("MapWidgetsLibraryIcon", "COG_iWant", MapWidgetsLibraryIcon);
 	vm->RegisterFunction("ResolveExportedIconPath", "COG_iWant", ResolveExportedIconPath);
 	vm->RegisterFunction("IsReady", "COG_iWant", IsReady);
-	vm->RegisterFunction("WriteIconPack", "COG_iWant", WriteIconPack);
 	vm->RegisterFunction("BuildIconColorRamp", "COG_iWant", BuildIconColorRamp);
+	vm->RegisterFunction("BuildIconAssetRamp", "COG_iWant", BuildIconAssetRamp);
 	return true;
 }

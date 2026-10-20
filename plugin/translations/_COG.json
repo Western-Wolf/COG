@@ -43,6 +43,10 @@
     "en-CA": "Add group",
     "fr-CA": "Ajouter un groupe"
   },
+  "cog-add-icon-stop": {
+    "en-CA": "Add icon stop",
+    "fr-CA": "Ajouter un arrêt d’icône"
+  },
   "cog-add-item": {
     "en-CA": "Add Item",
     "fr-CA": "Ajouter un objet"
@@ -250,6 +254,10 @@
   "cog-cannot-add-colour-stop": {
     "en-CA": "Cannot add — already has a 100% stop",
     "fr-CA": "Impossible d'ajouter — un arrêt à 100 % existe déjà"
+  },
+  "cog-cannot-add-icon-stop": {
+    "en-CA": "Cannot add — already has a 100% stop",
+    "fr-CA": "Impossible d’ajouter — un arrêt à 100 % existe déjà"
   },
   "cog-cannot-delete": {
     "en-CA": "Cannot delete",
@@ -979,9 +987,13 @@
     "en-CA": "Icon colours",
     "fr-CA": "Couleurs de l'icône"
   },
-  "cog-icon-pack": {
-    "en-CA": "Icon pack",
-    "fr-CA": "Pack d'icônes"
+  "cog-icon-ramp-at-cap": {
+    "en-CA": "Already has a 100% stop — lower one first to add another.",
+    "fr-CA": "Un arrêt à 100 % existe déjà — abaissez-en un d’abord pour en ajouter un autre."
+  },
+  "cog-icon-ramp-hint": {
+    "en-CA": "Each stop switches the icon at that percentage. Icons do not fade between stops.",
+    "fr-CA": "Chaque arrêt change l’icône à ce pourcentage. Les icônes ne fondent pas entre les arrêts."
   },
   "cog-icons": {
     "en-CA": "Icons",
@@ -1302,6 +1314,10 @@
   "cog-remove-colour-stop": {
     "en-CA": "Remove colour stop",
     "fr-CA": "Retirer l'arrêt de couleur"
+  },
+  "cog-remove-icon-stop": {
+    "en-CA": "Remove icon stop",
+    "fr-CA": "Retirer l’arrêt d’icône"
   },
   "cog-remove-line": {
     "en-CA": "Remove Line",
