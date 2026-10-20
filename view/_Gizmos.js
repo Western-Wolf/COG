@@ -500,17 +500,28 @@ function appendGizmoVisibilityEditor(panel, gizmo) {
 	field.className = "pos-field compact";
 	const title = document.createElement("span");
 	title.className = "field-title-row";
-	title.appendChild(document.createTextNode("Visibility"));
-	title.appendChild(
-		makeInfoTip(
-			"HUD Visible: only while the vanilla Heads-Up Display is up (hidden with the HUD in menus). UI Visible: also keep showing while menus hide the HUD (inventory, map, dialogue, etc.). None: editor preview only."
-		)
+	const labelSpan = document.createElement("span");
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(labelSpan, "cog-visibility", "Visibility");
+	} else {
+		labelSpan.textContent = "Visibility";
+	}
+	title.appendChild(labelSpan);
+	const visibilityTip = makeInfoTip(
+		"HUD Visible: only while the vanilla Heads-Up Display is up (hidden with the HUD in menus). UI Visible: also keep showing while menus hide the HUD (inventory, map, dialogue, etc.). None: editor preview only.",
+		"cog-gizmo-visibility-tip"
 	);
+	title.appendChild(visibilityTip);
 	const sel = document.createElement("select");
 	sel.dataset.role = "visibility";
 	sel.innerHTML = `<option value="none">None</option>
 		<option value="hud">HUD Visible</option>
 		<option value="ui">UI Visible</option>`;
+	tagSelectOptions(sel, {
+		none: ["cog-none", "None"],
+		hud: ["cog-hud-visible", "HUD Visible"],
+		ui: ["cog-ui-visible", "UI Visible"]
+	});
 	sel.value = normalizeGizmoVisibility(gizmo.visibility);
 	sel.addEventListener("change", () => {
 		patchGizmo(gid, { visibility: normalizeGizmoVisibility(sel.value) });
@@ -530,15 +541,32 @@ function fillSchemaGizmoEditor(panel, gizmo) {
 	const schema = parseGizmoSettingsSchema(typeDef);
 	const intro = document.createElement("p");
 	intro.className = "hint";
-	intro.textContent = typeDef && typeDef.viewScript
-		? "Custom gizmo from a mod. Drag, resize, and rotate on the HUD; settings below come from the mod schema."
-		: "Gizmo settings.";
+	if (typeDef && typeDef.viewScript) {
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(
+				intro,
+				"cog-gizmo-custom-intro",
+				"Custom gizmo from a mod. Drag, resize, and rotate on the HUD; settings below come from the mod schema."
+			);
+		} else {
+			intro.textContent =
+				"Custom gizmo from a mod. Drag, resize, and rotate on the HUD; settings below come from the mod schema.";
+		}
+	} else if (typeof setTranslatedText === "function") {
+		setTranslatedText(intro, "cog-gizmo-settings", "Gizmo settings.");
+	} else {
+		intro.textContent = "Gizmo settings.";
+	}
 	panel.appendChild(intro);
 	appendEditorRule(panel);
 	if (!schema.length) {
 		const empty = document.createElement("p");
 		empty.className = "lede";
-		empty.textContent = "No custom settings for this gizmo type.";
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(empty, "cog-gizmo-no-custom-settings", "No custom settings for this gizmo type.");
+		} else {
+			empty.textContent = "No custom settings for this gizmo type.";
+		}
 		panel.appendChild(empty);
 		return;
 	}
@@ -568,6 +596,10 @@ function fillSchemaGizmoEditor(panel, gizmo) {
 			wrap.innerHTML = "<span>" + label + "</span><select></select>";
 			const sel = wrap.querySelector("select");
 			sel.innerHTML = '<option value="true">On</option><option value="false">Off</option>';
+			tagSelectOptions(sel, {
+				true: ["cog-on", "On"],
+				false: ["cog-off", "Off"]
+			});
 			sel.value = settings()[field.key] ? "true" : "false";
 			sel.addEventListener("change", () => {
 				patchGizmoSetting(gid, field.key, sel.value === "true");
@@ -652,7 +684,11 @@ function appendGizmoPositionSizeEditor(panel, gizmo) {
 	appendEditorRule(panel);
 	const posLede = document.createElement("p");
 	posLede.className = "lede";
-	posLede.textContent = "Position & size";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(posLede, "cog-position-and-size", "Position & size");
+	} else {
+		posLede.textContent = "Position & size";
+	}
 	panel.appendChild(posLede);
 	const posA = document.createElement("div");
 	posA.className = "pos-row";
@@ -672,6 +708,11 @@ function appendGizmoPositionSizeEditor(panel, gizmo) {
 	const rotInput = posA.querySelector('[data-role="rotation"]');
 	const wInput = posB.querySelector('[data-role="width"]');
 	const hInput = posB.querySelector('[data-role="height"]');
+	// X/Y are single letters — leave untagged.
+
+	tagFieldLabel(rotInput.closest("label"), "cog-rotation", "Rotation");
+	tagFieldLabel(wInput.closest("label"), "cog-width", "Width");
+	tagFieldLabel(hInput.closest("label"), "cog-height", "Height");
 	const box = gizmoLayoutBox(gizmo);
 	const editorPos = hudItemEditorPosPct(gizmo, box.w, box.h);
 	xInput.value = fmtPct(editorPos.x);
@@ -1412,8 +1453,16 @@ function onGizmoPointerMove(ev) {
 function renderGizmos(body) {
 	const intro = document.createElement("p");
 	intro.className = "lede gizmos-intro";
-	intro.textContent =
-		"Gizmos are COG-only overlay widgets. Open a gizmo accordion to raise it above the editor for dragging and rotating. Up/Down reorder the list — later gizmos draw on top of earlier ones.";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(
+			intro,
+			"cog-gizmos-intro",
+			"Gizmos are COG-only overlay widgets. Open a gizmo accordion to raise it above the editor for dragging and rotating. Up/Down reorder the list — later gizmos draw on top of earlier ones."
+		);
+	} else {
+		intro.textContent =
+			"Gizmos are COG-only overlay widgets. Open a gizmo accordion to raise it above the editor for dragging and rotating. Up/Down reorder the list — later gizmos draw on top of earlier ones.";
+	}
 	body.appendChild(intro);
 
 	const layout = document.createElement("div");
@@ -1440,12 +1489,16 @@ function renderGizmos(body) {
 		}
 	}
 
-	const appendGallerySection = (title, typeList) => {
+	const appendGallerySection = (titleTag, titleFallback, typeList) => {
 		const section = document.createElement("div");
 		section.className = "gizmo-gallery-section";
 		const lede = document.createElement("p");
 		lede.className = "lede gizmo-gallery-section-lede";
-		lede.textContent = title;
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(lede, titleTag, titleFallback);
+		} else {
+			lede.textContent = titleFallback;
+		}
 		section.appendChild(lede);
 		const gallery = document.createElement("div");
 		gallery.className = "gizmo-gallery";
@@ -1469,8 +1522,8 @@ function renderGizmos(body) {
 		galleryCol.appendChild(section);
 	};
 
-	appendGallerySection("COG Built In Gizmos", builtinTypes);
-	appendGallerySection("Mod-added Gizmos", modTypes);
+	appendGallerySection("cog-gizmos-builtin", "COG Built In Gizmos", builtinTypes);
+	appendGallerySection("cog-gizmos-mod-added", "Mod-added Gizmos", modTypes);
 
 	const listCol = document.createElement("div");
 	listCol.className = "gizmo-list-col";
@@ -1500,7 +1553,15 @@ function renderGizmosList(host) {
 	if (!snapshot.gizmos.length) {
 		const empty = document.createElement("p");
 		empty.className = "lede";
-		empty.textContent = "No gizmos yet. Choose a type from the gallery on the left to add one.";
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(
+				empty,
+				"cog-no-gizmos-yet",
+				"No gizmos yet. Choose a type from the gallery on the left to add one."
+			);
+		} else {
+			empty.textContent = "No gizmos yet. Choose a type from the gallery on the left to add one.";
+		}
 		host.appendChild(empty);
 		return;
 	}
@@ -1527,7 +1588,11 @@ function renderGizmosList(host) {
 		const edit = document.createElement("button");
 		edit.type = "button";
 		edit.className = "tiny";
-		edit.textContent = "Edit";
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(edit, "cog-edit", "Edit");
+		} else {
+			edit.textContent = "Edit";
+		}
 		end.appendChild(edit);
 		const finishRename = (save) => {
 			if (!details.classList.contains("is-renaming")) {
@@ -1571,7 +1636,11 @@ function renderGizmosList(host) {
 		const del = document.createElement("button");
 		del.type = "button";
 		del.className = "remove";
-		del.textContent = "Delete";
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(del, "cog-delete", "Delete");
+		} else {
+			del.textContent = "Delete";
+		}
 		del.addEventListener("click", () => removeGizmo(gizmo.id));
 		end.appendChild(del);
 		stopHeaderToggle(del);

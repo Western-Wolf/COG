@@ -1532,7 +1532,7 @@ function openColorPicker(anchor, opts) {
 		</div>
 		<div class="ccp-preview-row">
 			<span class="ccp-preview"></span>
-			<label class="ccp-hex-wrap">Hex <input type="text" class="ccp-hex" spellcheck="false" maxlength="6" autocomplete="off"></label>
+			<label class="ccp-hex-wrap"><span class="ccp-hex-label">Hex</span> <input type="text" class="ccp-hex" spellcheck="false" maxlength="6" autocomplete="off"></label>
 		</div>
 		<div class="ccp-rgb-row">
 			<label>R <input type="number" class="ccp-r" min="0" max="255" step="1"></label>
@@ -1546,6 +1546,10 @@ function openColorPicker(anchor, opts) {
 	const cursor = pop.querySelector(".ccp-sv-cursor");
 	const hueThumb = pop.querySelector(".ccp-hue-thumb");
 	const preview = pop.querySelector(".ccp-preview");
+	const hexLabel = pop.querySelector(".ccp-hex-label");
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(hexLabel, "cog-hex", "Hex");
+	}
 	const hexInput = pop.querySelector(".ccp-hex");
 	wrapInputAffix(hexInput, { prefix: "#" });
 	bindHexDigitFilter(hexInput);
@@ -1714,6 +1718,9 @@ function openColorPicker(anchor, opts) {
 
 	const clearBtn = pop.querySelector(".ccp-clear");
 	if (clearBtn) {
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(clearBtn, "cog-clear", "Clear");
+		}
 		clearBtn.addEventListener("click", (ev) => {
 			ev.preventDefault();
 			ev.stopPropagation();
@@ -1788,11 +1795,17 @@ function makeColorControl(opts) {
 	field.className = "color-field";
 	field.innerHTML = `<span>${label}</span>
 		<span class="color-controls">
-			<button type="button" class="color-swatch" aria-label="${label} colour picker"></button>
-			<input type="text" class="color-hex" spellcheck="false" maxlength="6" aria-label="${label}" autocomplete="off">
+			<button type="button" class="color-swatch"></button>
+			<input type="text" class="color-hex" spellcheck="false" maxlength="6" autocomplete="off">
 		</span>`;
 	const swatch = field.querySelector(".color-swatch");
 	const text = field.querySelector(".color-hex");
+	if (typeof setTranslatedAriaLabel === "function") {
+		setTranslatedAriaLabel(swatch, "cog-colour-picker", "Colour picker");
+	} else {
+		swatch.setAttribute("aria-label", "Colour picker");
+	}
+	text.setAttribute("aria-label", label);
 	wrapInputAffix(text, { prefix: "#" });
 	bindHexDigitFilter(text);
 	let hexFocused = false;
@@ -1962,7 +1975,15 @@ function makeColorRampEditor(label, value, fallback, onCommit) {
 	wrap.appendChild(heading);
 	const hint = document.createElement("p");
 	hint.className = "lede color-ramp-hint";
-	hint.textContent = "Empty inherits the backup. Multiple stops fade between percentages.";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(
+			hint,
+			"cog-color-ramp-hint",
+			"Empty inherits the backup. Multiple stops fade between percentages."
+		);
+	} else {
+		hint.textContent = "Empty inherits the backup. Multiple stops fade between percentages.";
+	}
 	wrap.appendChild(hint);
 	const list = document.createElement("div");
 	list.className = "color-ramp-stops";
@@ -1976,7 +1997,6 @@ function makeColorRampEditor(label, value, fallback, onCommit) {
 	};
 
 	const hasHundredStop = () => stops.some((s) => s.pct >= 100 - 1e-9);
-	const ADD_CAP_TIP = "Already has a 100% stop — lower one first to add another.";
 	let addBtn = null;
 	let addWrap = null;
 
@@ -1994,7 +2014,22 @@ function makeColorRampEditor(label, value, fallback, onCommit) {
 		const atCap = hasHundredStop();
 		addBtn.disabled = atCap;
 		addBtn.removeAttribute("title");
-		addBtn.setAttribute("aria-label", atCap ? "Cannot add — already has a 100% stop" : "Add colour stop");
+		if (typeof setTranslatedAriaLabel === "function") {
+			if (atCap) {
+				setTranslatedAriaLabel(
+					addBtn,
+					"cog-cannot-add-colour-stop",
+					"Cannot add \u2014 already has a 100% stop"
+				);
+			} else {
+				setTranslatedAriaLabel(addBtn, "cog-add-colour-stop", "Add colour stop");
+			}
+		} else {
+			addBtn.setAttribute(
+				"aria-label",
+				atCap ? "Cannot add \u2014 already has a 100% stop" : "Add colour stop"
+			);
+		}
 		addWrap.classList.toggle("is-capped", atCap);
 		if (!atCap) {
 			closeAddCapTip();
@@ -2026,21 +2061,21 @@ function makeColorRampEditor(label, value, fallback, onCommit) {
 			const card = document.createElement("div");
 			card.className = "color-ramp-card";
 
-			card.appendChild(
-				makeColorControl({
-					label: "Colour",
-					value: stop.color,
-					fallback: fallback || "#ffffff",
-					allowEmpty: false,
-					onCommit: (hex, live) => {
-						stops[index] = {
-							...stops[index],
-							color: hex || optionalHex(fallback) || "#ffffff"
-						};
-						emit(!!live);
-					}
-				})
-			);
+			const colourCtrl = makeColorControl({
+				label: "Colour",
+				value: stop.color,
+				fallback: fallback || "#ffffff",
+				allowEmpty: false,
+				onCommit: (hex, live) => {
+					stops[index] = {
+						...stops[index],
+						color: hex || optionalHex(fallback) || "#ffffff"
+					};
+					emit(!!live);
+				}
+			});
+			tagFieldLabel(colourCtrl, "cog-colour", "Colour");
+			card.appendChild(colourCtrl);
 
 			const pctLab = document.createElement("label");
 			pctLab.className = "color-ramp-pct";
@@ -2049,7 +2084,11 @@ function makeColorRampEditor(label, value, fallback, onCommit) {
 			pctInput.inputMode = "decimal";
 			pctInput.spellcheck = false;
 			pctInput.value = String(stop.pct);
-			pctInput.setAttribute("aria-label", "Percentage");
+			if (typeof setTranslatedAriaLabel === "function") {
+				setTranslatedAriaLabel(pctInput, "cog-percentage", "Percentage");
+			} else {
+				pctInput.setAttribute("aria-label", "Percentage");
+			}
 			pctInput.addEventListener("input", () => {
 				let n = Number(pctInput.value);
 				if (!Number.isFinite(n)) {
@@ -2079,8 +2118,16 @@ function makeColorRampEditor(label, value, fallback, onCommit) {
 			const remove = document.createElement("button");
 			remove.type = "button";
 			remove.className = "clock-token-remove";
-			remove.title = "Remove";
-			remove.setAttribute("aria-label", "Remove colour stop");
+			if (typeof setTranslatedTitle === "function") {
+				setTranslatedTitle(remove, "cog-remove", "Remove");
+			} else {
+				remove.title = "Remove";
+			}
+			if (typeof setTranslatedAriaLabel === "function") {
+				setTranslatedAriaLabel(remove, "cog-remove-colour-stop", "Remove colour stop");
+			} else {
+				remove.setAttribute("aria-label", "Remove colour stop");
+			}
 			remove.textContent = "×";
 			remove.addEventListener("click", () => {
 				stops.splice(index, 1);
@@ -2101,7 +2148,16 @@ function makeColorRampEditor(label, value, fallback, onCommit) {
 		const tipPanel = document.createElement("span");
 		tipPanel.className = "info-tip-panel";
 		tipPanel.hidden = true;
-		tipPanel.textContent = ADD_CAP_TIP;
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(
+				tipPanel,
+				"cog-color-ramp-at-cap",
+				"Already has a 100% stop \u2014 lower one first to add another."
+			);
+		} else {
+			tipPanel.textContent =
+				"Already has a 100% stop \u2014 lower one first to add another.";
+		}
 		addWrap._cogPanel = tipPanel;
 		const showCapTip = () => {
 			if (!hasHundredStop() || addWrap.classList.contains("is-open")) {
@@ -2289,9 +2345,31 @@ function iconDisplayName(rel) {
 }
 
 function setIconButtonTip(btn, tip) {
-	const text = String(tip || "").trim() || "Choose icon";
-	btn.dataset.tip = text;
-	btn.setAttribute("aria-label", text);
+	const raw = String(tip || "").trim();
+	// Chrome vocabulary only — never tag icon path / displayName tips.
+	if (!raw || raw === "Choose icon") {
+		const text = typeof t === "function" ? t("cog-choose-icon", "Choose icon") : "Choose icon";
+		btn.dataset.tip = text;
+		if (typeof setTranslatedAriaLabel === "function") {
+			setTranslatedAriaLabel(btn, "cog-choose-icon", "Choose icon");
+		} else {
+			btn.setAttribute("aria-label", text);
+		}
+	} else if (raw === "Icon pack") {
+		const text = typeof t === "function" ? t("cog-icon-pack", "Icon pack") : "Icon pack";
+		btn.dataset.tip = text;
+		if (typeof setTranslatedAriaLabel === "function") {
+			setTranslatedAriaLabel(btn, "cog-icon-pack", "Icon pack");
+		} else {
+			btn.setAttribute("aria-label", text);
+		}
+	} else {
+		btn.removeAttribute("data-translation-aria-label");
+		btn.removeAttribute("data-translation-aria-label-fallback");
+		btn.removeAttribute("data-translation-aria-label-vars");
+		btn.dataset.tip = raw;
+		btn.setAttribute("aria-label", raw);
+	}
 	btn.removeAttribute("title");
 }
 
@@ -2347,16 +2425,17 @@ function hideHoverTip() {
 	}
 }
 
-function bindIconHoverTips() {
-	if (document.documentElement.dataset.iconTipsBound === "1") {
+/** Prisma/Ultralight does not show native title= tooltips — use .cog-hover-tip via data-tip. */
+function bindDataTipHover() {
+	if (document.documentElement.dataset.dataTipsBound === "1") {
 		return;
 	}
-	document.documentElement.dataset.iconTipsBound = "1";
+	document.documentElement.dataset.dataTipsBound = "1";
 	document.addEventListener("mouseover", (ev) => {
-		const btn = ev.target.closest && ev.target.closest(".icon-swatch[data-tip]");
-		if (btn) {
-			if (hoverTipAnchor !== btn) {
-				showHoverTip(btn, btn.dataset.tip);
+		const host = ev.target.closest && ev.target.closest("[data-tip]");
+		if (host) {
+			if (hoverTipAnchor !== host) {
+				showHoverTip(host, host.dataset.tip);
 			}
 			return;
 		}
@@ -2376,7 +2455,7 @@ function bindIconHoverTips() {
 	});
 }
 
-bindIconHoverTips();
+bindDataTipHover();
 
 function closeAllEditorPopups() {
 	beginEditorPopup();
@@ -2460,9 +2539,19 @@ function openIconPicker(anchor, opts) {
 		if (!primarySections.length || !primarySections.some((s) => s.paths && s.paths.length)) {
 			const empty = document.createElement("p");
 			empty.className = "ccp-empty";
-			empty.textContent = lockedFolder
-				? `No icons found in ${lockedFolder}.`
-				: "No icons found under assets/icons.";
+			if (lockedFolder) {
+				if (typeof setTranslatedText === "function") {
+					setTranslatedText(empty, "cog-no-icons-in-folder", "No icons found in {folder}.", {
+						folder: lockedFolder
+					});
+				} else {
+					empty.textContent = `No icons found in ${lockedFolder}.`;
+				}
+			} else if (typeof setTranslatedText === "function") {
+				setTranslatedText(empty, "cog-no-icons-found", "No icons found under assets/icons.");
+			} else {
+				empty.textContent = "No icons found under assets/icons.";
+			}
 			body.appendChild(empty);
 		} else {
 			for (const section of primarySections) {
@@ -2477,8 +2566,18 @@ function openIconPicker(anchor, opts) {
 		if (isFolderLocked) {
 			const seeAll = document.createElement("label");
 			seeAll.className = "cip-see-all";
-			seeAll.innerHTML = `<input type="checkbox" data-role="seeAllIcons"> See all Icons`;
-			const seeAllBox = seeAll.querySelector("input");
+			const seeAllBox = document.createElement("input");
+			seeAllBox.type = "checkbox";
+			seeAllBox.dataset.role = "seeAllIcons";
+			const seeAllText = document.createElement("span");
+			if (typeof setTranslatedText === "function") {
+				setTranslatedText(seeAllText, "cog-see-all-icons", "See all Icons");
+			} else {
+				seeAllText.textContent = "See all Icons";
+			}
+			seeAll.appendChild(seeAllBox);
+			seeAll.appendChild(document.createTextNode(" "));
+			seeAll.appendChild(seeAllText);
 			seeAllBox.addEventListener("change", () => {
 				extrasHost.hidden = !seeAllBox.checked;
 				if (seeAllBox.checked && !extrasHost.dataset.filled) {
@@ -2487,7 +2586,15 @@ function openIconPicker(anchor, opts) {
 					if (!others.length) {
 						const empty = document.createElement("p");
 						empty.className = "ccp-empty";
-						empty.textContent = "No other icon folders found.";
+						if (typeof setTranslatedText === "function") {
+							setTranslatedText(
+								empty,
+								"cog-no-other-icon-folders",
+								"No other icon folders found."
+							);
+						} else {
+							empty.textContent = "No other icon folders found.";
+						}
 						extrasHost.appendChild(empty);
 					} else {
 						for (const section of others) {
@@ -2511,7 +2618,13 @@ function openIconPicker(anchor, opts) {
 		const clear = document.createElement("button");
 		clear.type = "button";
 		clear.className = "action";
-		clear.textContent = opts.clearLabel || "Clear icon";
+		if (opts.clearLabel) {
+			clear.textContent = opts.clearLabel;
+		} else if (typeof setTranslatedText === "function") {
+			setTranslatedText(clear, "cog-clear-icon", "Clear icon");
+		} else {
+			clear.textContent = "Clear icon";
+		}
 		clear.addEventListener("click", (ev) => {
 			ev.preventDefault();
 			ev.stopPropagation();
@@ -2564,8 +2677,13 @@ function makeIconControl(opts) {
 		field.classList.add("is-endcap-picker");
 	}
 	field.innerHTML = `<span>${opts.label || "Icon"}</span>
-		<button type="button" class="icon-swatch" aria-label="Choose icon"></button>`;
+		<button type="button" class="icon-swatch"></button>`;
 	const swatch = field.querySelector(".icon-swatch");
+	if (typeof setTranslatedAriaLabel === "function") {
+		setTranslatedAriaLabel(swatch, "cog-choose-icon", "Choose icon");
+	} else {
+		swatch.setAttribute("aria-label", "Choose icon");
+	}
 	let value = isEndcap ? migrateEndCapPath(opts.value) : String(opts.value || "");
 	paintIconSwatch(swatch, value, opts.showName, resolveHref);
 	swatch.addEventListener("click", (ev) => {
@@ -2649,7 +2767,48 @@ function currentEditorKey() {
 	const gizmos = (snapshot.gizmos || []).map((z) =>
 		`${z.id}:${z.name || ""}:${z.type || ""}:${z.visibility || ""}:${z.width || ""}:${z.height || ""}:${typeof z.settingsJson === "string" ? z.settingsJson : JSON.stringify(z.settings || {})}`
 	).join("|");
-	return `${activeTab}|${helpMode ? "help" : "main"}|${helpSubTab}|${snapshot.general.showDefaultGroup}|${snapshot.general.editorKey}|${snapshot.general.hideToggleKey || ""}|${snapshot.general.hideIncludesFlash !== false}|${!!window.__cogHideKeyListening}|${snapshot.general.fillColor}|${snapshot.general.borderColor}|${snapshot.general.iconColor || themeIconColor()}|${snapshot.general.neutralIconMode}|${snapshot.general.gadgetFont}|${groups}|${gears}|${gauges}|${gizmos}|${typeof suppressionsFingerprint === "function" ? suppressionsFingerprint() : ""}`;
+	return `${activeTab}|${helpMode ? "help" : "main"}|${helpSubTab}|${snapshot.general.showDefaultGroup}|${snapshot.general.editorKey}|${snapshot.general.hideToggleKey || ""}|${snapshot.general.hideIncludesFlash !== false}|${!!window.__cogHideKeyListening}|${snapshot.general.fillColor}|${snapshot.general.borderColor}|${snapshot.general.iconColor || themeIconColor()}|${snapshot.general.neutralIconMode}|${snapshot.general.gadgetFont}|${snapshot.general.language || ""}|${!!snapshot.general.highlightMissingTranslations}|${groups}|${gears}|${gauges}|${gizmos}|${typeof suppressionsFingerprint === "function" ? suppressionsFingerprint() : ""}`;
+}
+
+/** Tag a .pos-field / label's leading <span> via data-translation helpers. */
+function tagFieldLabel(field, tag, fallback, typeId) {
+	if (!field) {
+		return field;
+	}
+	const span = field.querySelector(":scope > span");
+	if (!span) {
+		return field;
+	}
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(span, tag, fallback, undefined, typeId);
+	} else {
+		span.textContent = fallback;
+	}
+	return field;
+}
+
+/**
+ * Tag <option> labels. map: value → { tag, fallback } or [tag, fallback].
+ * Never put badges on options — setTranslatedOption skips nesting.
+ */
+function tagSelectOptions(select, map, typeId) {
+	if (!select || !map) {
+		return select;
+	}
+	for (const opt of select.querySelectorAll("option")) {
+		const entry = map[opt.value];
+		if (!entry) {
+			continue;
+		}
+		const tag = entry.tag != null ? entry.tag : entry[0];
+		const fallback = entry.fallback != null ? entry.fallback : entry[1];
+		if (typeof setTranslatedOption === "function") {
+			setTranslatedOption(opt, tag, fallback, typeId);
+		} else if (fallback != null) {
+			opt.textContent = fallback;
+		}
+	}
+	return select;
 }
 
 function closeCogSelectWrap(wrap) {
@@ -2868,18 +3027,28 @@ function repositionOpenEditorPopups() {
 	}
 }
 
-function makeInfoTip(text) {
+/** Info (i) control. Optional `tag` marks the panel for editor translations. */
+function makeInfoTip(text, tag) {
 	const wrap = document.createElement("span");
 	wrap.className = "info-tip";
 	const btn = document.createElement("button");
 	btn.type = "button";
 	btn.className = "info-tip-btn";
-	btn.setAttribute("aria-label", "More info");
 	btn.textContent = "i";
+	if (typeof setTranslatedAriaLabel === "function") {
+		setTranslatedAriaLabel(btn, "cog-more-info", "More info");
+	} else {
+		btn.setAttribute("aria-label", "More info");
+	}
 	const panel = document.createElement("span");
 	panel.className = "info-tip-panel";
 	panel.hidden = true;
-	panel.textContent = text;
+	const fallback = text == null ? "" : String(text);
+	if (tag && typeof setTranslatedText === "function") {
+		setTranslatedText(panel, tag, fallback);
+	} else {
+		panel.textContent = fallback;
+	}
 	wrap._cogPanel = panel;
 	btn.addEventListener("click", (ev) => {
 		ev.preventDefault();
@@ -3036,27 +3205,68 @@ function renderGeneral(body) {
 		renderGears();
 	});
 	row.appendChild(box);
-	row.appendChild(document.createTextNode("Show Default Group"));
+	const showDefaultLabel = document.createElement("span");
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(showDefaultLabel, "cog-show-default-group", "Show Default Group");
+	} else {
+		showDefaultLabel.textContent = "Show Default Group";
+	}
+	row.appendChild(showDefaultLabel);
 	body.appendChild(row);
 	const groupLede = document.createElement("p");
 	groupLede.className = "lede";
-	groupLede.textContent = "Gears that are not assigned to another group appear on the Default Group line. Turn this off to hide that line without deleting gears. The Default Group itself cannot be removed.";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(
+			groupLede,
+			"cog-show-default-group-lede",
+			"Gears that are not assigned to another group appear on the Default Group line. Turn this off to hide that line without deleting gears. The Default Group itself cannot be removed."
+		);
+	} else {
+		groupLede.textContent =
+			"Gears that are not assigned to another group appear on the Default Group line. Turn this off to hide that line without deleting gears. The Default Group itself cannot be removed.";
+	}
 	body.appendChild(groupLede);
 
 	appendEditorRule(body);
 
-	const fontHeading = document.createElement("p");
-	fontHeading.className = "lede section-heading";
-	fontHeading.textContent = "Default gadget font";
-	body.appendChild(fontHeading);
-	const fontLede = document.createElement("p");
-	fontLede.className = "lede";
-	fontLede.textContent =
-		"Used for group, gauge, and gizmo text. The shout meter always uses Dragon Script. Drop .ttf / .otf files into PrismaUI/views/COG/assets/fonts/ to add choices.";
-	body.appendChild(fontLede);
-	const fontRow = document.createElement("label");
-	fontRow.className = "pos-field wide";
-	fontRow.innerHTML = `<span>Gadget font</span>`;
+	const prefsHeading = document.createElement("p");
+	prefsHeading.className = "lede section-heading";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(prefsHeading, "cog-editor-preferences", "Editor preferences");
+	} else {
+		prefsHeading.textContent = "Editor preferences";
+	}
+	body.appendChild(prefsHeading);
+	const prefsLede = document.createElement("p");
+	prefsLede.className = "lede";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(prefsLede, "cog-editor-preferences-lede", "Language applies to the editor and help.");
+	} else {
+		prefsLede.textContent = "Language applies to the editor and help.";
+	}
+	body.appendChild(prefsLede);
+
+	const prefsRow = document.createElement("div");
+	prefsRow.className = "style-row";
+
+	const fontField = document.createElement("label");
+	fontField.className = "pos-field compact wide";
+	const fontTitle = document.createElement("span");
+	fontTitle.className = "field-title-row";
+	const fontLabel = document.createElement("span");
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(fontLabel, "cog-font", "Font");
+	} else {
+		fontLabel.textContent = "Font";
+	}
+	fontTitle.appendChild(fontLabel);
+	fontTitle.appendChild(
+		makeInfoTip(
+			"Used for group, gauge, and gizmo text. The shout meter always uses Dragon Script.",
+			"cog-font-tip"
+		)
+	);
+	fontField.appendChild(fontTitle);
 	const fontSel = document.createElement("select");
 	fontSel.dataset.role = "gadgetFont";
 	const families = availableFontFamilies();
@@ -3076,20 +3286,97 @@ function renderGeneral(body) {
 		scheduleSave(true);
 		renderGears();
 	});
-	fontRow.appendChild(fontSel);
-	body.appendChild(fontRow);
-	enhanceSelects(fontRow);
+	fontField.appendChild(fontSel);
+	prefsRow.appendChild(fontField);
+
+	const langField = document.createElement("label");
+	langField.className = "pos-field compact";
+	langField.innerHTML = `<span>Language</span>`;
+	tagFieldLabel(langField, "cog-language", "Language");
+	const langSel = document.createElement("select");
+	langSel.dataset.role = "editorLanguage";
+	const langs =
+		typeof availableLanguages === "function" ? availableLanguages() : ["en-CA"];
+	const currentLang =
+		(snapshot.general && snapshot.general.language) ||
+		(typeof COG_FALLBACK_LANG !== "undefined" ? COG_FALLBACK_LANG : "en-CA");
+	for (const code of langs) {
+		const opt = document.createElement("option");
+		opt.value = code;
+		opt.textContent =
+			typeof languageDisplayName === "function" ? languageDisplayName(code) : code;
+		if (code === currentLang) {
+			opt.selected = true;
+		}
+		langSel.appendChild(opt);
+	}
+	langSel.addEventListener("change", () => {
+		snapshot.general.language = langSel.value || "en-CA";
+		scheduleSave(true);
+		if (typeof syncDocumentLang === "function") {
+			syncDocumentLang();
+		}
+		renderEditor(true);
+		renderGears();
+		updateKeybindHint();
+	});
+	langField.appendChild(langSel);
+	prefsRow.appendChild(langField);
+
+	const highlightRow = document.createElement("label");
+	highlightRow.className = "check-row compact";
+	const highlightBox = document.createElement("input");
+	highlightBox.type = "checkbox";
+	highlightBox.checked = !!snapshot.general.highlightMissingTranslations;
+	highlightBox.addEventListener("change", () => {
+		snapshot.general.highlightMissingTranslations = highlightBox.checked;
+		scheduleSave(true);
+		renderEditor(true);
+	});
+	highlightRow.appendChild(highlightBox);
+	const highlightTitle = document.createElement("span");
+	highlightTitle.className = "field-title-row";
+	const highlightLabel = document.createElement("span");
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(highlightLabel, "cog-highlight-missing", "Highlight missing translations");
+	} else {
+		highlightLabel.textContent = "Highlight missing translations";
+	}
+	highlightTitle.appendChild(highlightLabel);
+	highlightTitle.appendChild(
+		makeInfoTip(
+			"Marks missing catalog strings with a gold badge (shows the en-CA fallback).",
+			"cog-highlight-missing-tip"
+		)
+	);
+	highlightRow.appendChild(highlightTitle);
+	prefsRow.appendChild(highlightRow);
+
+	body.appendChild(prefsRow);
+	enhanceSelects(prefsRow);
 
 	appendEditorRule(body);
 
 	const colorHeading = document.createElement("p");
 	colorHeading.className = "lede section-heading";
-	colorHeading.textContent = "Backup colours";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(colorHeading, "cog-backup-colours", "Backup colours");
+	} else {
+		colorHeading.textContent = "Backup colours";
+	}
 	body.appendChild(colorHeading);
 	const colorLede = document.createElement("p");
 	colorLede.className = "lede";
-	colorLede.textContent =
-		"Used when a gear or group does not set its own. Bar is the meter fill; border is the bar trough; icon is a single tint for meter icons. Fancy multi-stop colours belong on a gear or group. Neutral icon colour is only for count gears — Always White, or Bar / Border / Icon 0%–100% sampled from the effective ramp.";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(
+			colorLede,
+			"cog-backup-colours-lede",
+			"Used when a gear or group does not set its own. Bar is the meter fill; border is the bar trough; icon is a single tint for meter icons. Fancy multi-stop colours belong on a gear or group. Neutral icon colour is only for count gears — Always White, or Bar / Border / Icon 0%–100% sampled from the effective ramp."
+		);
+	} else {
+		colorLede.textContent =
+			"Used when a gear or group does not set its own. Bar is the meter fill; border is the bar trough; icon is a single tint for meter icons. Fancy multi-stop colours belong on a gear or group. Neutral icon colour is only for count gears — Always White, or Bar / Border / Icon 0%–100% sampled from the effective ramp.";
+	}
 	body.appendChild(colorLede);
 
 	const colors = document.createElement("div");
@@ -3097,9 +3384,15 @@ function renderGeneral(body) {
 	if (!snapshot.general.iconColor && (snapshot.general.iconStartColor || snapshot.general.iconEndColor)) {
 		snapshot.general.iconColor = themeIconColor();
 	}
-	colors.appendChild(makeColorField("Backup bar", "fillColor", snapshot.general.fillColor, defaultFillColor()));
-	colors.appendChild(makeColorField("Backup border", "borderColor", snapshot.general.borderColor, defaultBorderColor()));
-	colors.appendChild(makeColorField("Backup icon", "iconColor", snapshot.general.iconColor || themeIconColor(), defaultIconColor()));
+	const backupBar = makeColorField("Backup bar", "fillColor", snapshot.general.fillColor, defaultFillColor());
+	tagFieldLabel(backupBar, "cog-backup-bar", "Backup bar");
+	colors.appendChild(backupBar);
+	const backupBorder = makeColorField("Backup border", "borderColor", snapshot.general.borderColor, defaultBorderColor());
+	tagFieldLabel(backupBorder, "cog-backup-border", "Backup border");
+	colors.appendChild(backupBorder);
+	const backupIcon = makeColorField("Backup icon", "iconColor", snapshot.general.iconColor || themeIconColor(), defaultIconColor());
+	tagFieldLabel(backupIcon, "cog-backup-icon", "Backup icon");
+	colors.appendChild(backupIcon);
 	colors.appendChild(
 		makeNeutralIconField(
 			makeNeutralIconSelect(snapshot.general.neutralIconMode, (mode) => {
@@ -3114,7 +3407,11 @@ function renderGeneral(body) {
 	const reset = document.createElement("button");
 	reset.type = "button";
 	reset.className = "action";
-	reset.textContent = "Reset backup colours";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(reset, "cog-reset-backup-colours", "Reset backup colours");
+	} else {
+		reset.textContent = "Reset backup colours";
+	}
 	reset.addEventListener("click", () => {
 		snapshot.general.fillColor = defaultFillColor();
 		snapshot.general.borderColor = defaultBorderColor();
@@ -3131,21 +3428,27 @@ function renderGeneral(body) {
 
 	appendEditorRule(body);
 
-	const keyNote = document.createElement("p");
-	keyNote.className = "lede";
-	keyNote.textContent = "Click the key in the top-right to rebind the editor, or set editorKey in SKSE/Plugins/COG/general.json.";
-	body.appendChild(keyNote);
-
-	appendEditorRule(body);
-
 	const hideHeading = document.createElement("p");
 	hideHeading.className = "lede section-heading toggle-ui-heading";
-	hideHeading.textContent = "Toggle UI";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(hideHeading, "cog-toggle-ui", "Toggle UI");
+	} else {
+		hideHeading.textContent = "Toggle UI";
+	}
 	body.appendChild(hideHeading);
 	const hideLede = document.createElement("p");
 	hideLede.className = "lede toggle-ui-lede";
-	hideLede.textContent =
-		"Clear view for photos/immersion — not a vanilla-HUD mode. Hides all COG play gadgets (same idea as visibility None); does not undo gear links, Feed hides, or the Suppressor. Optional hotkey works only while playing with menus closed (not console, COG editor, or search fields). Click a bound key to clear it, click again to set a new one. Mods can call COG_API.SetUiHidden / ToggleUiHidden anytime.";
+	// Em dash as \u2014 (literal in the setTranslatedText call so harvest sees it).
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(
+			hideLede,
+			"cog-toggle-ui-lede",
+			"Clear view for photos/immersion \u2014 not a vanilla-HUD mode. Hides all COG play gadgets (same idea as visibility None); does not undo gear links, Feed hides, or the Suppressor. Optional hotkey works only while playing with menus closed (not console, COG editor, or search fields). Click a bound key to clear it, click again to set a new one. Mods can call COG_API.SetUiHidden / ToggleUiHidden anytime."
+		);
+	} else {
+		hideLede.textContent =
+			"Clear view for photos/immersion \u2014 not a vanilla-HUD mode. Hides all COG play gadgets (same idea as visibility None); does not undo gear links, Feed hides, or the Suppressor. Optional hotkey works only while playing with menus closed (not console, COG editor, or search fields). Click a bound key to clear it, click again to set a new one. Mods can call COG_API.SetUiHidden / ToggleUiHidden anytime.";
+	}
 	body.appendChild(hideLede);
 
 	const hideKeyRow = document.createElement("div");
@@ -3153,7 +3456,11 @@ function renderGeneral(body) {
 	hideKeyRow.style.alignItems = "center";
 	hideKeyRow.style.gap = "0.6rem";
 	const hideKeyLabel = document.createElement("span");
-	hideKeyLabel.textContent = "Toggle key";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(hideKeyLabel, "cog-toggle-key", "Toggle key");
+	} else {
+		hideKeyLabel.textContent = "Toggle key";
+	}
 	hideKeyRow.appendChild(hideKeyLabel);
 	const hideKeyBtn = document.createElement("button");
 	hideKeyBtn.type = "button";
@@ -3162,18 +3469,38 @@ function renderGeneral(body) {
 	const boundKey = String((snapshot.general && snapshot.general.hideToggleKey) || "").trim();
 	const hideListening = !!window.__cogHideKeyListening;
 	if (hideListening) {
-		hideKeyBtn.textContent = "Press a key…";
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(hideKeyBtn, "cog-press-a-key", "Press a key\u2026");
+		} else {
+			hideKeyBtn.textContent = "Press a key\u2026";
+		}
 		hideKeyBtn.classList.add("is-listening");
 	} else if (boundKey) {
 		hideKeyBtn.textContent = boundKey;
+		hideKeyBtn.removeAttribute("data-translation");
+		hideKeyBtn.removeAttribute("data-translation-fallback");
+	} else if (typeof setTranslatedText === "function") {
+		setTranslatedText(hideKeyBtn, "cog-none-click-to-set", "None \u2014 click to set");
 	} else {
-		hideKeyBtn.textContent = "None — click to set";
+		hideKeyBtn.textContent = "None \u2014 click to set";
 	}
-	hideKeyBtn.title = hideListening
-		? "Listening… Esc cancels"
-		: boundKey
-			? "Click to clear this hotkey"
-			: "Click then press a key to bind";
+	if (hideListening) {
+		if (typeof setTranslatedTitle === "function") {
+			setTranslatedTitle(hideKeyBtn, "cog-listening-esc-cancels", "Listening\u2026 Esc cancels");
+		} else {
+			hideKeyBtn.title = "Listening\u2026 Esc cancels";
+		}
+	} else if (boundKey) {
+		if (typeof setTranslatedTitle === "function") {
+			setTranslatedTitle(hideKeyBtn, "cog-click-to-clear-hotkey", "Click to clear this hotkey");
+		} else {
+			hideKeyBtn.title = "Click to clear this hotkey";
+		}
+	} else if (typeof setTranslatedTitle === "function") {
+		setTranslatedTitle(hideKeyBtn, "cog-click-then-press-key", "Click then press a key to bind");
+	} else {
+		hideKeyBtn.title = "Click then press a key to bind";
+	}
 	hideKeyBtn.addEventListener("click", () => {
 		if (window.__cogHideKeyListening) {
 			window.__cogHideKeyListening = false;
@@ -3212,13 +3539,23 @@ function renderGeneral(body) {
 		scheduleSave(true);
 	});
 	flashRow.appendChild(flashBox);
-	flashRow.appendChild(document.createTextNode("Toggle also hides Flash HUD"));
+	const flashTitle = document.createElement("span");
+	flashTitle.className = "field-title-row";
+	const flashLabel = document.createElement("span");
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(flashLabel, "cog-toggle-hides-flash", "Toggle also hides Flash HUD");
+	} else {
+		flashLabel.textContent = "Toggle also hides Flash HUD";
+	}
+	flashTitle.appendChild(flashLabel);
+	flashTitle.appendChild(
+		makeInfoTip(
+			"On (default): also hide Flash HUD (vanilla, TrueHUD, MiniMap, and similar). Off: only COG gadgets hide; soft-suppressed Flash stays suppressed.",
+			"cog-toggle-hides-flash-tip"
+		)
+	);
+	flashRow.appendChild(flashTitle);
 	body.appendChild(flashRow);
-	const flashLede = document.createElement("p");
-	flashLede.className = "lede toggle-ui-note";
-	flashLede.textContent =
-		"When on (default), Toggle UI also alpha-hides Flash menus for an emptier frame: vanilla HUD, TrueHUD, MiniMap, STB widgets, BTPS, and similar. Off = only COG gadgets vanish; soft-suppressed Flash stays suppressed.";
-	body.appendChild(flashLede);
 }
 
 function clampPx(n, min, max) {
@@ -3413,12 +3750,31 @@ function restoreRenameField(nameInput) {
 	nameInput._cogRenameSlot = null;
 }
 
+/** Replace `### Title #cog-help-tag` (any ATX level) with the translated title. */
+function translateHelpMarkdown(md) {
+	return String(md || "").replace(
+		/^(#{1,6})\s+(.+?)\s+(#cog-[a-z0-9-]+)\s*$/gim,
+		(_, hashes, title, hashTag) => {
+			const tag = String(hashTag).slice(1).toLowerCase();
+			const fb = String(title).trim();
+			const translated = typeof t === "function" ? t(tag, fb) : fb;
+			return `${hashes} ${translated}`;
+		}
+	);
+}
+
+/**
+ * Help markdown: accordion openers may end with a catalog tag, e.g.
+ *   +++ Opening the editor #cog-help-opening-editor
+ * Body English is harvested as `{tag}-body`. Section headings: `### Title #cog-help-sec-…`.
+ */
 function parseHelpDocument(text) {
 	const raw = String(text || "").replace(/^\uFEFF/, "");
 	const lines = raw.split(/\r?\n/);
 	const blocks = [];
 	let prose = [];
 	let openTitle = null;
+	let openTag = "";
 	let openBody = [];
 
 	const flushProse = () => {
@@ -3436,15 +3792,28 @@ function parseHelpDocument(text) {
 		blocks.push({
 			type: "details",
 			title: openTitle,
+			tag: openTag,
 			text: openBody.join("\n").trim()
 		});
 		openTitle = null;
+		openTag = "";
 		openBody = [];
 	};
 
 	const openTitleOf = (line) => {
 		const m = /^\+\+\+\s+(.+)$/.exec(line);
-		return m ? m[1].trim() : "";
+		if (!m) {
+			return { title: "", tag: "" };
+		}
+		let rawTitle = m[1].trim();
+		const tm = /\s+(#cog-[a-z0-9-]+)\s*$/i.exec(rawTitle);
+		if (tm) {
+			return {
+				title: rawTitle.slice(0, tm.index).trim(),
+				tag: tm[1].slice(1).toLowerCase()
+			};
+		}
+		return { title: rawTitle, tag: "" };
 	};
 	const isOpenLine = (line) => /^\+\+\+\s+\S/.test(line) && !/\s\+\+\+\s*$/.test(line);
 	const isCloseLine = (line) => /\s\+\+\+\s*$/.test(line);
@@ -3454,7 +3823,9 @@ function parseHelpDocument(text) {
 		if (openTitle == null) {
 			if (isOpenLine(line)) {
 				flushProse();
-				openTitle = openTitleOf(line);
+				const opened = openTitleOf(line);
+				openTitle = opened.title;
+				openTag = opened.tag;
 				openBody = [];
 				continue;
 			}
@@ -3467,7 +3838,9 @@ function parseHelpDocument(text) {
 		}
 		if (isOpenLine(line)) {
 			flushDetails();
-			openTitle = openTitleOf(line);
+			const opened = openTitleOf(line);
+			openTitle = opened.title;
+			openTag = opened.tag;
 			openBody = [];
 			continue;
 		}
@@ -3495,7 +3868,14 @@ async function ensureHelpDocs() {
 				helpCache[key] = await res.text();
 			} catch (err) {
 				console.error("help load", file, err);
-				helpCache[key] = `Could not load help/${file}. Redeploy the view/help folder with the mod.`;
+				helpCache[key] =
+					typeof tf === "function"
+						? tf(
+								"cog-help-load-failed",
+								"Could not load help/{file}. Redeploy the view/help folder with the mod.",
+								{ file }
+							)
+						: `Could not load help/${file}. Redeploy the view/help folder with the mod.`;
 			}
 		};
 		await Promise.all([
@@ -3530,13 +3910,27 @@ function bindExclusiveAccordions(root, groupName) {
 
 function renderHelpDocument(host, text, opts) {
 	const exclusiveGroup = opts && opts.exclusiveGroup ? String(opts.exclusiveGroup) : "";
+	const docTag = opts && opts.docTag ? String(opts.docTag) : "";
 	const doc = document.createElement("div");
 	doc.className = "help-doc";
-	const blocks = parseHelpDocument(text);
+	let sourceText = String(text || "");
+	if (docTag && typeof t === "function") {
+		sourceText = t(docTag, sourceText);
+	}
+	sourceText = translateHelpMarkdown(sourceText);
+	const blocks = parseHelpDocument(sourceText);
 	if (!blocks.length) {
 		const p = document.createElement("p");
 		p.className = "lede";
-		p.textContent = "No entries yet. Edit the matching markdown file under view/help/.";
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(
+				p,
+				"cog-help-empty",
+				"No entries yet. Edit the matching markdown file under view/help/."
+			);
+		} else {
+			p.textContent = "No entries yet. Edit the matching markdown file under view/help/.";
+		}
 		doc.appendChild(p);
 		host.appendChild(doc);
 		return;
@@ -3556,14 +3950,27 @@ function renderHelpDocument(host, text, opts) {
 				firstDetails = false;
 			}
 			const summary = document.createElement("summary");
-			summary.textContent = block.title || "Section";
+			const tag = block.tag || "";
+			const titleFb = block.title || "Section";
+			if (tag && typeof setTranslatedText === "function") {
+				setTranslatedText(summary, tag, titleFb);
+			} else if (!block.title && typeof setTranslatedText === "function") {
+				setTranslatedText(summary, "cog-section", "Section");
+			} else {
+				summary.textContent = titleFb;
+			}
 			const body = document.createElement("div");
 			body.className = "accordion-body";
+			let bodyMd = block.text || "";
+			if (tag && typeof t === "function") {
+				bodyMd = t(`${tag}-body`, bodyMd);
+			}
+			bodyMd = translateHelpMarkdown(bodyMd);
 			if (renderMd) {
-				renderMd(body, block.text || "");
+				renderMd(body, bodyMd);
 			} else {
 				const p = document.createElement("p");
-				p.textContent = block.text || "";
+				p.textContent = bodyMd;
 				body.appendChild(p);
 			}
 			details.appendChild(summary);
@@ -3571,18 +3978,22 @@ function renderHelpDocument(host, text, opts) {
 			doc.appendChild(details);
 			continue;
 		}
+		const proseMd = translateHelpMarkdown(block.text || "");
 		if (renderMd) {
-			renderMd(doc, block.text || "");
+			renderMd(doc, proseMd);
 		} else {
 			const p = document.createElement("p");
 			p.className = "help-block";
-			p.textContent = block.text || "";
+			p.textContent = proseMd;
 			doc.appendChild(p);
 		}
 	}
 	host.appendChild(doc);
 	if (exclusiveGroup) {
 		bindExclusiveAccordions(doc, exclusiveGroup);
+	}
+	if (typeof applyTranslations === "function") {
+		applyTranslations(doc);
 	}
 }
 
@@ -3591,6 +4002,20 @@ function syncHelpChrome() {
 	const helpBtn = document.getElementById("editor-help");
 	if (helpBtn) {
 		helpBtn.classList.toggle("is-active", helpMode);
+		if (typeof setTranslatedTitle === "function") {
+			setTranslatedTitle(helpBtn, "cog-help-button-tip", "About, Definitions, Help, and Suppressions");
+		} else {
+			helpBtn.title = "About, Definitions, Help, and Suppressions";
+		}
+		if (typeof setTranslatedAriaLabel === "function") {
+			setTranslatedAriaLabel(helpBtn, "cog-help-button-tip", "About, Definitions, Help, and Suppressions");
+		} else {
+			helpBtn.setAttribute("aria-label", "About, Definitions, Help, and Suppressions");
+		}
+		helpBtn.dataset.tip =
+			typeof t === "function"
+				? t("cog-help-button-tip", "About, Definitions, Help, and Suppressions")
+				: "About, Definitions, Help, and Suppressions";
 	}
 	const tabs = document.getElementById("tabs");
 	if (!tabs) {
@@ -3610,6 +4035,26 @@ function syncHelpChrome() {
 			<button type="button" class="tab${activeTab === "gauges" ? " is-active" : ""}" data-tab="gauges">Gauges</button>
 			<button type="button" class="tab${activeTab === "gizmos" ? " is-active" : ""}" data-tab="gizmos">Gizmos</button>`;
 	}
+	if (typeof setTranslatedText === "function") {
+		const tabTags = {
+			general: ["cog-tab-general", "General"],
+			gears: ["cog-tab-gears", "Gears"],
+			groups: ["cog-tab-groups", "Groups"],
+			gauges: ["cog-tab-gauges", "Gauges"],
+			gizmos: ["cog-tab-gizmos", "Gizmos"],
+			about: ["cog-tab-about", "About"],
+			definitions: ["cog-tab-definitions", "Definitions"],
+			help: ["cog-tab-help", "Help"],
+			suppressions: ["cog-tab-suppressions", "Suppressions"]
+		};
+		for (const btn of tabs.querySelectorAll(".tab")) {
+			const key = btn.dataset.tab || btn.dataset.helpTab;
+			const entry = tabTags[key];
+			if (entry) {
+				setTranslatedText(btn, entry[0], entry[1]);
+			}
+		}
+	}
 }
 
 async function renderHelpTab(body) {
@@ -3624,21 +4069,42 @@ async function renderHelpTab(body) {
 				}
 				const fail = document.createElement("p");
 				fail.className = "lede";
-				fail.textContent = "Could not render Suppressions. Check COG.log / the browser console.";
+				if (typeof setTranslatedText === "function") {
+					setTranslatedText(
+						fail,
+						"cog-suppressions-render-failed",
+						"Could not render Suppressions. Check COG.log / the browser console."
+					);
+				} else {
+					fail.textContent =
+						"Could not render Suppressions. Check COG.log / the browser console.";
+				}
 				body.appendChild(fail);
 			}
 		} else {
 			const missing = document.createElement("p");
 			missing.className = "lede";
-			missing.textContent =
-				"Suppressions UI script is missing from the deployed view. Redeploy COG (xmake -y) so _Help_Suppressions.js is copied.";
+			if (typeof setTranslatedText === "function") {
+				setTranslatedText(
+					missing,
+					"cog-suppressions-script-missing",
+					"Suppressions UI script is missing from the deployed view. Redeploy COG (xmake -y) so _Help_Suppressions.js is copied."
+				);
+			} else {
+				missing.textContent =
+					"Suppressions UI script is missing from the deployed view. Redeploy COG (xmake -y) so _Help_Suppressions.js is copied.";
+			}
 			body.appendChild(missing);
 		}
 		return;
 	}
 	const pending = document.createElement("p");
 	pending.className = "lede";
-	pending.textContent = "Loading…";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(pending, "cog-loading", "Loading\u2026");
+	} else {
+		pending.textContent = "Loading\u2026";
+	}
 	body.appendChild(pending);
 	const docs = await ensureHelpDocs();
 	if (!helpMode || !body.isConnected) {
@@ -3650,7 +4116,7 @@ async function renderHelpTab(body) {
 	} else if (helpSubTab === "help") {
 		renderHelpDocument(body, docs.help, { exclusiveGroup: "cog-help" });
 	} else {
-		renderHelpDocument(body, docs.about, { exclusiveGroup: null });
+		renderHelpDocument(body, docs.about, { exclusiveGroup: null, docTag: "cog-help-about" });
 	}
 }
 
@@ -3923,19 +4389,55 @@ function updateKeybindHint() {
 	if (!el) {
 		return;
 	}
-	const label = rebindListening ? "... closes" : `${editorKeyName()} closes`;
-	// Listening uses a same-ish-width placeholder so Ultralight doesn't drop clicks
-	// on large mid-gesture label swaps.
-	if (el.textContent !== label) {
+	const key = editorKeyName();
+	// Visible label is "{key} closes". Hover tip explains rebind (Prisma ignores title=).
+	let tip;
+	if (rebindListening) {
+		const label =
+			typeof t === "function" ? t("cog-editor-key-listening-label", "\u2026 closes") : "\u2026 closes";
+		tip =
+			typeof t === "function"
+				? t("cog-editor-key-listening", "Press a new key\u2026 (click to cancel)")
+				: "Press a new key\u2026 (click to cancel)";
+		el.removeAttribute("data-translation");
+		el.removeAttribute("data-translation-fallback");
+		el.removeAttribute("data-translation-vars");
 		el.textContent = label;
+		if (typeof setTranslatedAriaLabel === "function") {
+			setTranslatedAriaLabel(
+				el,
+				"cog-editor-key-listening-aria",
+				"Listening for a new editor key. Click to cancel."
+			);
+		} else {
+			el.setAttribute("aria-label", "Listening for a new editor key. Click to cancel.");
+		}
+	} else {
+		tip =
+			typeof t === "function"
+				? t("cog-editor-key-rebind-tip", "Click to rebind the editor key")
+				: "Click to rebind the editor key";
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(el, "cog-editor-key-closes", "{key} closes", { key });
+		} else {
+			el.textContent = `${key} closes`;
+		}
+		if (typeof setTranslatedAriaLabel === "function") {
+			setTranslatedAriaLabel(el, "cog-editor-key-closes-aria", "Editor key {key}. Click to rebind.", {
+				key
+			});
+		} else {
+			el.setAttribute("aria-label", `Editor key ${key}. Click to rebind.`);
+		}
 	}
 	el.classList.toggle("is-listening", rebindListening);
-	el.setAttribute(
-		"aria-label",
-		rebindListening ? "Listening for a new editor key. Click to cancel." : `Editor key ${editorKeyName()}. Click to rebind.`
-	);
-	el.title = rebindListening ? "Press a new key… (click to cancel)" : "Click to rebind the editor key";
+	el.removeAttribute("title");
+	el.dataset.tip = tip;
+	if (hoverTipAnchor === el) {
+		showHoverTip(el, tip);
+	}
 }
+window.updateKeybindHint = updateKeybindHint;
 
 function setRebindListening(on) {
 	const next = !!on;

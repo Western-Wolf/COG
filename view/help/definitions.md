@@ -1,4 +1,4 @@
-+++ Gadget
++++ Gadget #cog-help-def-gadget
 
 A Gadget is any editable display element. The name sits near "widget", and this mod is a spiritual successor to projects like iWant Widgets, so a similar word felt appropriate.
 
@@ -7,26 +7,26 @@ A Gadget can be a Group, Gauge, or Gizmo.
 Most Gadgets are made of Gears — individual trackers registered with COG by a mod.
  +++
 
-+++ Gear
++++ Gear #cog-help-def-gear
 
 A Gear is one registered tracker: a `sourceMod` + `varName` pair, its live value, and the appearance you set in the Gears tab (icon, colours, hide rules, display name).
 
 Exposure of a Gear is done with Groups and Gauges. By default, mod-added Gears will be added to the Default Group on their first load to make them visible, but you can change which group they're in or even remove them entirely if you prefer.
  +++
 
-+++ Group
++++ Group #cog-help-def-group
 
 A Group is a type of Gadget that exposes multiple gears in a compact, customizable line. Groups are meant to show the most information in the least space.
 
 You can customize position, rotation, size, spacing, stack side, and shared style options (including Group colours for theming groups, and Fill from Hidden, which controls how icons display based on a Gear's `Hide when` setting).
  +++
 
-+++ Gauge
++++ Gauge #cog-help-def-gauge
 
 A Gauge exposes an individual Gear for tracking. Think of your Health bar in the default game: it tracks a single statistic, health. Gauges can mimic this, creating bar- or arc-style meters, or individual framed displays independent of Groups.
  +++
 
-+++ Gizmo
++++ Gizmo #cog-help-def-gizmo
 
 Gizmos are the "fancy Gadgets", bespoke HUD elements that either don't rely on Gears or alternately rely on more than one Gear. Something like your compass, which has data sources for direction, locations, distance, etc., all packed into one.
 

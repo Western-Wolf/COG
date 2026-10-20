@@ -30,13 +30,13 @@ function sourceTitle(src, fallback, gear) {
 
 function typeLabel(type) {
 	if (type === "percent") {
-		return "Percent";
+		return typeof t === "function" ? t("cog-percent", "Percent") : "Percent";
 	}
 	if (type === "count") {
-		return "Count";
+		return typeof t === "function" ? t("cog-count", "Count") : "Count";
 	}
 	if (type === "timer") {
-		return "Timer";
+		return typeof t === "function" ? t("cog-timer", "Timer") : "Timer";
 	}
 	return type || "?";
 }
@@ -1676,7 +1676,17 @@ function fillEditGearPicker() {
 	if (!options.length) {
 		const empty = document.createElement("li");
 		empty.className = "empty";
-		empty.textContent = (snapshot.gears || []).length ? "No matches." : "No gears registered yet.";
+		if ((snapshot.gears || []).length) {
+			if (typeof setTranslatedText === "function") {
+				setTranslatedText(empty, "cog-no-matches", "No matches.");
+			} else {
+				empty.textContent = "No matches.";
+			}
+		} else if (typeof setTranslatedText === "function") {
+			setTranslatedText(empty, "cog-no-gears-registered", "No gears registered yet.");
+		} else {
+			empty.textContent = "No gears registered yet.";
+		}
 		list.appendChild(empty);
 		return;
 	}
@@ -1695,7 +1705,14 @@ function fillEditGearPicker() {
 		li.querySelector(".opt-title").textContent = sourceTitle(src, gear.name, gear);
 		const placed = effectiveGroupId(gear);
 		const bits = [(src && src.category) || "—", typeLabel(src && src.type)];
-		bits.push(placed ? `in ${groupDisplayName(placed)}` : "Unplaced");
+		if (placed) {
+			const groupName = groupDisplayName(placed);
+			bits.push(
+				typeof tf === "function" ? tf("cog-in-group", "in {group}", { group: groupName }) : `in ${groupName}`
+			);
+		} else {
+			bits.push(typeof t === "function" ? t("cog-unplaced", "Unplaced") : "Unplaced");
+		}
 		li.querySelector(".opt-meta").textContent = bits.join(" · ");
 		li.addEventListener("mousedown", (ev) => {
 			ev.preventDefault();
@@ -1749,7 +1766,11 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 	if (!selectedGearId) {
 		const hint = document.createElement("p");
 		hint.className = "lede";
-		hint.textContent = "Select a gear above to edit its appearance.";
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(hint, "cog-select-gear-to-edit", "Select a gear above to edit its appearance.");
+		} else {
+			hint.textContent = "Select a gear above to edit its appearance.";
+		}
 		host.appendChild(hint);
 		return;
 	}
@@ -1760,7 +1781,11 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 		}
 		const hint = document.createElement("p");
 		hint.className = "lede";
-		hint.textContent = "That gear is no longer available. Pick another from the list.";
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(hint, "cog-gear-unavailable", "That gear is no longer available. Pick another from the list.");
+		} else {
+			hint.textContent = "That gear is no longer available. Pick another from the list.";
+		}
 		host.appendChild(hint);
 		return;
 	}
@@ -1774,12 +1799,12 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 	form.innerHTML = `
 		<p class="lede" data-role="heading"></p>
 		<div class="gear-edit-identity">
-			<label class="pos-field grow">Display name<input type="text" data-role="display" spellcheck="false"></label>
+			<label class="pos-field grow"><span>Display name</span><input type="text" data-role="display" spellcheck="false"></label>
 			<div data-role="iconSlot"></div>
 		</div>
 		<div class="color-row" data-role="colors"></div>
 		<div class="hide-at-row" data-role="hideAtRow">
-			<label class="pos-field compact hide-at-op">Hide when
+			<label class="pos-field compact hide-at-op"><span>Hide when</span>
 				<select data-role="hideAtOp">
 					<option value="">Off</option>
 					<option value="<">Below</option>
@@ -1791,13 +1816,13 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 			</label>
 		</div>
 		<div class="hide-at-row" data-role="hudSuppressRow">
-			<label class="pos-field compact hide-at-op">HUD Suppression
+			<label class="pos-field compact hide-at-op"><span>HUD Suppression</span>
 				<select data-role="hudHideDuplicate">
 					<option value="0">Off</option>
 					<option value="1">On</option>
 				</select>
 			</label>
-			<label class="pos-field compact hud-suppress-target">HUD Target
+			<label class="pos-field compact hud-suppress-target"><span>HUD Target</span>
 				<input type="text" data-role="hudLinkedElement" spellcheck="false" placeholder="hud.casting">
 			</label>
 		</div>
@@ -1805,20 +1830,69 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 			<button type="button" class="action" data-role="reset">Reset to defaults</button>
 		</div>
 		<p class="lede" data-role="meta"></p>`;
-	form.querySelector('[data-role="heading"]').textContent = `${sourceTitle(src, gear.name, gear)} · ${placed ? groupDisplayName(placed) : "Unplaced"}`;
-	form.querySelector('[data-role="meta"]').textContent = src
-		? `Mod ${gear.mod} · ${gear.name} · ${sourceMeta(src)}`
-		: `Mod ${gear.mod} · ${gear.name} · (source not registered this session)`;
+	const placeLabel = placed
+		? groupDisplayName(placed)
+		: typeof t === "function"
+			? t("cog-unplaced", "Unplaced")
+			: "Unplaced";
+	form.querySelector('[data-role="heading"]').textContent = `${sourceTitle(src, gear.name, gear)} · ${placeLabel}`;
+	const metaEl = form.querySelector('[data-role="meta"]');
+	if (src) {
+		const metaVars = { mod: gear.mod, name: gear.name, meta: sourceMeta(src) };
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(metaEl, "cog-gear-meta-mod", "Mod {mod} · {name} · {meta}", metaVars);
+		} else {
+			metaEl.textContent = `Mod ${gear.mod} · ${gear.name} · ${sourceMeta(src)}`;
+		}
+	} else {
+		const metaVars = { mod: gear.mod, name: gear.name };
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(
+				metaEl,
+				"cog-gear-meta-unregistered",
+				"Mod {mod} · {name} · (source not registered this session)",
+				metaVars
+			);
+		} else {
+			metaEl.textContent = `Mod ${gear.mod} · ${gear.name} · (source not registered this session)`;
+		}
+	}
 	const displayInput = form.querySelector('[data-role="display"]');
 	const hideOpSel = form.querySelector('[data-role="hideAtOp"]');
 	const hidePctInput = form.querySelector('[data-role="hideAtPct"]');
 	const hideRow = form.querySelector('[data-role="hideAtRow"]');
 	const hideLabel = form.querySelector('[data-role="hideAtThresholdLabel"]');
+	tagFieldLabel(form.querySelector(".gear-edit-identity .pos-field"), "cog-display-name", "Display name");
+	tagFieldLabel(form.querySelector(".hide-at-op"), "cog-hide-when", "Hide when");
+	tagSelectOptions(hideOpSel, {
+		"": ["cog-off", "Off"],
+		"<": ["cog-below", "Below"],
+		">": ["cog-above", "Above"]
+	});
+	tagFieldLabel(form.querySelector(".hide-at-pct"), "cog-threshold", "Threshold");
+	tagFieldLabel(form.querySelector('[data-role="hudSuppressRow"] .hide-at-op'), "cog-hud-suppression", "HUD Suppression");
+	tagSelectOptions(form.querySelector('[data-role="hudHideDuplicate"]'), {
+		"0": ["cog-off", "Off"],
+		"1": ["cog-on", "On"]
+	});
+	tagFieldLabel(form.querySelector(".hud-suppress-target"), "cog-hud-target", "HUD Target");
+	const hudLinkInputEarly = form.querySelector('[data-role="hudLinkedElement"]');
+	if (typeof setTranslatedPlaceholder === "function") {
+		setTranslatedPlaceholder(hudLinkInputEarly, "cog-hud-target-placeholder", "hud.casting");
+	}
+	const resetBtn = form.querySelector('[data-role="reset"]');
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(resetBtn, "cog-reset-to-defaults", "Reset to defaults");
+	}
 	displayInput.value = look.display || "";
 	const hideType = (src && src.type) || "";
 	const hideAbsolute = hideType === "count" || hideType === "timer";
 	if (hideLabel) {
-		hideLabel.textContent = "Threshold";
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(hideLabel, "cog-threshold", "Threshold");
+		} else {
+			hideLabel.textContent = "Threshold";
+		}
 	}
 	if (hideAbsolute) {
 		hidePctInput.removeAttribute("max");
@@ -1836,17 +1910,32 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 	hideOpSel.value = hideParts.op;
 	hidePctInput.value = hideParts.value;
 	hidePctInput.disabled = !hideParts.op;
-	const hideTip =
-		hideType === "count"
-			? "Hide this gear when its count is below or above the threshold (any number). Example: Below 1 hides when empty."
-			: hideType === "timer"
-				? "Hide this gear when remaining time (seconds) is below or above the threshold. Group Fill from Hidden can soften the reveal."
-				: "Hide this gear when its meter is below or above the threshold (0–100%). Group Fill from Hidden can soften the reveal.";
 	if (hideRow) {
-		hideRow.appendChild(makeInfoTip(hideTip));
+		if (hideType === "count") {
+			hideRow.appendChild(
+				makeInfoTip(
+					"Hide this gear when its count is below or above the threshold (any number). Example: Below 1 hides when empty.",
+					"cog-gear-hide-tip-count"
+				)
+			);
+		} else if (hideType === "timer") {
+			hideRow.appendChild(
+				makeInfoTip(
+					"Hide this gear when remaining time (seconds) is below or above the threshold. Group Fill from Hidden can soften the reveal.",
+					"cog-gear-hide-tip-timer"
+				)
+			);
+		} else {
+			hideRow.appendChild(
+				makeInfoTip(
+					"Hide this gear when its meter is below or above the threshold (0–100%). Group Fill from Hidden can soften the reveal.",
+					"cog-gear-hide-tip-percent"
+				)
+			);
+		}
 	}
 	const hudDupSel = form.querySelector('[data-role="hudHideDuplicate"]');
-	const hudLinkInput = form.querySelector('[data-role="hudLinkedElement"]');
+	const hudLinkInput = hudLinkInputEarly;
 	const hudRow = form.querySelector('[data-role="hudSuppressRow"]');
 	hudDupSel.value = look.hudHideDuplicate ? "1" : "0";
 	hudLinkInput.value = String(look.hudLinkedElement || "");
@@ -1854,7 +1943,8 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 	if (hudRow) {
 		hudRow.appendChild(
 			makeInfoTip(
-				"While this gear is exposed (enabled in a visible group, or a visible gauge bound to it), soft-hide the HUD target. Use an alias (e.g. hud.casting) or a raw menu/path (e.g. HUD Menu|HUDMovieBaseInstance.Health)."
+				"While this gear is exposed (enabled in a visible group, or a visible gauge bound to it), soft-hide the HUD target. Use an alias (e.g. hud.casting) or a raw menu/path (e.g. HUD Menu|HUDMovieBaseInstance.Health).",
+				"cog-gear-hud-suppress-tip"
 			)
 		);
 	}
@@ -1874,31 +1964,58 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 			hudLinkInput.blur();
 		}
 	});
-	form.querySelector('[data-role="iconSlot"]').appendChild(
-		makeIconControl({
-			label: "Icon",
-			value: look.icon || "",
-			showName: true,
-			onCommit: (icon) => {
-				patchGearSettings(gear.id, { icon });
-			}
-		})
-	);
+	const iconCtrl = makeIconControl({
+		label: "Icon",
+		value: look.icon || "",
+		showName: true,
+		onCommit: (icon) => {
+			patchGearSettings(gear.id, { icon });
+		}
+	});
+	tagFieldLabel(iconCtrl, "cog-icon", "Icon");
+	form.querySelector('[data-role="iconSlot"]').appendChild(iconCtrl);
 	const colors = form.querySelector('[data-role="colors"]');
 	colors.classList.add("color-ramp-stack");
+	const tagColorRamp = (editor, headingTag, headingFallback) => {
+		const heading = editor.querySelector(".color-ramp-heading");
+		const hint = editor.querySelector(".color-ramp-hint");
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(heading, headingTag, headingFallback);
+			setTranslatedText(
+				hint,
+				"cog-color-ramp-hint",
+				"Empty inherits the backup. Multiple stops fade between percentages."
+			);
+		}
+		return editor;
+	};
 	colors.appendChild(
-		makeColorRampEditor("Icon colours", look.iconColor, themeIconColor(), (ramp, live) => {
-			patchGearSettings(gear.id, { iconColor: ramp }, live);
-		})
+		tagColorRamp(
+			makeColorRampEditor("Icon colours", look.iconColor, themeIconColor(), (ramp, live) => {
+				patchGearSettings(gear.id, { iconColor: ramp }, live);
+			}),
+			"cog-icon-colours",
+			"Icon colours"
+		)
 	);
 	colors.appendChild(
-		makeColorRampEditor("Bar colours", look.barColor, themeFill(), (ramp, live) => {
-			patchGearSettings(gear.id, { barColor: ramp }, live);
-		})
+		tagColorRamp(
+			makeColorRampEditor("Bar colours", look.barColor, themeFill(), (ramp, live) => {
+				patchGearSettings(gear.id, { barColor: ramp }, live);
+			}),
+			"cog-bar-colours",
+			"Bar colours"
+		)
 	);
 	const commitText = (key, el) => {
 		patchGearSettings(gear.id, { [key]: el.value.trim() });
-		form.querySelector('[data-role="heading"]').textContent = `${sourceTitle(sourceFor(gear.mod, gear.name), gear.name, gear)} · ${effectiveGroupId(gear) ? groupDisplayName(effectiveGroupId(gear)) : "Unplaced"}`;
+		const nextPlaced = effectiveGroupId(gear);
+		const nextPlaceLabel = nextPlaced
+			? groupDisplayName(nextPlaced)
+			: typeof t === "function"
+				? t("cog-unplaced", "Unplaced")
+				: "Unplaced";
+		form.querySelector('[data-role="heading"]').textContent = `${sourceTitle(sourceFor(gear.mod, gear.name), gear.name, gear)} · ${nextPlaceLabel}`;
 		if (key === "display") {
 			refreshInventoryGearChrome(gear.id);
 		}
@@ -2007,7 +2124,17 @@ function fillPicker() {
 	if (!options.length) {
 		const empty = document.createElement("li");
 		empty.className = "empty";
-		empty.textContent = sourcesNotInGroup(pickerGroupId).length ? "No matches." : "All sources are already in this group.";
+		if (sourcesNotInGroup(pickerGroupId).length) {
+			if (typeof setTranslatedText === "function") {
+				setTranslatedText(empty, "cog-no-matches", "No matches.");
+			} else {
+				empty.textContent = "No matches.";
+			}
+		} else if (typeof setTranslatedText === "function") {
+			setTranslatedText(empty, "cog-all-sources-in-group", "All sources are already in this group.");
+		} else {
+			empty.textContent = "All sources are already in this group.";
+		}
 		list.appendChild(empty);
 		return;
 	}
@@ -2022,7 +2149,10 @@ function fillPicker() {
 		const placed = gearBySource(src.mod, src.name);
 		const bits = [src.category || "—", typeLabel(src.type)];
 		if (placed) {
-			bits.push(`in ${groupDisplayName(effectiveGroupId(placed))}`);
+			const groupName = groupDisplayName(effectiveGroupId(placed));
+			bits.push(
+				typeof tf === "function" ? tf("cog-in-group", "in {group}", { group: groupName }) : `in ${groupName}`
+			);
 		}
 		li.querySelector(".opt-meta").textContent = bits.join(" · ");
 		const targetGroupId = pickerGroupId;
@@ -2294,7 +2424,9 @@ function refreshInventoryGearChrome(gearId) {
 	}
 	const src = sourceFor(gear.mod, gear.name);
 	const look = appearanceOf(gear, src);
-	const label = look.display || gear.name || "Inventory gear";
+	const fallbackLabel =
+		typeof t === "function" ? t("cog-inventory-gear", "Inventory gear") : "Inventory gear";
+	const label = look.display || gear.name || fallbackLabel;
 	const acc = document.querySelector(`.inventory-gear-acc[data-gear-id="${CSS.escape(gear.id)}"]`);
 	if (!acc) {
 		return;
@@ -2314,7 +2446,9 @@ function renderInventoryGearEditor(host, gear) {
 	const look = appearanceOf(gear, src);
 	const title = document.createElement("p");
 	title.className = "lede";
-	title.textContent = `${look.display || gear.name}${src ? ` · ${sourceMeta(src)}` : ""}`;
+	const invFallback =
+		typeof t === "function" ? t("cog-inventory-gear", "Inventory gear") : "Inventory gear";
+	title.textContent = `${look.display || gear.name || invFallback}${src ? ` · ${sourceMeta(src)}` : ""}`;
 	host.appendChild(title);
 	const formHost = document.createElement("div");
 	formHost.className = "gear-edit-host";
@@ -2352,16 +2486,29 @@ function renderGearsTab(body) {
 	edit.open = openGearsTabAcc === "edit" || !openGearsTabAcc;
 	edit.innerHTML = `<summary>Registered Gears</summary><div class="accordion-body"></div>`;
 	const editBody = edit.querySelector(".accordion-body");
+	const editSummary = edit.querySelector("summary");
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(editSummary, "cog-registered-gears", "Registered Gears");
+	}
 	const lede = document.createElement("p");
 	lede.className = "lede";
-	lede.textContent = "Search for a registered tracker to change its appearance. Changes update the HUD live. Placement still comes from the Groups tab.";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(
+			lede,
+			"cog-registered-gears-lede",
+			"Search for a registered tracker to change its appearance. Changes update the HUD live. Placement still comes from the Groups tab."
+		);
+	} else {
+		lede.textContent =
+			"Search for a registered tracker to change its appearance. Changes update the HUD live. Placement still comes from the Groups tab.";
+	}
 	editBody.appendChild(lede);
 
 	const picker = document.createElement("div");
 	picker.className = "group-picker gear-edit-picker";
 	picker.innerHTML = `
 		<div class="picker-filters">
-			<label class="pos-field">Type
+			<label class="pos-field"><span>Type</span>
 				<select class="filter-type">
 					<option value="">All types</option>
 					<option value="percent">Percent</option>
@@ -2369,7 +2516,7 @@ function renderGearsTab(body) {
 					<option value="timer">Timer</option>
 				</select>
 			</label>
-			<label class="pos-field">Category
+			<label class="pos-field"><span>Category</span>
 				<select class="filter-category">
 					<option value="">All categories</option>
 				</select>
@@ -2377,6 +2524,21 @@ function renderGearsTab(body) {
 		</div>
 		<input class="picker-filter" type="text" placeholder="Filter by name…" autocomplete="off" spellcheck="false">
 		<ul class="picker-list"></ul>`;
+	tagFieldLabel(picker.querySelector(".filter-type")?.closest("label"), "cog-type", "Type");
+	tagSelectOptions(picker.querySelector(".filter-type"), {
+		"": ["cog-all-types", "All types"],
+		percent: ["cog-percent", "Percent"],
+		count: ["cog-count", "Count"],
+		timer: ["cog-timer", "Timer"]
+	});
+	tagFieldLabel(picker.querySelector(".filter-category")?.closest("label"), "cog-category", "Category");
+	tagSelectOptions(picker.querySelector(".filter-category"), {
+		"": ["cog-all-categories", "All categories"]
+	});
+	const pickerFilter = picker.querySelector(".picker-filter");
+	if (typeof setTranslatedPlaceholder === "function") {
+		setTranslatedPlaceholder(pickerFilter, "cog-filter-by-name", "Filter by name…");
+	}
 	refreshCategorySelects(picker);
 	editBody.appendChild(picker);
 	bindGearFilters(picker);
@@ -2399,10 +2561,22 @@ function renderGearsTab(body) {
 	create.open = openGearsTabAcc === "create";
 	create.innerHTML = `<summary>Inventory Gears</summary><div class="accordion-body"></div>`;
 	const createBody = create.querySelector(".accordion-body");
+	const createSummary = create.querySelector("summary");
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(createSummary, "cog-inventory-gears", "Inventory Gears");
+	}
 	const createLede = document.createElement("p");
 	createLede.className = "lede";
-	createLede.textContent =
-		"Track item counts from your inventory. Add items from your inventory into the temporary container; each new item becomes its own gear and is returned to your inventory when you close the container. These gears live here—not in Registered Gears above—but you can hook them to groups, gauges, and gizmos.";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(
+			createLede,
+			"cog-inventory-gears-lede",
+			"Track item counts from your inventory. Add items from your inventory into the temporary container; each new item becomes its own gear and is returned to your inventory when you close the container. These gears live here—not in Registered Gears above—but you can hook them to groups, gauges, and gizmos."
+		);
+	} else {
+		createLede.textContent =
+			"Track item counts from your inventory. Add items from your inventory into the temporary container; each new item becomes its own gear and is returned to your inventory when you close the container. These gears live here—not in Registered Gears above—but you can hook them to groups, gauges, and gizmos.";
+	}
 	createBody.appendChild(createLede);
 
 	const bar = document.createElement("div");
@@ -2410,7 +2584,11 @@ function renderGearsTab(body) {
 	const addBtn = document.createElement("button");
 	addBtn.type = "button";
 	addBtn.className = "action";
-	addBtn.textContent = "Add Item from Inventory";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(addBtn, "cog-add-item-from-inventory", "Add Item from Inventory");
+	} else {
+		addBtn.textContent = "Add Item from Inventory";
+	}
 	addBtn.addEventListener("click", () => openInventoryGearPicker());
 	bar.appendChild(addBtn);
 	createBody.appendChild(bar);
@@ -2422,7 +2600,11 @@ function renderGearsTab(body) {
 	if (!gears.length) {
 		const empty = document.createElement("p");
 		empty.className = "lede";
-		empty.textContent = "No inventory gears yet.";
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(empty, "cog-no-inventory-gears", "No inventory gears yet.");
+		} else {
+			empty.textContent = "No inventory gears yet.";
+		}
 		createBody.appendChild(empty);
 	} else {
 		for (const gear of gears) {
@@ -2441,18 +2623,28 @@ function renderGearsTab(body) {
 				</summary>
 				<div class="accordion-body" data-role="inventoryGearBody"></div>`;
 			const title = details.querySelector(".group-title");
-			title.textContent = look.display || gear.name || "Inventory gear";
+			const invFallback =
+				typeof t === "function" ? t("cog-inventory-gear", "Inventory gear") : "Inventory gear";
+			title.textContent = look.display || gear.name || invFallback;
 			const end = details.querySelector(".end");
 			if (isProtectedInventoryGear(gear)) {
 				const note = document.createElement("span");
 				note.className = "locked-note";
-				note.textContent = "Cannot delete";
+				if (typeof setTranslatedText === "function") {
+					setTranslatedText(note, "cog-cannot-delete", "Cannot delete");
+				} else {
+					note.textContent = "Cannot delete";
+				}
 				end.appendChild(note);
 			} else {
 				const del = document.createElement("button");
 				del.type = "button";
 				del.className = "remove";
-				del.textContent = "Delete";
+				if (typeof setTranslatedText === "function") {
+					setTranslatedText(del, "cog-delete", "Delete");
+				} else {
+					del.textContent = "Delete";
+				}
 				del.addEventListener("click", () => removeInventoryGear(gear));
 				end.appendChild(del);
 				stopHeaderToggle(del);
@@ -2477,7 +2669,13 @@ function makeGearColorField(label, gearId, key, value, fallback) {
 function makeNeutralIconField(selectEl) {
 	const field = document.createElement("label");
 	field.className = "color-field color-field-select";
-	field.appendChild(document.createTextNode("Neutral icon colour"));
+	const labelSpan = document.createElement("span");
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(labelSpan, "cog-neutral-icon-colour", "Neutral icon colour");
+	} else {
+		labelSpan.textContent = "Neutral icon colour";
+	}
+	field.appendChild(labelSpan);
 	field.appendChild(selectEl);
 	return field;
 }
@@ -2492,6 +2690,14 @@ function makeNeutralIconSelect(value, onChange) {
 		<option value="icon0">Icon 0%</option>
 		<option value="icon50">Icon 50%</option>
 		<option value="icon100">Icon 100%</option>`;
+	tagSelectOptions(sel, {
+		white: ["cog-always-white", "Always White"],
+		bar: ["cog-bar", "Bar"],
+		border: ["cog-border", "Border"],
+		icon0: ["cog-icon-0", "Icon 0%"],
+		icon50: ["cog-icon-50", "Icon 50%"],
+		icon100: ["cog-icon-100", "Icon 100%"]
+	});
 	sel.value = normalizeNeutralIconMode(value);
 	sel.addEventListener("change", () => onChange(normalizeNeutralIconMode(sel.value)));
 	return sel;

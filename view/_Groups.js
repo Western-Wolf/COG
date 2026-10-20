@@ -530,15 +530,27 @@ function renderGroups(body) {
 	const add = document.createElement("button");
 	add.type = "button";
 	add.className = "action";
-	add.textContent = "Add group";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(add, "cog-add-group", "Add group");
+	} else {
+		add.textContent = "Add group";
+	}
 	add.addEventListener("click", addGroup);
 	bar.appendChild(add);
 	body.appendChild(bar);
 	const intro = document.createElement("p");
 	intro.className = "lede";
-	intro.textContent = "A group is a line that starts at X/Y. Size is the icon square, or the gear height when icons are off. Title and numbers sit away from the icon; the bar stays next to it. Stack chooses which side of the icon they sit on.";
-	intro.textContent =
-		"A group is a line that starts at X/Y. Size is the icon square, or the gear height when icons are off. Title and numbers sit away from the icon; the bar stays next to it. Stack chooses which side of the icon they sit on. Up/Down reorder the list — later groups draw on top of earlier ones.";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(
+			intro,
+			"cog-groups-intro",
+			"A group is a line that starts at X/Y. Size is the icon square, or the gear height when icons are off. Title and numbers sit away from the icon; the bar stays next to it. Stack chooses which side of the icon they sit on. Up/Down reorder the list — later groups draw on top of earlier ones."
+		);
+	} else {
+		intro.textContent =
+			"A group is a line that starts at X/Y. Size is the icon square, or the gear height when icons are off. Title and numbers sit away from the icon; the bar stays next to it. Stack chooses which side of the icon they sit on. Up/Down reorder the list — later groups draw on top of earlier ones.";
+	}
+	body.appendChild(intro);
 	if (openGroupId && !snapshot.groups.some((g) => g.id === openGroupId)) {
 		openGroupId = DEFAULT_GROUP_ID;
 	}
@@ -567,7 +579,7 @@ function renderGroups(body) {
 					<label class="pos-field"><span>Spacing</span><input type="number" min="0" max="256" step="1" data-role="spacing"></label>
 				</div>
 				<div class="style-row">
-					<label class="pos-field compact">Stack
+					<label class="pos-field compact"><span>Stack</span>
 						<select data-role="stack">
 							<option value="right">Right of icon</option>
 							<option value="left">Left of icon</option>
@@ -575,7 +587,7 @@ function renderGroups(body) {
 							<option value="below">Below icon</option>
 						</select>
 					</label>
-					<label class="pos-field compact wide">Number Format
+					<label class="pos-field compact wide"><span>Number Format</span>
 						<select data-role="numberFormat">
 							<option value="bar">Show bar</option>
 							<option value="barPercent">Show bar and percentage</option>
@@ -585,7 +597,7 @@ function renderGroups(body) {
 						</select>
 					</label>
 					<label class="pos-field compact wide" data-role="fillFromHiddenRow">
-						<span class="field-title-row" data-role="fillFromHiddenTitle">Fill from Hidden</span>
+						<span class="field-title-row" data-role="fillFromHiddenTitle"><span>Fill from Hidden</span></span>
 						<select data-role="fillFromHidden">
 							<option value="">Off</option>
 							<option value="alpha">Alpha</option>
@@ -595,11 +607,11 @@ function renderGroups(body) {
 							<option value="alphaDown">Alpha &amp; Down</option>
 						</select>
 					</label>
-					<label><input type="checkbox" data-role="showLabel"> Title</label>
-					<label><input type="checkbox" data-role="showIcon"> Icon</label>
-					<label><input type="checkbox" data-role="showNumber"> Show Number</label>
-					<label><input type="checkbox" data-role="barTrough"> Bar trough</label>
-					<label class="check-row" data-role="useGroupColorsRow"><input type="checkbox" data-role="useGroupColors"> Use group colours</label>
+					<label><input type="checkbox" data-role="showLabel"> <span>Title</span></label>
+					<label><input type="checkbox" data-role="showIcon"> <span>Icon</span></label>
+					<label><input type="checkbox" data-role="showNumber"> <span>Show Number</span></label>
+					<label><input type="checkbox" data-role="barTrough"> <span>Bar trough</span></label>
+					<label class="check-row" data-role="useGroupColorsRow"><input type="checkbox" data-role="useGroupColors"> <span>Use group colours</span></label>
 				</div>
 				<div class="group-color-section" data-role="groupColors" hidden>
 					<div class="color-row" data-role="groupColorFields"></div>
@@ -613,7 +625,7 @@ function renderGroups(body) {
 						</div>
 						<div class="group-picker" hidden>
 							<div class="picker-filters">
-								<label class="pos-field">Type
+								<label class="pos-field"><span>Type</span>
 									<select class="filter-type">
 										<option value="">All types</option>
 										<option value="percent">Percent</option>
@@ -621,7 +633,7 @@ function renderGroups(body) {
 										<option value="timer">Timer</option>
 									</select>
 								</label>
-								<label class="pos-field">Category
+								<label class="pos-field"><span>Category</span>
 									<select class="filter-category">
 										<option value="">All categories</option>
 									</select>
@@ -643,7 +655,11 @@ function renderGroups(body) {
 			const edit = document.createElement("button");
 			edit.type = "button";
 			edit.className = "tiny";
-			edit.textContent = "Edit";
+			if (typeof setTranslatedText === "function") {
+				setTranslatedText(edit, "cog-edit", "Edit");
+			} else {
+				edit.textContent = "Edit";
+			}
 			end.appendChild(edit);
 			const finishRename = (save) => {
 				if (!details.classList.contains("is-renaming")) {
@@ -688,16 +704,108 @@ function renderGroups(body) {
 		if (group.locked || group.id === DEFAULT_GROUP_ID) {
 			const note = document.createElement("span");
 			note.className = "locked-note";
-			note.textContent = "Cannot delete";
+			if (typeof setTranslatedText === "function") {
+				setTranslatedText(note, "cog-cannot-delete", "Cannot delete");
+			} else {
+				note.textContent = "Cannot delete";
+			}
 			end.appendChild(note);
 		} else {
 			const del = document.createElement("button");
 			del.type = "button";
 			del.className = "remove";
-			del.textContent = "Delete";
+			if (typeof setTranslatedText === "function") {
+				setTranslatedText(del, "cog-delete", "Delete");
+			} else {
+				del.textContent = "Delete";
+			}
 			del.addEventListener("click", () => removeGroup(group.id));
 			end.appendChild(del);
 			stopHeaderToggle(del);
+		}
+		const sectionLabel = details.querySelector(".section-label");
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(sectionLabel, "cog-group-settings", "Group settings");
+		}
+		// X/Y are single letters — leave untagged.
+
+		tagFieldLabel(details.querySelector('[data-role="rotation"]')?.closest("label"), "cog-rotation", "Rotation");
+		tagFieldLabel(details.querySelector('[data-role="gearSize"]')?.closest("label"), "cog-size", "Size");
+		tagFieldLabel(details.querySelector('[data-role="spacing"]')?.closest("label"), "cog-spacing", "Spacing");
+		const stackField = details.querySelector('[data-role="stack"]')?.closest("label");
+		tagFieldLabel(stackField, "cog-stack", "Stack");
+		tagSelectOptions(details.querySelector('[data-role="stack"]'), {
+			right: ["cog-right-of-icon", "Right of icon"],
+			left: ["cog-left-of-icon", "Left of icon"],
+			above: ["cog-above-icon", "Above icon"],
+			below: ["cog-below-icon", "Below icon"]
+		});
+		const numberFormatField = details.querySelector('[data-role="numberFormat"]')?.closest("label");
+		tagFieldLabel(numberFormatField, "cog-number-format", "Number Format");
+		tagSelectOptions(details.querySelector('[data-role="numberFormat"]'), {
+			bar: ["cog-number-format-bar", "Show bar"],
+			barPercent: ["cog-number-format-bar-percent", "Show bar and percentage"],
+			barTotal: ["cog-group-number-format-bar-total", "Show bar and total"],
+			percent: ["cog-number-format-percent", "Show percentage"],
+			total: ["cog-group-number-format-total", "Show total"]
+		});
+		const fillTitle = details.querySelector('[data-role="fillFromHiddenTitle"]');
+		const fillTitleLabel = fillTitle && fillTitle.querySelector(":scope > span");
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(fillTitleLabel, "cog-fill-from-hidden", "Fill from Hidden");
+		}
+		tagSelectOptions(details.querySelector('[data-role="fillFromHidden"]'), {
+			"": ["cog-off", "Off"],
+			alpha: ["cog-alpha", "Alpha"],
+			up: ["cog-up", "Up"],
+			down: ["cog-down", "Down"],
+			alphaUp: ["cog-alpha-up", "Alpha & Up"],
+			alphaDown: ["cog-alpha-down", "Alpha & Down"]
+		});
+		const tagCheckSpan = (role, tag, fallback) => {
+			const input = details.querySelector(`[data-role="${role}"]`);
+			const span = input && input.parentElement && input.parentElement.querySelector(":scope > span");
+			if (typeof setTranslatedText === "function") {
+				setTranslatedText(span, tag, fallback);
+			} else if (span) {
+				span.textContent = fallback;
+			}
+		};
+		tagCheckSpan("showLabel", "cog-title", "Title");
+		tagCheckSpan("showIcon", "cog-icon", "Icon");
+		tagCheckSpan("showNumber", "cog-show-number", "Show Number");
+		tagCheckSpan("barTrough", "cog-bar-trough", "Bar trough");
+		tagCheckSpan("useGroupColors", "cog-use-group-colours", "Use group colours");
+		const gearsSummary = details.querySelector(".nested-acc > summary");
+		const gearsCountVars = { count: members.length };
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(gearsSummary, "cog-gears-count", "Gears ({count})");
+			gearsSummary.setAttribute("data-translation-vars", JSON.stringify(gearsCountVars));
+			gearsSummary.textContent =
+				typeof tf === "function"
+					? tf("cog-gears-count", "Gears ({count})", gearsCountVars)
+					: `Gears (${members.length})`;
+		} else if (gearsSummary) {
+			gearsSummary.textContent = `Gears (${members.length})`;
+		}
+		const addGearBtn = details.querySelector(".add-gear");
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(addGearBtn, "cog-add-gear", "Add gear");
+		}
+		tagFieldLabel(details.querySelector(".filter-type")?.closest("label"), "cog-type", "Type");
+		tagSelectOptions(details.querySelector(".filter-type"), {
+			"": ["cog-all-types", "All types"],
+			percent: ["cog-percent", "Percent"],
+			count: ["cog-count", "Count"],
+			timer: ["cog-timer", "Timer"]
+		});
+		tagFieldLabel(details.querySelector(".filter-category")?.closest("label"), "cog-category", "Category");
+		tagSelectOptions(details.querySelector(".filter-category"), {
+			"": ["cog-all-categories", "All categories"]
+		});
+		const pickerFilter = details.querySelector(".picker-filter");
+		if (typeof setTranslatedPlaceholder === "function") {
+			setTranslatedPlaceholder(pickerFilter, "cog-filter-by-name", "Filter by name…");
 		}
 		bindExclusiveGroup(details);
 		bindNumberField(details.querySelector('[data-role="x"]'), {
@@ -792,14 +900,16 @@ function renderGroups(body) {
 			const fadeTitle = details.querySelector('[data-role="fillFromHiddenTitle"]') || fadeRow;
 			fadeTitle.appendChild(
 				makeInfoTip(
-					"How percent/timer gears with Hide when reveal. Off = hard hide. Alpha fades opacity. Up/Down keep a greyscale icon and fill with colour from the bottom or top (soft seam). Alpha & Up/Down also fade the unfilled area to bar-trough opacity. GIF/WebP fill uses native colours when icon ends are blank. Counts still hard-hide."
+					"How percent/timer gears with Hide when reveal. Off = hard hide. Alpha fades opacity. Up/Down keep a greyscale icon and fill with colour from the bottom or top (soft seam). Alpha & Up/Down also fade the unfilled area to bar-trough opacity. GIF/WebP fill uses native colours when icon ends are blank. Counts still hard-hide.",
+					"cog-group-fill-from-hidden-tip"
 				)
 			);
 		}
 		if (useColorsRow) {
 			useColorsRow.appendChild(
 				makeInfoTip(
-					"When on, gears in this group use these colours unless they are exempt. Empty bar/border fields fall back to General. Empty icon ends fall back to General for SVG/PNG; for GIF/WebP, empty keeps native colours. Neutral icon colour applies to count gears on this line."
+					"When on, gears in this group use these colours unless they are exempt. Empty bar/border fields fall back to General. Empty icon ends fall back to General for SVG/PNG; for GIF/WebP, empty keeps native colours. Neutral icon colour applies to count gears on this line.",
+					"cog-group-use-colours-tip"
 				)
 			);
 		}
@@ -841,12 +951,17 @@ function renderGroups(body) {
 		generalColors.className = "color-ramp-editor";
 		const generalHeading = document.createElement("div");
 		generalHeading.className = "color-ramp-heading";
-		generalHeading.textContent = "General Colours";
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(generalHeading, "cog-general-colours", "General Colours");
+		} else {
+			generalHeading.textContent = "General Colours";
+		}
 		generalColors.appendChild(generalHeading);
 		const generalRow = document.createElement("div");
 		generalRow.className = "style-row color-ramp-general-row";
 		const borderField = makeGroupColorField("Border", group.id, "borderColor", style.borderColor, themeBorder());
 		borderField.classList.add("compact");
+		tagFieldLabel(borderField, "cog-border", "Border");
 		generalRow.appendChild(borderField);
 		const neutralField = makeNeutralIconField(
 			makeNeutralIconSelect(style.neutralIconMode, (mode) => {
@@ -854,43 +969,86 @@ function renderGroups(body) {
 			})
 		);
 		neutralField.classList.add("compact");
+		const neutralLabel = neutralField.firstChild;
+		if (neutralLabel && neutralLabel.nodeType === Node.TEXT_NODE) {
+			const neutralSpan = document.createElement("span");
+			if (typeof setTranslatedText === "function") {
+				setTranslatedText(neutralSpan, "cog-neutral-icon-colour", "Neutral icon colour");
+			} else {
+				neutralSpan.textContent = "Neutral icon colour";
+			}
+			neutralField.replaceChild(neutralSpan, neutralLabel);
+		}
+		tagSelectOptions(neutralField.querySelector("select"), {
+			white: ["cog-always-white", "Always White"],
+			bar: ["cog-bar", "Bar"],
+			border: ["cog-border", "Border"],
+			icon0: ["cog-icon-0", "Icon 0%"],
+			icon50: ["cog-icon-50", "Icon 50%"],
+			icon100: ["cog-icon-100", "Icon 100%"]
+		});
 		generalRow.appendChild(neutralField);
 		generalColors.appendChild(generalRow);
 		colorFields.appendChild(generalColors);
-		colorFields.appendChild(
-			makeColorRampEditor("Icon colours", style.iconColor, themeIconColor(), (ramp, live) => {
-				const liveGroup = groupFor(group.id);
-				if (!liveGroup) {
-					return;
-				}
-				patchGroup(
-					group.id,
-					{ style: { ...ensureGroupStyle(liveGroup), iconColor: ramp } },
-					false,
-					live
+		const tagColorRamp = (editor, headingTag, headingFallback) => {
+			const heading = editor.querySelector(".color-ramp-heading");
+			const hint = editor.querySelector(".color-ramp-hint");
+			if (typeof setTranslatedText === "function") {
+				setTranslatedText(heading, headingTag, headingFallback);
+				setTranslatedText(
+					hint,
+					"cog-color-ramp-hint",
+					"Empty inherits the backup. Multiple stops fade between percentages."
 				);
-			})
+			}
+			return editor;
+		};
+		colorFields.appendChild(
+			tagColorRamp(
+				makeColorRampEditor("Icon colours", style.iconColor, themeIconColor(), (ramp, live) => {
+					const liveGroup = groupFor(group.id);
+					if (!liveGroup) {
+						return;
+					}
+					patchGroup(
+						group.id,
+						{ style: { ...ensureGroupStyle(liveGroup), iconColor: ramp } },
+						false,
+						live
+					);
+				}),
+				"cog-icon-colours",
+				"Icon colours"
+			)
 		);
 		colorFields.appendChild(
-			makeColorRampEditor("Bar colours", style.barColor, themeFill(), (ramp, live) => {
-				const liveGroup = groupFor(group.id);
-				if (!liveGroup) {
-					return;
-				}
-				patchGroup(
-					group.id,
-					{ style: { ...ensureGroupStyle(liveGroup), barColor: ramp } },
-					false,
-					live
-				);
-			})
+			tagColorRamp(
+				makeColorRampEditor("Bar colours", style.barColor, themeFill(), (ramp, live) => {
+					const liveGroup = groupFor(group.id);
+					if (!liveGroup) {
+						return;
+					}
+					patchGroup(
+						group.id,
+						{ style: { ...ensureGroupStyle(liveGroup), barColor: ramp } },
+						false,
+						live
+					);
+				}),
+				"cog-bar-colours",
+				"Bar colours"
+			)
 		);
 		enhanceSelects(details);
 		const list = details.querySelector(".gear-list");
 		if (!members.length) {
 			const empty = document.createElement("p");
 			empty.className = "lede";
-			empty.textContent = "No gears on this line yet.";
+			if (typeof setTranslatedText === "function") {
+				setTranslatedText(empty, "cog-no-gears-on-line", "No gears on this line yet.");
+			} else {
+				empty.textContent = "No gears on this line yet.";
+			}
 			list.appendChild(empty);
 		}
 		members.forEach((gear, index) => {
@@ -902,13 +1060,20 @@ function renderGroups(body) {
 					<strong></strong>
 					<div class="meta"></div>
 				</div>
-				<label class="check-row compact gear-exempt"><input type="checkbox" data-role="exempt"> Exempt from group colours</label>
+				<label class="check-row compact gear-exempt"><input type="checkbox" data-role="exempt"> <span>Exempt from group colours</span></label>
 				<button type="button" class="tiny" data-role="up">Up</button>
 				<button type="button" class="tiny" data-role="down">Down</button>
 				<button type="button" class="tiny" data-role="remove">Remove</button>`;
 			row.querySelector("strong").textContent = sourceTitle(src, gear.name, gear);
 			row.querySelector(".meta").textContent = sourceMeta(src);
 			const exemptBox = row.querySelector('[data-role="exempt"]');
+			const exemptSpan = row.querySelector(".gear-exempt > span");
+			if (typeof setTranslatedText === "function") {
+				setTranslatedText(exemptSpan, "cog-exempt-from-group-colours", "Exempt from group colours");
+				setTranslatedText(row.querySelector('[data-role="up"]'), "cog-up", "Up");
+				setTranslatedText(row.querySelector('[data-role="down"]'), "cog-down", "Down");
+				setTranslatedText(row.querySelector('[data-role="remove"]'), "cog-remove", "Remove");
+			}
 			exemptBox.checked = !!gear.exemptFromGroupColors;
 			exemptBox.disabled = !style.useGroupColors;
 			exemptBox.addEventListener("change", () => {

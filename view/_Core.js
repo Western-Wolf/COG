@@ -1,7 +1,8 @@
 // COG overlay - Core (snapshot, bridges, HUD utilities, boot)
 // Classic script; loads last after all section scripts.
 
-let snapshot = { sources: [], shoutMeter: null, general: { showDefaultGroup: true, editorKey: "F3", hideToggleKey: "", hideIncludesFlash: true, uiHidden: false, fillColor: "#c4a35a", borderColor: "#e8d2a0", iconColor: "#ffffff", neutralIconMode: "white", gadgetFont: "Roboto" }, groups: [], gears: [], gauges: [], gizmos: [], gizmoTypes: [], icons: [], importedIcons: [], fonts: [], suppressions: [] };
+// var (not let): _UI_Translation.js and other classic scripts read window.snapshot.
+var snapshot = { sources: [], shoutMeter: null, general: { showDefaultGroup: true, editorKey: "F3", hideToggleKey: "", hideIncludesFlash: true, uiHidden: false, fillColor: "#c4a35a", borderColor: "#e8d2a0", iconColor: "#ffffff", neutralIconMode: "white", gadgetFont: "Roboto", language: "en-CA", highlightMissingTranslations: false }, groups: [], gears: [], gauges: [], gizmos: [], gizmoTypes: [], icons: [], importedIcons: [], fonts: [], suppressions: [], languages: ["en-CA"], translations: {}, gizmoTranslations: {} };
 let saveTimer = null;
 let activeTab = "general";
 let drag = null;
@@ -28,6 +29,57 @@ window.setFocused = (focused) => {
 	}
 	renderGears();
 	renderEditor(true);
+};
+
+function mergeTranslationCatalogs(incoming) {
+	if (!incoming || typeof incoming !== "object") {
+		return false;
+	}
+	let changed = false;
+	if (Array.isArray(incoming.languages)) {
+		snapshot.languages = incoming.languages;
+		changed = true;
+	}
+	if (incoming.translations && typeof incoming.translations === "object") {
+		snapshot.translations = incoming.translations;
+		changed = true;
+	}
+	if (incoming.gizmoTranslations && typeof incoming.gizmoTranslations === "object") {
+		snapshot.gizmoTranslations = incoming.gizmoTranslations;
+		changed = true;
+	}
+	return changed;
+}
+
+function refreshAfterTranslationCatalogs() {
+	if (typeof syncDocumentLang === "function") {
+		syncDocumentLang();
+	}
+	if (drag) {
+		return;
+	}
+	// Rebuild General so the language <select> picks up new locale codes.
+	if (activeTab === "general" && !helpMode) {
+		renderEditor(true);
+		return;
+	}
+	if (typeof applyTranslations === "function") {
+		applyTranslations(document.getElementById("editor-panel") || document);
+	}
+}
+
+/** Dedicated Interop for languages + catalogs (not bundled into applySnapshot). */
+window.applyTranslationCatalogs = (jsonStr) => {
+	try {
+		const incoming = typeof jsonStr === "string" ? JSON.parse(jsonStr) : jsonStr;
+		if (!mergeTranslationCatalogs(incoming)) {
+			return;
+		}
+		normalizeSnapshot();
+		refreshAfterTranslationCatalogs();
+	} catch (e) {
+		window.cogReportError("applyTranslationCatalogs", e);
+	}
 };
 
 window.applySnapshot = (jsonStr) => {
@@ -78,15 +130,7 @@ window.applySnapshot = (jsonStr) => {
 			if (Array.isArray(incoming.suppressionAliases)) {
 				snapshot.suppressionAliases = incoming.suppressionAliases;
 			}
-			if (Array.isArray(incoming.languages)) {
-				snapshot.languages = incoming.languages;
-			}
-			if (incoming.translations && typeof incoming.translations === "object") {
-				snapshot.translations = incoming.translations;
-			}
-			if (incoming.gizmoTranslations && typeof incoming.gizmoTranslations === "object") {
-				snapshot.gizmoTranslations = incoming.gizmoTranslations;
-			}
+			mergeTranslationCatalogs(incoming);
 			if (incoming.general && typeof incoming.general === "object") {
 				if (incoming.general.language != null) {
 					snapshot.general.language = incoming.general.language;
@@ -131,6 +175,9 @@ window.applySnapshot = (jsonStr) => {
 		const prevGroups = snapshot.groups;
 		const prevGauges = snapshot.gauges;
 		const prevGizmos = snapshot.gizmos;
+		const prevLanguages = snapshot.languages;
+		const prevTranslations = snapshot.translations;
+		const prevGizmoTranslations = snapshot.gizmoTranslations;
 		snapshot = incoming;
 		// Catalog may be omitted on lean ticks — keep last in-memory icons/fonts.
 		if (!Array.isArray(incoming.icons)) {
@@ -141,6 +188,16 @@ window.applySnapshot = (jsonStr) => {
 		}
 		if (!Array.isArray(incoming.fonts)) {
 			snapshot.fonts = prevFonts;
+		}
+		// Translation catalogs arrive via applyTranslationCatalogs — preserve if omitted.
+		if (!Array.isArray(incoming.languages)) {
+			snapshot.languages = prevLanguages;
+		}
+		if (!incoming.translations || typeof incoming.translations !== "object") {
+			snapshot.translations = prevTranslations;
+		}
+		if (!incoming.gizmoTranslations || typeof incoming.gizmoTranslations !== "object") {
+			snapshot.gizmoTranslations = prevGizmoTranslations;
 		}
 		// Never replace a populated layout with an empty/missing entity list (partial snapshot).
 		if (!Array.isArray(incoming.gears) || (incoming.gears.length === 0 && Array.isArray(prevGears) && prevGears.length)) {
@@ -775,7 +832,11 @@ function appendStackOrderButtons(end, opts) {
 	const up = document.createElement("button");
 	up.type = "button";
 	up.className = "tiny";
-	up.textContent = "Up";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(up, "cog-up", "Up");
+	} else {
+		up.textContent = "Up";
+	}
 	up.disabled = !!opts.upDisabled;
 	up.addEventListener("click", () => opts.onUp());
 	end.appendChild(up);
@@ -784,7 +845,11 @@ function appendStackOrderButtons(end, opts) {
 	const down = document.createElement("button");
 	down.type = "button";
 	down.className = "tiny";
-	down.textContent = "Down";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(down, "cog-down", "Down");
+	} else {
+		down.textContent = "Down";
+	}
 	down.disabled = !!opts.downDisabled;
 	down.addEventListener("click", () => opts.onDown());
 	end.appendChild(down);
@@ -826,7 +891,9 @@ function flushSave() {
 			borderColor: snapshot.general?.borderColor,
 			iconColor: snapshot.general?.iconColor,
 			neutralIconMode: snapshot.general?.neutralIconMode,
-			gadgetFont: snapshot.general?.gadgetFont
+			gadgetFont: snapshot.general?.gadgetFont,
+			language: snapshot.general?.language || "en-CA",
+			highlightMissingTranslations: !!snapshot.general?.highlightMissingTranslations
 		},
 		groups: snapshot.groups,
 		gears: snapshot.gears,

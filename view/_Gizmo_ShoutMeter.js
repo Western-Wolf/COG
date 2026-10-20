@@ -444,8 +444,16 @@ function fillShoutMeterGizmoEditor(panel, gizmo) {
 
 	const intro = document.createElement("p");
 	intro.className = "hint";
-	intro.textContent =
-		"Shows your equipped shout in Dragon script. Words fill as you speak them; cooldown fades from the chosen edge with a gradient trail. The whole label rotates with the gizmo.";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(
+			intro,
+			"cog-shout-meter-intro",
+			"Shows your equipped shout in Dragon script. Words fill as you speak them; cooldown fades from the chosen edge with a gradient trail. The whole label rotates with the gizmo."
+		);
+	} else {
+		intro.textContent =
+			"Shows your equipped shout in Dragon script. Words fill as you speak them; cooldown fades from the chosen edge with a gradient trail. The whole label rotates with the gizmo.";
+	}
 	panel.appendChild(intro);
 
 	appendEditorRule(panel);
@@ -453,7 +461,11 @@ function fillShoutMeterGizmoEditor(panel, gizmo) {
 	textSection.className = "gizmo-text-settings";
 	const textLede = document.createElement("p");
 	textLede.className = "lede";
-	textLede.textContent = "Text settings";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(textLede, "cog-text-settings", "Text settings");
+	} else {
+		textLede.textContent = "Text settings";
+	}
 	textSection.appendChild(textLede);
 	const textRow = document.createElement("div");
 	textRow.className = "style-row";
@@ -464,7 +476,13 @@ function fillShoutMeterGizmoEditor(panel, gizmo) {
 		<option value="left">Left</option>
 		<option value="right">Right</option>
 	</select>`;
+	tagFieldLabel(alignField, "cog-font-align", "Font align");
 	const alignSel = alignField.querySelector("select");
+	tagSelectOptions(alignSel, {
+		center: ["cog-center", "Center"],
+		left: ["cog-left", "Left"],
+		right: ["cog-right", "Right"]
+	});
 	alignSel.value = normalizeClockTextAlign(gizmo.settings.textAlign);
 	alignSel.addEventListener("change", () => {
 		patchGizmo(gid, { textAlign: normalizeClockTextAlign(alignSel.value) });
@@ -477,7 +495,13 @@ function fillShoutMeterGizmoEditor(panel, gizmo) {
 		<option value="left">Left</option>
 		<option value="right">Right</option>
 	</select>`;
+	tagFieldLabel(drainField, "cog-fade-starts-from", "Fade starts from");
 	const drainSel = drainField.querySelector("select");
+	tagSelectOptions(drainSel, {
+		center: ["cog-center", "Center"],
+		left: ["cog-left", "Left"],
+		right: ["cog-right", "Right"]
+	});
 	drainSel.value = normalizeShoutDrainOrigin(gizmo.settings.drainOrigin);
 	drainSel.addEventListener("change", () => {
 		patchGizmo(gid, { drainOrigin: normalizeShoutDrainOrigin(drainSel.value) });
@@ -490,7 +514,13 @@ function fillShoutMeterGizmoEditor(panel, gizmo) {
 		<option value="known">Known</option>
 		<option value="all">All</option>
 	</select>`;
+	tagFieldLabel(wordsField, "cog-words-to-show", "Words to show");
 	const wordsSel = wordsField.querySelector("select");
+	tagSelectOptions(wordsSel, {
+		unlocked: ["cog-unlocked", "Unlocked"],
+		known: ["cog-known", "Known"],
+		all: ["cog-all", "All"]
+	});
 	wordsSel.value = normalizeShoutWordsMode(gizmo.settings.wordsMode);
 	wordsSel.addEventListener("change", () => {
 		patchGizmo(gid, { wordsMode: normalizeShoutWordsMode(wordsSel.value) });
@@ -499,7 +529,13 @@ function fillShoutMeterGizmoEditor(panel, gizmo) {
 	const fontField = document.createElement("label");
 	fontField.className = "pos-field compact";
 	fontField.innerHTML = `<span>Font</span><input type="text" data-role="fontSize" inputmode="numeric" placeholder="auto">`;
+	tagFieldLabel(fontField, "cog-font", "Font");
 	const fontInput = fontField.querySelector("input");
+	if (typeof setTranslatedPlaceholder === "function") {
+		setTranslatedPlaceholder(fontInput, "cog-auto", "auto");
+	} else {
+		fontInput.placeholder = "auto";
+	}
 	fontInput.value = gizmo.settings.fontSize > 0 ? String(Math.round(gizmo.settings.fontSize)) : "";
 	bindNumberField(fontInput, {
 		suffix: "px",
@@ -525,6 +561,7 @@ function fillShoutMeterGizmoEditor(panel, gizmo) {
 		(hex, live) => patchGizmo(gid, { primaryColor: hex }, false, live)
 	);
 	primaryColor.classList.add("compact");
+	tagFieldLabel(primaryColor, "cog-primary", "Primary");
 	colorRow.appendChild(primaryColor);
 	const secondaryColor = makeOptionalColorField(
 		"Secondary",
@@ -533,13 +570,15 @@ function fillShoutMeterGizmoEditor(panel, gizmo) {
 		(hex, live) => patchGizmo(gid, { secondaryColor: hex }, false, live)
 	);
 	secondaryColor.classList.add("compact");
+	tagFieldLabel(secondaryColor, "cog-secondary", "Secondary");
 	colorRow.appendChild(secondaryColor);
 	textSection.appendChild(colorRow);
 	const troughRow = document.createElement("div");
 	troughRow.className = "style-row";
 	const trough = document.createElement("label");
 	trough.className = "pos-field compact";
-	trough.innerHTML = `<span>Trough opacity</span><input type="number" min="0" max="100" step="1" data-role="troughOpacity">`;
+	trough.innerHTML = `<span>Trough Opacity</span><input type="number" min="0" max="100" step="1" data-role="troughOpacity">`;
+	tagFieldLabel(trough, "cog-trough-opacity", "Trough Opacity");
 	const troughInput = trough.querySelector("input");
 	troughInput.value = fmtDec(gizmo.settings.troughOpacity, 0);
 	bindNumberField(troughInput, {

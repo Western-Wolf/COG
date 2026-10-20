@@ -1,0 +1,46 @@
+{
+  "cog-clock-celestial-hint": {
+    "en-CA": "Width is the arc diameter; Height is band thickness (same as an arc gauge).",
+    "fr-CA": "La largeur est le diamètre de l'arc; la hauteur est l'épaisseur de la bande (comme une jauge en arc)."
+  },
+  "cog-clock-display-hint": {
+    "en-CA": "Arrange date and time fields across lines. Each badge is one value in the order shown.",
+    "fr-CA": "Disposez les champs de date et d'heure sur les lignes. Chaque badge est une valeur dans l'ordre affiché."
+  },
+  "cog-clock-icon-clock": {
+    "en-CA": "Clock",
+    "fr-CA": "Horloge"
+  },
+  "cog-clock-icon-season": {
+    "en-CA": "Season",
+    "fr-CA": "Saison"
+  },
+  "cog-clock-token-day": {
+    "en-CA": "Day",
+    "fr-CA": "Jour"
+  },
+  "cog-clock-token-day-of-week": {
+    "en-CA": "Day of week",
+    "fr-CA": "Jour de la semaine"
+  },
+  "cog-clock-token-day-ordinal": {
+    "en-CA": "Day + suffix",
+    "fr-CA": "Jour + suffixe"
+  },
+  "cog-clock-token-month": {
+    "en-CA": "Month",
+    "fr-CA": "Mois"
+  },
+  "cog-clock-token-time-12h": {
+    "en-CA": "Time (12h)",
+    "fr-CA": "Heure (12 h)"
+  },
+  "cog-clock-token-time-24h": {
+    "en-CA": "Time (24h)",
+    "fr-CA": "Heure (24 h)"
+  },
+  "cog-clock-token-year": {
+    "en-CA": "Year",
+    "fr-CA": "Année"
+  }
+}

@@ -1,6 +1,1634 @@
 {
+  "cog-above": {
+    "en-CA": "Above",
+    "fr-CA": "Au-dessus"
+  },
+  "cog-above-icon": {
+    "en-CA": "Above icon",
+    "fr-CA": "Au-dessus de l'icône"
+  },
+  "cog-active-effects": {
+    "en-CA": "Active Effects",
+    "fr-CA": "Effets actifs"
+  },
+  "cog-active-suppressions": {
+    "en-CA": "Active Suppressions",
+    "fr-CA": "Suppressions actives"
+  },
+  "cog-active-suppressions-hint": {
+    "en-CA": "This list updates live. Green controllers would make the element Visible; red would make it Hidden. Bold (winning) is the primary among the active side.",
+    "fr-CA": "Cette liste se met à jour en direct. Les contrôleurs verts rendraient l'élément Visible; les rouges le rendraient Masqué. Le gras (gagnant) est le principal du côté actif."
+  },
+  "cog-add": {
+    "en-CA": "Add",
+    "fr-CA": "Ajouter"
+  },
+  "cog-add-colour-stop": {
+    "en-CA": "Add colour stop",
+    "fr-CA": "Ajouter un arrêt de couleur"
+  },
+  "cog-add-from": {
+    "en-CA": "Add from",
+    "fr-CA": "Ajouter depuis"
+  },
+  "cog-add-gauge": {
+    "en-CA": "Add Gauge",
+    "fr-CA": "Ajouter une jauge"
+  },
+  "cog-add-gear": {
+    "en-CA": "Add gear",
+    "fr-CA": "Ajouter un engrenage"
+  },
+  "cog-add-group": {
+    "en-CA": "Add group",
+    "fr-CA": "Ajouter un groupe"
+  },
+  "cog-add-item": {
+    "en-CA": "Add Item",
+    "fr-CA": "Ajouter un objet"
+  },
+  "cog-add-item-from-inventory": {
+    "en-CA": "Add Item from Inventory",
+    "fr-CA": "Ajouter un objet de l'inventaire"
+  },
+  "cog-add-line": {
+    "en-CA": "+ Add line",
+    "fr-CA": "+ Ajouter une ligne"
+  },
+  "cog-alias": {
+    "en-CA": "Alias",
+    "fr-CA": "Alias"
+  },
+  "cog-alias-index": {
+    "en-CA": "Alias Index",
+    "fr-CA": "Index des alias"
+  },
+  "cog-alias-index-hint": {
+    "en-CA": "Known short names you can use in the Suppressor or HUD-linked Gears, with the CanonicalKey each alias resolves to.",
+    "fr-CA": "Noms courts connus que vous pouvez utiliser dans le Suppresseur ou les Engrenages liés au HUD, avec le CanonicalKey vers lequel chaque alias se résout."
+  },
+  "cog-align": {
+    "en-CA": "Align",
+    "fr-CA": "Aligner"
+  },
+  "cog-align-center": {
+    "en-CA": "Center",
+    "fr-CA": "Centre"
+  },
+  "cog-align-left": {
+    "en-CA": "Left",
+    "fr-CA": "Gauche"
+  },
+  "cog-align-right": {
+    "en-CA": "Right",
+    "fr-CA": "Droite"
+  },
+  "cog-all": {
+    "en-CA": "All",
+    "fr-CA": "Tout"
+  },
+  "cog-all-categories": {
+    "en-CA": "All categories",
+    "fr-CA": "Toutes les catégories"
+  },
+  "cog-all-sources-in-group": {
+    "en-CA": "All sources are already in this group.",
+    "fr-CA": "Toutes les sources sont déjà dans ce groupe."
+  },
+  "cog-all-types": {
+    "en-CA": "All types",
+    "fr-CA": "Tous les types"
+  },
+  "cog-allow-mods-choose-colour": {
+    "en-CA": "Allow Mods to Choose Colour",
+    "fr-CA": "Autoriser les mods à choisir la couleur"
+  },
+  "cog-allow-mods-choose-colour-tip": {
+    "en-CA": "When on, message colour can come from SkyUILib (for compatibility) or COG_API.Notify. When off, every message uses the Notifications colour.",
+    "fr-CA": "Lorsque c'est activé, la couleur du message peut provenir de SkyUILib (pour la compatibilité) ou de COG_API.Notify. Lorsque c'est désactivé, chaque message utilise la couleur des Notifications."
+  },
+  "cog-allow-mods-choose-icon": {
+    "en-CA": "Allow Mods to Choose Icon",
+    "fr-CA": "Autoriser les mods à choisir l'icône"
+  },
+  "cog-allow-mods-choose-icon-tip": {
+    "en-CA": "When on, mods can use COG_API.Notify to supply a per-message icon path under assets/icons/. When off, every message uses the Notifications icon (if Show icons is on).",
+    "fr-CA": "Lorsque c'est activé, les mods peuvent utiliser COG_API.Notify pour fournir un chemin d'icône par message sous assets/icons/. Lorsque c'est désactivé, chaque message utilise l'icône des Notifications (si Afficher les icônes est activé)."
+  },
+  "cog-alpha": {
+    "en-CA": "Alpha",
+    "fr-CA": "Alpha"
+  },
+  "cog-alpha-down": {
+    "en-CA": "Alpha & Down",
+    "fr-CA": "Alpha et bas"
+  },
+  "cog-alpha-up": {
+    "en-CA": "Alpha & Up",
+    "fr-CA": "Alpha et haut"
+  },
+  "cog-always": {
+    "en-CA": "Always",
+    "fr-CA": "Toujours"
+  },
+  "cog-always-hide": {
+    "en-CA": "Always Hide",
+    "fr-CA": "Toujours masquer"
+  },
+  "cog-always-hide-hint": {
+    "en-CA": "Hide these HUD targets whenever this Suppressor exists (even if no matching Gear is on screen).",
+    "fr-CA": "Masquer ces cibles HUD dès que ce Suppresseur existe (même si aucun Engrenage correspondant n'est à l'écran)."
+  },
+  "cog-always-visible": {
+    "en-CA": "Always Visible",
+    "fr-CA": "Toujours visible"
+  },
+  "cog-always-white": {
+    "en-CA": "Always White",
+    "fr-CA": "Toujours blanc"
+  },
+  "cog-arc": {
+    "en-CA": "Arc",
+    "fr-CA": "Arc"
+  },
+  "cog-arc-shape-hint": {
+    "en-CA": "Width is the arc diameter; Height is band thickness (same as a flat bar).",
+    "fr-CA": "La largeur est le diamètre de l'arc; la hauteur est l'épaisseur de la bande (comme une barre plate)."
+  },
+  "cog-arc-shape-settings": {
+    "en-CA": "Arc Shape Settings",
+    "fr-CA": "Paramètres de forme d'arc"
+  },
+  "cog-auto": {
+    "en-CA": "auto",
+    "fr-CA": "auto"
+  },
+  "cog-backdrop-fade": {
+    "en-CA": "Backdrop Fade",
+    "fr-CA": "Fondu d'arrière-plan"
+  },
+  "cog-backdrop-fade-hint": {
+    "en-CA": "Soft gradient behind each message. Setting opacity to 0 disables.",
+    "fr-CA": "Dégradé doux derrière chaque message. Une opacité à 0 le désactive."
+  },
+  "cog-backup-bar": {
+    "en-CA": "Backup bar",
+    "fr-CA": "Barre de secours"
+  },
+  "cog-backup-border": {
+    "en-CA": "Backup border",
+    "fr-CA": "Bordure de secours"
+  },
+  "cog-backup-colours": {
+    "en-CA": "Backup colours",
+    "fr-CA": "Couleurs de secours"
+  },
+  "cog-backup-colours-lede": {
+    "en-CA": "Used when a gear or group does not set its own. Bar is the meter fill; border is the bar trough; icon is a single tint for meter icons. Fancy multi-stop colours belong on a gear or group. Neutral icon colour is only for count gears — Always White, or Bar / Border / Icon 0%–100% sampled from the effective ramp.",
+    "fr-CA": "Utilisées lorsqu'un engrenage ou un groupe ne définit pas les siennes. La barre est le remplissage du compteur; la bordure est le canal de la barre; l'icône est une teinte unique pour les icônes de compteur. Les couleurs fantaisie à plusieurs arrêts appartiennent à un engrenage ou un groupe. La couleur d'icône neutre est uniquement pour les engrenages de décompte — Toujours blanc, ou Barre / Bordure / Icône 0 %–100 % échantillonnées depuis la rampe effective."
+  },
+  "cog-backup-icon": {
+    "en-CA": "Backup icon",
+    "fr-CA": "Icône de secours"
+  },
+  "cog-bar": {
+    "en-CA": "Bar",
+    "fr-CA": "Barre"
+  },
+  "cog-bar-and-percentage": {
+    "en-CA": "Bar and percentage",
+    "fr-CA": "Barre et pourcentage"
+  },
+  "cog-bar-and-total": {
+    "en-CA": "Bar and total",
+    "fr-CA": "Barre et total"
+  },
+  "cog-bar-colour": {
+    "en-CA": "Bar Colour",
+    "fr-CA": "Couleur de la barre"
+  },
+  "cog-bar-colours": {
+    "en-CA": "Bar colours",
+    "fr-CA": "Couleurs de la barre"
+  },
+  "cog-bar-shape-settings": {
+    "en-CA": "Bar Shape Settings",
+    "fr-CA": "Paramètres de forme de barre"
+  },
+  "cog-bar-trough": {
+    "en-CA": "Bar trough",
+    "fr-CA": "Canal de la barre"
+  },
+  "cog-bar-width": {
+    "en-CA": "Bar Width",
+    "fr-CA": "Largeur de la barre"
+  },
+  "cog-below": {
+    "en-CA": "Below",
+    "fr-CA": "En dessous"
+  },
+  "cog-below-icon": {
+    "en-CA": "Below icon",
+    "fr-CA": "En dessous de l'icône"
+  },
+  "cog-border": {
+    "en-CA": "Border",
+    "fr-CA": "Bordure"
+  },
+  "cog-border-colour": {
+    "en-CA": "Border Colour",
+    "fr-CA": "Couleur de la bordure"
+  },
+  "cog-border-thickness": {
+    "en-CA": "Border Thickness",
+    "fr-CA": "Épaisseur de la bordure"
+  },
+  "cog-bottom": {
+    "en-CA": "Bottom",
+    "fr-CA": "Bas"
+  },
+  "cog-cannot-add-colour-stop": {
+    "en-CA": "Cannot add — already has a 100% stop",
+    "fr-CA": "Impossible d'ajouter — un arrêt à 100 % existe déjà"
+  },
+  "cog-cannot-delete": {
+    "en-CA": "Cannot delete",
+    "fr-CA": "Impossible de supprimer"
+  },
+  "cog-canonical-key": {
+    "en-CA": "CanonicalKey",
+    "fr-CA": "CanonicalKey"
+  },
+  "cog-category": {
+    "en-CA": "Category",
+    "fr-CA": "Catégorie"
+  },
+  "cog-celestial-colour": {
+    "en-CA": "Celestial Colour",
+    "fr-CA": "Couleur céleste"
+  },
+  "cog-celestial-settings": {
+    "en-CA": "Celestial settings",
+    "fr-CA": "Paramètres célestes"
+  },
+  "cog-center": {
+    "en-CA": "Center",
+    "fr-CA": "Centre"
+  },
+  "cog-centered": {
+    "en-CA": "Centered",
+    "fr-CA": "Centré"
+  },
+  "cog-choose-icon": {
+    "en-CA": "Choose icon",
+    "fr-CA": "Choisir une icône"
+  },
+  "cog-clear": {
+    "en-CA": "Clear",
+    "fr-CA": "Effacer"
+  },
+  "cog-clear-endcap": {
+    "en-CA": "Clear endcap",
+    "fr-CA": "Effacer l'embout"
+  },
+  "cog-clear-icon": {
+    "en-CA": "Clear icon",
+    "fr-CA": "Effacer l'icône"
+  },
+  "cog-click-then-press-key": {
+    "en-CA": "Click then press a key to bind",
+    "fr-CA": "Cliquez puis appuyez sur une touche pour lier"
+  },
+  "cog-click-to-clear-hotkey": {
+    "en-CA": "Click to clear this hotkey",
+    "fr-CA": "Cliquez pour effacer ce raccourci"
+  },
+  "cog-color-ramp-at-cap": {
+    "en-CA": "Already has a 100% stop — lower one first to add another.",
+    "fr-CA": "Un arrêt à 100 % existe déjà — abaissez-en un d'abord pour en ajouter un autre."
+  },
+  "cog-color-ramp-hint": {
+    "en-CA": "Empty inherits the backup. Multiple stops fade between percentages.",
+    "fr-CA": "Vide hérite de la secours. Plusieurs arrêts fondent entre les pourcentages."
+  },
+  "cog-colour": {
+    "en-CA": "Colour",
+    "fr-CA": "Couleur"
+  },
+  "cog-colour-picker": {
+    "en-CA": "Colour picker",
+    "fr-CA": "Sélecteur de couleur"
+  },
+  "cog-controlling-gadgets": {
+    "en-CA": "Controlling Gadget(s)",
+    "fr-CA": "Gadget(s) de contrôle"
+  },
+  "cog-count": {
+    "en-CA": "Count",
+    "fr-CA": "Décompte"
+  },
+  "cog-current-location": {
+    "en-CA": "Current Location",
+    "fr-CA": "Emplacement actuel"
+  },
+  "cog-default-icon": {
+    "en-CA": "Default Icon",
+    "fr-CA": "Icône par défaut"
+  },
+  "cog-default-level-icon": {
+    "en-CA": "Default Level Icon",
+    "fr-CA": "Icône de niveau par défaut"
+  },
+  "cog-default-skill-icon": {
+    "en-CA": "Default Skill Icon",
+    "fr-CA": "Icône de compétence par défaut"
+  },
+  "cog-delete": {
+    "en-CA": "Delete",
+    "fr-CA": "Supprimer"
+  },
+  "cog-direction": {
+    "en-CA": "Direction",
+    "fr-CA": "Direction"
+  },
+  "cog-display": {
+    "en-CA": "Display",
+    "fr-CA": "Affichage"
+  },
+  "cog-display-mode": {
+    "en-CA": "Display Mode",
+    "fr-CA": "Mode d'affichage"
+  },
+  "cog-display-name": {
+    "en-CA": "Display name",
+    "fr-CA": "Nom d'affichage"
+  },
+  "cog-down": {
+    "en-CA": "Down",
+    "fr-CA": "Bas"
+  },
+  "cog-edit": {
+    "en-CA": "Edit",
+    "fr-CA": "Modifier"
+  },
+  "cog-editor-key-closes": {
+    "en-CA": "{key} closes",
+    "fr-CA": "{key} ferme"
+  },
+  "cog-editor-key-closes-aria": {
+    "en-CA": "Editor key {key}. Click to rebind.",
+    "fr-CA": "Touche éditeur {key}. Cliquez pour réassigner."
+  },
+  "cog-editor-key-listening": {
+    "en-CA": "Press a new key… (click to cancel)",
+    "fr-CA": "Appuyez sur une nouvelle touche… (cliquez pour annuler)"
+  },
+  "cog-editor-key-listening-aria": {
+    "en-CA": "Listening for a new editor key. Click to cancel.",
+    "fr-CA": "En attente d'une nouvelle touche éditeur. Cliquez pour annuler."
+  },
+  "cog-editor-key-listening-label": {
+    "en-CA": "… closes",
+    "fr-CA": "… ferme"
+  },
+  "cog-editor-key-rebind-tip": {
+    "en-CA": "Click to rebind the editor key",
+    "fr-CA": "Cliquez pour réassigner la touche éditeur"
+  },
+  "cog-editor-preferences": {
+    "en-CA": "Editor preferences",
+    "fr-CA": "Préférences de l'éditeur"
+  },
+  "cog-editor-preferences-lede": {
+    "en-CA": "Language applies to the editor and help.",
+    "fr-CA": "La langue s'applique à l'éditeur et à l'aide."
+  },
+  "cog-element": {
+    "en-CA": "Element",
+    "fr-CA": "Élément"
+  },
+  "cog-empty": {
+    "en-CA": "Empty",
+    "fr-CA": "Vide"
+  },
+  "cog-endcap": {
+    "en-CA": "Endcap",
+    "fr-CA": "Embout"
+  },
+  "cog-endcaps": {
+    "en-CA": "Endcaps",
+    "fr-CA": "Embouts"
+  },
+  "cog-ends": {
+    "en-CA": "Ends",
+    "fr-CA": "Extrémités"
+  },
+  "cog-exempt-from-group-colours": {
+    "en-CA": "Exempt from group colours",
+    "fr-CA": "Exempt des couleurs du groupe"
+  },
+  "cog-extend-border": {
+    "en-CA": "Extend Border",
+    "fr-CA": "Étendre la bordure"
+  },
+  "cog-fade": {
+    "en-CA": "Fade",
+    "fr-CA": "Fondu"
+  },
+  "cog-fade-colour": {
+    "en-CA": "Fade colour",
+    "fr-CA": "Couleur du fondu"
+  },
+  "cog-fade-starts-from": {
+    "en-CA": "Fade starts from",
+    "fr-CA": "Le fondu commence depuis"
+  },
+  "cog-fill-direction": {
+    "en-CA": "Fill Direction",
+    "fr-CA": "Direction du remplissage"
+  },
+  "cog-fill-from-hidden": {
+    "en-CA": "Fill from Hidden",
+    "fr-CA": "Remplir depuis le masqué"
+  },
+  "cog-filter-aliases": {
+    "en-CA": "Filter by alias, CanonicalKey, or friendly name…",
+    "fr-CA": "Filtrer par alias, CanonicalKey ou nom convivial…"
+  },
+  "cog-filter-by-name": {
+    "en-CA": "Filter by name…",
+    "fr-CA": "Filtrer par nom…"
+  },
+  "cog-filter-suppressions": {
+    "en-CA": "Filter by element, status, or gadget…",
+    "fr-CA": "Filtrer par élément, état ou gadget…"
+  },
+  "cog-font": {
+    "en-CA": "Font",
+    "fr-CA": "Police"
+  },
+  "cog-font-align": {
+    "en-CA": "Font align",
+    "fr-CA": "Alignement de la police"
+  },
+  "cog-font-tip": {
+    "en-CA": "Used for group, gauge, and gizmo text. The shout meter always uses Dragon Script.",
+    "fr-CA": "Utilisée pour le texte des groupes, jauges et gizmos. La jauge de cri utilise toujours Dragon Script."
+  },
+  "cog-frame": {
+    "en-CA": "Frame",
+    "fr-CA": "Cadre"
+  },
+  "cog-frame-border": {
+    "en-CA": "Frame Border",
+    "fr-CA": "Bordure du cadre"
+  },
+  "cog-frame-fill": {
+    "en-CA": "Frame Fill",
+    "fr-CA": "Remplissage du cadre"
+  },
+  "cog-frame-rotation": {
+    "en-CA": "Frame Rotation",
+    "fr-CA": "Rotation du cadre"
+  },
+  "cog-frame-settings": {
+    "en-CA": "Frame settings",
+    "fr-CA": "Réglages du cadre"
+  },
+  "cog-frame-settings-hint": {
+    "en-CA": "Rotation turns the frame bezel only. Gear and picture content stay upright.",
+    "fr-CA": "La rotation ne tourne que le cadre. L'engrenage et l'image restent droits."
+  },
+  "cog-friendly-name": {
+    "en-CA": "Friendly Name",
+    "fr-CA": "Nom convivial"
+  },
+  "cog-from-center": {
+    "en-CA": "From Center",
+    "fr-CA": "Depuis le centre"
+  },
+  "cog-from-left": {
+    "en-CA": "From Left",
+    "fr-CA": "Depuis la gauche"
+  },
+  "cog-from-right": {
+    "en-CA": "From Right",
+    "fr-CA": "Depuis la droite"
+  },
+  "cog-full": {
+    "en-CA": "Full",
+    "fr-CA": "Plein"
+  },
+  "cog-gauges-intro": {
+    "en-CA": "A gauge tracks one gear on its own - independent of groups. Open a gauge accordion to raise it above the editor for dragging, rotating, and resizing. Up/Down reorder the list — later gauges draw on top of earlier ones.",
+    "fr-CA": "Une jauge suit un engrenage seul — indépendamment des groupes. Ouvrez un accordéon de jauge pour le remonter au-dessus de l'éditeur afin de le glisser, le faire pivoter et le redimensionner. Haut/Bas réordonnent la liste — les jauges plus bas se dessinent par-dessus les précédentes."
+  },
+  "cog-gear": {
+    "en-CA": "Gear",
+    "fr-CA": "Engrenage"
+  },
+  "cog-gear-hide-tip-count": {
+    "en-CA": "Hide this gear when its count is below or above the threshold (any number). Example: Below 1 hides when empty.",
+    "fr-CA": "Masquer cet engrenage lorsque son compte est sous ou au-dessus du seuil (n'importe quel nombre). Exemple: Sous 1 masque quand vide."
+  },
+  "cog-gear-hide-tip-percent": {
+    "en-CA": "Hide this gear when its meter is below or above the threshold (0–100%). Group Fill from Hidden can soften the reveal.",
+    "fr-CA": "Masquer cet engrenage lorsque sa jauge est sous ou au-dessus du seuil (0–100%). Remplir depuis le masqué du groupe peut adoucir l'apparition."
+  },
+  "cog-gear-hide-tip-timer": {
+    "en-CA": "Hide this gear when remaining time (seconds) is below or above the threshold. Group Fill from Hidden can soften the reveal.",
+    "fr-CA": "Masquer cet engrenage lorsque le temps restant (secondes) est sous ou au-dessus du seuil. Remplir depuis le masqué du groupe peut adoucir l'apparition."
+  },
+  "cog-gear-hud-suppress-tip": {
+    "en-CA": "While this gear is exposed (enabled in a visible group, or a visible gauge bound to it), soft-hide the HUD target. Use an alias (e.g. hud.casting) or a raw menu/path (e.g. HUD Menu|HUDMovieBaseInstance.Health).",
+    "fr-CA": "Tant que cet engrenage est exposé (activé dans un groupe visible, ou une jauge visible qui y est liée), masquer doucement la cible HUD. Utilisez un alias (p. ex. hud.casting) ou un chemin menu/path brut (p. ex. HUD Menu|HUDMovieBaseInstance.Health)."
+  },
+  "cog-gear-meta-mod": {
+    "en-CA": "Mod {mod} · {name} · {meta}",
+    "fr-CA": "Mod {mod} · {name} · {meta}"
+  },
+  "cog-gear-meta-unregistered": {
+    "en-CA": "Mod {mod} · {name} · (source not registered this session)",
+    "fr-CA": "Mod {mod} · {name} · (source non enregistrée cette session)"
+  },
+  "cog-gear-mode": {
+    "en-CA": "Gear mode",
+    "fr-CA": "Mode engrenage"
+  },
+  "cog-gear-unavailable": {
+    "en-CA": "That gear is no longer available. Pick another from the list.",
+    "fr-CA": "Cet engrenage n'est plus disponible. Choisissez-en un autre dans la liste."
+  },
+  "cog-gears-count": {
+    "en-CA": "Gears ({count})",
+    "fr-CA": "Engrenages ({count})"
+  },
+  "cog-general-colours": {
+    "en-CA": "General Colours",
+    "fr-CA": "Couleurs générales"
+  },
+  "cog-gizmo-custom-intro": {
+    "en-CA": "Custom gizmo from a mod. Drag, resize, and rotate on the HUD; settings below come from the mod schema.",
+    "fr-CA": "Gizmo personnalisé provenant d'un mod. Glissez, redimensionnez et pivotez sur le HUD; les réglages ci-dessous viennent du schéma du mod."
+  },
+  "cog-gizmo-no-custom-settings": {
+    "en-CA": "No custom settings for this gizmo type.",
+    "fr-CA": "Aucun réglage personnalisé pour ce type de gizmo."
+  },
+  "cog-gizmo-settings": {
+    "en-CA": "Gizmo settings.",
+    "fr-CA": "Réglages du gizmo."
+  },
+  "cog-gizmo-visibility-tip": {
+    "en-CA": "HUD Visible: only while the vanilla Heads-Up Display is up (hidden with the HUD in menus). UI Visible: also keep showing while menus hide the HUD (inventory, map, dialogue, etc.). None: editor preview only.",
+    "fr-CA": "HUD visible: uniquement tant que l'interface de jeu vanilla est affichée (masqué avec le HUD dans les menus). UI visible: continuer aussi à afficher quand les menus masquent le HUD (inventaire, carte, dialogue, etc.). Aucun: aperçu éditeur seulement."
+  },
+  "cog-gizmos-builtin": {
+    "en-CA": "COG Built In Gizmos",
+    "fr-CA": "Gizmos intégrés COG"
+  },
+  "cog-gizmos-intro": {
+    "en-CA": "Gizmos are COG-only overlay widgets. Open a gizmo accordion to raise it above the editor for dragging and rotating. Up/Down reorder the list — later gizmos draw on top of earlier ones.",
+    "fr-CA": "Les gizmos sont des widgets de superposition propres à COG. Ouvrez un accordéon de gizmo pour le remonter au-dessus de l'éditeur afin de le glisser et le faire pivoter. Haut/Bas réordonnent la liste — les gizmos plus bas se dessinent par-dessus les précédents."
+  },
+  "cog-gizmos-mod-added": {
+    "en-CA": "Mod-added Gizmos",
+    "fr-CA": "Gizmos ajoutés par mods"
+  },
+  "cog-group-fill-from-hidden-tip": {
+    "en-CA": "How percent/timer gears with Hide when reveal. Off = hard hide. Alpha fades opacity. Up/Down keep a greyscale icon and fill with colour from the bottom or top (soft seam). Alpha & Up/Down also fade the unfilled area to bar-trough opacity. GIF/WebP fill uses native colours when icon ends are blank. Counts still hard-hide.",
+    "fr-CA": "Comment les engrenages pourcent/minuteur avec Masquer quand apparaissent. Désactivé = masquage franc. Alpha fond l'opacité. Haut/Bas gardent une icône en niveaux de gris et la remplissent de couleur depuis le bas ou le haut (jointure douce). Alpha et Haut/Bas fondent aussi la zone non remplie à l'opacité de l'auge. Le remplissage GIF/WebP utilise les couleurs natives quand les extrémités d'icône sont vides. Les comptes restent masqués franchement."
+  },
+  "cog-group-number-format-bar-total": {
+    "en-CA": "Show bar and total",
+    "fr-CA": "Afficher la barre et le total"
+  },
+  "cog-group-number-format-total": {
+    "en-CA": "Show total",
+    "fr-CA": "Afficher le total"
+  },
+  "cog-group-settings": {
+    "en-CA": "Group settings",
+    "fr-CA": "Réglages du groupe"
+  },
+  "cog-group-use-colours-tip": {
+    "en-CA": "When on, gears in this group use these colours unless they are exempt. Empty bar/border fields fall back to General. Empty icon ends fall back to General for SVG/PNG; for GIF/WebP, empty keeps native colours. Neutral icon colour applies to count gears on this line.",
+    "fr-CA": "Quand activé, les engrenages de ce groupe utilisent ces couleurs sauf s'ils en sont exempts. Les champs barre/bordure vides retombent sur Général. Les extrémités d'icône vides retombent sur Général pour SVG/PNG; pour GIF/WebP, vide conserve les couleurs natives. La couleur d'icône neutre s'applique aux engrenages de compte sur cette ligne."
+  },
+  "cog-groups-intro": {
+    "en-CA": "A group is a line that starts at X/Y. Size is the icon square, or the gear height when icons are off. Title and numbers sit away from the icon; the bar stays next to it. Stack chooses which side of the icon they sit on. Up/Down reorder the list — later groups draw on top of earlier ones.",
+    "fr-CA": "Un groupe est une ligne qui commence à X/Y. La taille est le carré d'icône, ou la hauteur d'engrenage quand les icônes sont désactivées. Le titre et les nombres s'écartent de l'icône; la barre reste à côté. Empilement choisit de quel côté de l'icône ils se placent. Haut/Bas réordonnent la liste — les groupes plus bas se dessinent par-dessus les précédents."
+  },
+  "cog-height": {
+    "en-CA": "Height",
+    "fr-CA": "Hauteur"
+  },
+  "cog-help-about": {
+    "en-CA": "Custom Overlay Gadgets (COG)\n\nCOG is a Prisma UI HUD toolkit for Skyrim Special Edition. It has built-in trackers for most vanilla statistics: everything from an oxygen meter to a werewolf timer.\nIndividual trackers are known as Gears. Gears are exposed in Gadgets.\n\nCOG Gadgets are split into Groups, Gauges, and Gizmos. See Definitions for details.\n\nMods can register their own named trackers (Gears), or their own bespoke widgets (Gizmos) using the Papyrus `COG_API`.\n\nOpen and close the editor with the bound key (default **F3**). Click that key label in the top-right to rebind it.\n\nChanges save live under `SKSE/Plugins/COG/`.",
+    "fr-CA": "Custom Overlay Gadgets (COG)\n\nCOG est une boîte à outils HUD Prisma UI pour Skyrim Special Edition. Il inclut des suiveurs intégrés pour la plupart des statistiques vanilla: de la jauge d'oxygène au minuteur de loup-garou.\nLes suiveurs individuels s'appellent des Engrenages. Les Engrenages sont exposés dans les Gadgets.\n\nLes Gadgets COG se répartissent en Groupes, Jauges et Gizmos. Voir Définitions pour les détails.\n\nLes mods peuvent enregistrer leurs propres suiveurs nommés (Engrenages), ou leurs propres widgets sur mesure (Gizmos) via l'API Papyrus `COG_API`.\n\nOuvrez et fermez l'éditeur avec la touche assignée (par défaut **F3**). Cliquez sur cette étiquette de touche en haut à droite pour la réassigner.\n\nLes changements s'enregistrent en direct sous `SKSE/Plugins/COG/`."
+  },
+  "cog-help-about-gizmos": {
+    "en-CA": "Tell me about Gizmos",
+    "fr-CA": "Parlez-moi des Gizmos"
+  },
+  "cog-help-about-gizmos-body": {
+    "en-CA": "Gizmos are custom, complicated code. They can register with COG to allow for their settings to show in the COG menu and to share COG's movement and resize functions.\n\nThe Gizmos tab opens to the gallery on the left (Cog's default Gizmos, plus any mod-registered types). Instances of Gizmos you add will show as accordions on the right, where you can alter their settings. \n\nGizmos are like Gears in that they can, and sometimes do, suppress HUD elements. Unlike Gears, this is built into the Gizmo's code. It is not a setting unless the Gizmo author makes it into one. The Feed Gizmo specifically suppresses HUD elements based on the sections you enable. Turn on notifications, and your regular notification feed is gone. The COG feed entirely replaces it.",
+    "fr-CA": "Les Gizmos sont du code personnalisé et complexe. Ils peuvent s'enregistrer auprès de COG pour que leurs réglages apparaissent dans le menu COG et pour partager les fonctions de déplacement et de redimensionnement de COG.\n\nL'onglet Gizmos s'ouvre sur la galerie à gauche (Gizmos par défaut de Cog, plus tout type enregistré par un mod). Les instances de Gizmos que vous ajoutez apparaissent en accordéons à droite, où vous pouvez modifier leurs réglages.\n\nLes Gizmos ressemblent aux Engrenages en ce qu'ils peuvent, et parfois le font, supprimer des éléments HUD. Contrairement aux Engrenages, cela est intégré au code du Gizmo. Ce n'est pas un réglage sauf si l'auteur du Gizmo en fait un. Le Gizmo Flux en particulier masque des éléments HUD selon les sections que vous activez. Activez les notifications, et votre flux de notifications habituel disparaît. Le flux COG le remplace entièrement."
+  },
+  "cog-help-button-tip": {
+    "en-CA": "About, Definitions, Help, and Suppressions",
+    "fr-CA": "À propos, Définitions, Aide et Suppressions"
+  },
+  "cog-help-count-icons-full-colour": {
+    "en-CA": "Why are my count icons always the \"full\" colour?",
+    "fr-CA": "Pourquoi mes icônes de compte sont-elles toujours de la couleur «plein»?"
+  },
+  "cog-help-count-icons-full-colour-body": {
+    "en-CA": "Counts have no 0–100% meter. Use the neutral icon colour setting under General backup colours (or under group colours) so those icons stay calm next to progressive meters. Default is Always White; the other options use bar, border, or the icon 0% / 50% / 100% colours from that same backup (or group) set.",
+    "fr-CA": "Les comptes n'ont pas de jauge 0–100%. Utilisez le réglage de couleur d'icône neutre sous les couleurs de secours générales (ou sous les couleurs du groupe) pour que ces icônes restent sobres à côté des jauges progressives. Par défaut: Toujours blanc; les autres options utilisent les couleurs de barre, de bordure, ou d'icône 0% / 50% / 100% du même jeu de secours (ou de groupe)."
+  },
+  "cog-help-def-gadget": {
+    "en-CA": "Gadget",
+    "fr-CA": "Gadget"
+  },
+  "cog-help-def-gadget-body": {
+    "en-CA": "A Gadget is any editable display element. The name sits near \"widget\", and this mod is a spiritual successor to projects like iWant Widgets, so a similar word felt appropriate.\n\nA Gadget can be a Group, Gauge, or Gizmo.\n\nMost Gadgets are made of Gears — individual trackers registered with COG by a mod.",
+    "fr-CA": "Un Gadget est tout élément d'affichage modifiable. Le nom se rapproche de «widget», et ce mod est un successeur spirituel de projets comme iWant Widgets, d'où un mot similaire.\n\nUn Gadget peut être un Groupe, une Jauge ou un Gizmo.\n\nLa plupart des Gadgets sont composés d'Engrenages — des suiveurs individuels enregistrés auprès de COG par un mod."
+  },
+  "cog-help-def-gauge": {
+    "en-CA": "Gauge",
+    "fr-CA": "Jauge"
+  },
+  "cog-help-def-gauge-body": {
+    "en-CA": "A Gauge exposes an individual Gear for tracking. Think of your Health bar in the default game: it tracks a single statistic, health. Gauges can mimic this, creating bar- or arc-style meters, or individual framed displays independent of Groups.",
+    "fr-CA": "Une Jauge expose un Engrenage individuel à suivre. Pensez à votre barre de santé dans le jeu de base: elle suit une seule statistique, la santé. Les Jauges peuvent imiter cela, en créant des compteurs en barre ou en arc, ou des affichages encadrés individuels indépendants des Groupes."
+  },
+  "cog-help-def-gear": {
+    "en-CA": "Gear",
+    "fr-CA": "Engrenage"
+  },
+  "cog-help-def-gear-body": {
+    "en-CA": "A Gear is one registered tracker: a `sourceMod` + `varName` pair, its live value, and the appearance you set in the Gears tab (icon, colours, hide rules, display name).\n\nExposure of a Gear is done with Groups and Gauges. By default, mod-added Gears will be added to the Default Group on their first load to make them visible, but you can change which group they're in or even remove them entirely if you prefer.",
+    "fr-CA": "Un Engrenage est un suiveur enregistré: une paire `sourceMod` + `varName`, sa valeur en direct, et l'apparence que vous définissez dans l'onglet Engrenages (icône, couleurs, règles de masquage, nom d'affichage).\n\nL'exposition d'un Engrenage se fait avec les Groupes et les Jauges. Par défaut, les Engrenages ajoutés par mods sont ajoutés au Groupe par défaut à leur premier chargement pour les rendre visibles, mais vous pouvez changer de groupe ou même les retirer entièrement si vous préférez."
+  },
+  "cog-help-def-gizmo": {
+    "en-CA": "Gizmo",
+    "fr-CA": "Gizmo"
+  },
+  "cog-help-def-gizmo-body": {
+    "en-CA": "Gizmos are the \"fancy Gadgets\", bespoke HUD elements that either don't rely on Gears or alternately rely on more than one Gear. Something like your compass, which has data sources for direction, locations, distance, etc., all packed into one.\n\nAt launch, COG ships with four Gizmos: Clock, Shout Meter, Feed, and Suppressor\n\n- Clock: Exactly what it sounds like. COG's clock can track date, day of the week, and time. The surrounding elements can add seasons, as well as three celestial bodies: Magnus (the sun), Masser and Secunda (the moons.) The clock's seasons and moon phases are based on the vanilla game. If you've got season mods, other celestial bodies, etc., it will not see those.\n- Shout Meter: COG's shout meter displays your currently-equipped shout, in Dovahzul (the dragon language). Similar to how the default compass flashes to indicate your shout cooldown, your shout will fill as you speak the words, and then slowly empty as your shout cooldown progresses.\n- Feed: A multi-purpose list of what's going on. The Feed Gizmo can show you your current location on arrival, discovered locations, your notifications, inventory changes, and active magical effects.\n- Suppressor: COG tries to be pretty smart out-of-box; if you add a health Gear to a group, the vanilla health bar is hidden, and the same is true for Feed elements, etc. But maybe you don't want to see certain things at all, or maybe you want to hide a HUD element that doesn't have a COG equivalent. That's where the suppressor comes in. If you know a specific HUD element's name, you can add it to Always Hide and have it hidden regardless of whether the same information is displayed in COG. Never Hide does the opposite — it keeps a named element visible even when a Gear, Gauge, Feed section, or Always Hide would otherwise soft-hide it. When hide and Never Hide conflict, Never Hide wins. The Suppressions help tab (? → Suppressions) lists live status; (winning) marks the primary controller (Suppressor > other Gizmos > Gauges > Groups).",
+    "fr-CA": "Les Gizmos sont les «Gadgets élégants», des éléments HUD sur mesure qui ne s'appuient pas sur des Engrenages ou, à l'inverse, s'appuient sur plus d'un Engrenage. Comme votre boussole, qui a des sources de données pour la direction, les lieux, la distance, etc., le tout dans un seul élément.\n\nAu lancement, COG livre quatre Gizmos: Horloge, Jauge de cri, Flux et Suppresseur\n\n- Horloge: Exactement ce que ça semble. L'horloge de COG peut suivre la date, le jour de la semaine et l'heure. Les éléments environnants peuvent ajouter les saisons, ainsi que trois corps célestes: Magnus (le soleil), Masser et Secunda (les lunes). Les saisons et phases lunaires de l'horloge sont basées sur le jeu vanilla. Si vous avez des mods de saisons, d'autres corps célestes, etc., elle ne les verra pas.\n- Jauge de cri: La jauge de cri de COG affiche votre cri actuellement équipé, en Dovahzul (la langue des dragons). Semblable à la façon dont la boussole par défaut clignote pour indiquer le temps de récupération du cri, votre cri se remplit à mesure que vous prononcez les mots, puis se vide lentement pendant le temps de récupération.\n- Flux: Une liste polyvalente de ce qui se passe. Le Gizmo Flux peut afficher votre lieu actuel à l'arrivée, les lieux découverts, vos notifications, les changements d'inventaire et les effets magiques actifs.\n- Suppresseur: COG essaie d'être assez intelligent dès le départ; si vous ajoutez un Engrenage de santé à un groupe, la barre de santé vanilla est masquée, et il en va de même pour les éléments du Flux, etc. Mais peut-être que vous ne voulez pas voir certaines choses du tout, ou masquer un élément HUD sans équivalent COG. C'est là qu'intervient le suppresseur. Si vous connaissez le nom d'un élément HUD précis, vous pouvez l'ajouter à Toujours masquer pour qu'il soit masqué, que la même information soit affichée dans COG ou non. Ne jamais masquer fait l'inverse — il garde un élément nommé visible même quand un Engrenage, une Jauge, une section Flux ou Toujours masquer le masquerait autrement. En cas de conflit entre masquage et Ne jamais masquer, Ne jamais masquer gagne. L'onglet d'aide Suppressions (? → Suppressions) liste l'état en direct; (gagnant) marque le contrôleur principal (Suppresseur > autres Gizmos > Jauges > Groupes)."
+  },
+  "cog-help-def-group": {
+    "en-CA": "Group",
+    "fr-CA": "Groupe"
+  },
+  "cog-help-def-group-body": {
+    "en-CA": "A Group is a type of Gadget that exposes multiple gears in a compact, customizable line. Groups are meant to show the most information in the least space.\n\nYou can customize position, rotation, size, spacing, stack side, and shared style options (including Group colours for theming groups, and Fill from Hidden, which controls how icons display based on a Gear's `Hide when` setting).",
+    "fr-CA": "Un Groupe est un type de Gadget qui expose plusieurs engrenages sur une ligne compacte et personnalisable. Les Groupes sont conçus pour montrer le plus d'information dans le moins d'espace.\n\nVous pouvez personnaliser la position, la rotation, la taille, l'espacement, le côté d'empilement et les options de style partagées (y compris les couleurs de Groupe pour thématiser les groupes, et Remplir depuis le masqué, qui contrôle l'affichage des icônes selon le réglage `Masquer quand` d'un Engrenage)."
+  },
+  "cog-help-empty": {
+    "en-CA": "No entries yet. Edit the matching markdown file under view/help/.",
+    "fr-CA": "Aucune entrée pour l'instant. Modifiez le fichier markdown correspondant sous view/help/."
+  },
+  "cog-help-feed-icons": {
+    "en-CA": "What's with the icons in the Feed Gizmo?",
+    "fr-CA": "Que font les icônes dans le Gizmo Flux?"
+  },
+  "cog-help-feed-icons-body": {
+    "en-CA": "Icons are on by default for each feed section, but can be turned off for any or all of them.\n* Notifications have a default icon, and mod authors can send their own via the Notify API (if you allow mod icons). Disk rules under `gizmos/cog-feed/notifications/` only apply when no API icon was set.\n* Inventory, Location, Active Effects, and Skills share the same icon-rule system (see \"For Mod Authors\"). You'll only see each section's gizmo default icon when no rule matches.",
+    "fr-CA": "Les icônes sont activées par défaut pour chaque section du flux, mais peuvent être désactivées pour l'une ou toutes.\n* Les notifications ont une icône par défaut, et les auteurs de mods peuvent en envoyer une via l'API Notify (si vous autorisez les icônes de mods). Les règles disque sous `gizmos/cog-feed/notifications/` ne s'appliquent que lorsqu'aucune icône API n'a été définie.\n* Inventaire, Lieu, Effets actifs et Compétences partagent le même système de règles d'icônes (voir «Pour les auteurs de mods»). Vous ne verrez l'icône par défaut du gizmo de chaque section que lorsqu'aucune règle ne correspond."
+  },
+  "cog-help-fill-from-hidden": {
+    "en-CA": "What does Fill from Hidden do?",
+    "fr-CA": "Que fait Remplir depuis le masqué?"
+  },
+  "cog-help-fill-from-hidden-body": {
+    "en-CA": "On a group, Fill from Hidden changes how percent/timer gears with a Hide when rule appear instead of vanishing hard.\n\nOff keeps hard hide. Alpha fades the whole gear’s opacity. Up / Down keep a greyscale icon in the layout and fill it with the current icon colour from the bottom or top (soft seam at the frontier). Alpha & Up / Alpha & Down do the same with a more transparent greyscale trough. Counts still hard-hide; inactive timers still hard-hide.\n\nHide when itself is set per gear on the Gears tab: Off, Below, or Above, plus a threshold from 0 to 100% (up to three decimal places).",
+    "fr-CA": "Sur un groupe, Remplir depuis le masqué change l'apparence des engrenages pourcent/minuteur avec une règle Masquer quand, au lieu d'un masquage franc.\n\nDésactivé conserve le masquage franc. Alpha fond l'opacité de tout l'engrenage. Haut / Bas gardent une icône en niveaux de gris dans la disposition et la remplissent de la couleur d'icône actuelle depuis le bas ou le haut (jointure douce à la frontière). Alpha et Haut / Alpha et Bas font de même avec une auge en niveaux de gris plus transparente. Les comptes restent masqués franchement; les minuteurs inactifs aussi.\n\nMasquer quand se règle par engrenage dans l'onglet Engrenages: Désactivé, Sous ou Au-dessus, plus un seuil de 0 à 100% (jusqu'à trois décimales)."
+  },
+  "cog-help-gauge-types": {
+    "en-CA": "Gauge Types",
+    "fr-CA": "Types de jauges"
+  },
+  "cog-help-gauge-types-body": {
+    "en-CA": "Add Gauge creates a free-floating indicator for one gear (independent of groups). Open a gauge accordion to raise it above the editor for drag, rotate, and resize. Type is Meter (Bar or Arc) or Frame.\n\nMeter: Show Icon and Show Label each offer none / left / right / centered / up / down. When both use the same placement, the label sits farther from the gauge than the icon (on arcs, left/right share the hollow: icon on the chosen side, label fills the remaining width). Icon Colour and Label Colour default to border colour; other options keep gear colours or match bar / label / icon / border tints. On bars, left/right label text is aligned away from the bar; arc labels wrap and scale to fit the hollow. On arcs, up is above the peak and down is below the baseline. Shape is Bar (default) or Arc. Bar and Arc share border, trough, endcaps, and fill direction — Arc is a semicircle band.\n\nFrame: pick a Frames silhouette, fill/border colours, and Display mode Gear or Picture. Frame rotation turns the bezel only. Gear mode shows the bound gear’s icon/bar/value/title inside the plate. Picture mode shows chosen Pictures artwork only (progress from the bound gear); direction is relative to the frame, not the picture’s own rotation. Always Visible (on by default) keeps the frame shown even when the vanilla HUD is hidden or the gear’s Hide when rule would soft-hide it.",
+    "fr-CA": "Ajouter une jauge crée un indicateur flottant pour un engrenage (indépendant des groupes). Ouvrez un accordéon de jauge pour le remonter au-dessus de l'éditeur afin de glisser, pivoter et redimensionner. Le type est Compteur (Barre ou Arc) ou Cadre.\n\nCompteur: Afficher l'icône et Afficher l'étiquette offrent chacune aucun / gauche / droite / centré / haut / bas. Quand les deux utilisent le même emplacement, l'étiquette s'éloigne plus de la jauge que l'icône (sur les arcs, gauche/droite partagent le creux: icône du côté choisi, l'étiquette remplit la largeur restante). Couleur de l'icône et Couleur de l'étiquette par défaut = couleur de bordure; les autres options gardent les couleurs d'engrenage ou suivent les teintes barre / étiquette / icône / bordure. Sur les barres, le texte d'étiquette gauche/droite s'aligne loin de la barre; les étiquettes d'arc s'enroulent et se mettent à l'échelle pour le creux. Sur les arcs, haut est au-dessus du sommet et bas sous la ligne de base. La forme est Barre (par défaut) ou Arc. Barre et Arc partagent bordure, auge, embouts et direction de remplissage — l'Arc est une bande en demi-cercle.\n\nCadre: choisissez une silhouette Frames, couleurs de remplissage/bordure, et mode d'affichage Engrenage ou Image. La rotation du cadre ne tourne que le cadre. Le mode Engrenage montre l'icône/barre/valeur/titre de l'engrenage lié dans la plaque. Le mode Image montre uniquement l'illustration Pictures choisie (progression selon l'engrenage lié); la direction est relative au cadre, pas à la rotation propre de l'image. Toujours visible (activé par défaut) garde le cadre affiché même quand le HUD vanilla est masqué ou que la règle Masquer quand de l'engrenage le masquerait doucement."
+  },
+  "cog-help-gears-tab": {
+    "en-CA": "The Gears tab",
+    "fr-CA": "L'onglet Engrenages"
+  },
+  "cog-help-gears-tab-body": {
+    "en-CA": "Search registered trackers and edit appearance: display name, icon, icon colours, bar colour, and hide-when rules. Reset restores Register defaults. Adding a Gear doesn't display it. Placement still comes from Groups and Gauges.\n\nIcon at 0% / 100% tint meter icons by value. For most types of icons, blank ends fall back to General (or group) backup colours. For GIF/WebP, blank means native file colours, allowing mod authors to ship multi-coloured, and even animated, icons in those formats.",
+    "fr-CA": "Recherchez les suiveurs enregistrés et modifiez l'apparence: nom d'affichage, icône, couleurs d'icône, couleur de barre et règles Masquer quand. Réinitialiser restaure les valeurs par défaut d'enregistrement. Ajouter un Engrenage ne l'affiche pas. Le placement vient toujours des Groupes et des Jauges.\n\nLes teintes d'icône à 0% / 100% colorent les icônes de jauge selon la valeur. Pour la plupart des types d'icônes, les extrémités vides retombent sur les couleurs de secours générales (ou du groupe). Pour GIF/WebP, vide signifie les couleurs natives du fichier, permettant aux auteurs de mods de livrer des icônes multicolores, et même animées, dans ces formats."
+  },
+  "cog-help-general-tab": {
+    "en-CA": "General tab",
+    "fr-CA": "Onglet Général"
+  },
+  "cog-help-general-tab-body": {
+    "en-CA": "Show Default Group toggles the built-in line for unassigned gears. \n\nBackup colours (bar, border, icon 0%/100%, neutral icon colour for counts) apply when a gear or group does not override them. Most icons use those backup icon colours when their own ends are blank; GIF and WebP icons keep their native colours instead until you set an icon end.",
+    "fr-CA": "Afficher le groupe par défaut active la ligne intégrée pour les engrenages non assignés.\n\nLes couleurs de secours (barre, bordure, icône 0%/100%, couleur d'icône neutre pour les comptes) s'appliquent quand un engrenage ou un groupe ne les remplace pas. La plupart des icônes utilisent ces couleurs de secours quand leurs propres extrémités sont vides; les icônes GIF et WebP gardent leurs couleurs natives jusqu'à ce que vous définissiez une extrémité d'icône."
+  },
+  "cog-help-groups-tab": {
+    "en-CA": "Groups tab",
+    "fr-CA": "Onglet Groupes"
+  },
+  "cog-help-groups-tab-body": {
+    "en-CA": "Create and arrange lines. Add gears, reorder them, set size/spacing/stack, and optionally use group colours. Exempt from group colours keeps a gear on its own palette when the group theme is on. Open a group accordion to raise that line above the editor for dragging.",
+    "fr-CA": "Créez et organisez des lignes. Ajoutez des engrenages, réordonnez-les, réglez taille/espacement/empilement, et utilisez optionnellement les couleurs de groupe. Exempt des couleurs du groupe garde un engrenage sur sa propre palette quand le thème du groupe est activé. Ouvrez un accordéon de groupe pour remonter cette ligne au-dessus de l'éditeur afin de la glisser."
+  },
+  "cog-help-howl-cooldown": {
+    "en-CA": "Why doesn't Howl Cooldown ever show?",
+    "fr-CA": "Pourquoi le temps de récupération du Hurlement ne s'affiche-t-il jamais?"
+  },
+  "cog-help-howl-cooldown-body": {
+    "en-CA": "In vanilla, most werewolf howls have no voice recovery. Howl of Terror (the default) and Totem of the Hunt are both 0 seconds, so the gear stays hidden after a howl.\n\nOnly Totem of Brotherhood's pack howl has a real cooldown (60 seconds). That totem unlocks later in the Companions quests. Mods that give howls a recharge will also light the gear.",
+    "fr-CA": "En vanilla, la plupart des hurlements de loup-garou n'ont pas de récupération vocale. Hurlement de terreur (par défaut) et Totem de la chasse sont tous deux à 0 seconde, donc l'engrenage reste masqué après un hurlement.\n\nSeul le hurlement de meute du Totem de la fraternité a un vrai temps de récupération (60 secondes). Ce totem se débloque plus tard dans les quêtes des Compagnons. Les mods qui donnent une recharge aux hurlements allumeront aussi l'engrenage."
+  },
+  "cog-help-image-types": {
+    "en-CA": "What image types can I use?",
+    "fr-CA": "Quels types d'images puis-je utiliser?"
+  },
+  "cog-help-image-types-body": {
+    "en-CA": "COG ships with SVG images across the board, which are vector images. This is not your only choice, but vector images don't pixellate as they expand. You can make them as big as you like. Gears, Gauges, and Gizmos can also use PNG, JPEG, BMP, GIF, and WebP.\n\nUnlike other icons, GIF and WebP do not fall back to the general colour when both icon ends are blank — they keep their native colours at those ends (and keep animating when the file is animated). This is intentional to allow you to use full-colour and animated icons if you want to.",
+    "fr-CA": "COG livre des images SVG partout, qui sont des images vectorielles. Ce n'est pas votre seul choix, mais les images vectorielles ne pixellisent pas en agrandissant. Vous pouvez les agrandir autant que vous voulez. Les Engrenages, Jauges et Gizmos peuvent aussi utiliser PNG, JPEG, BMP, GIF et WebP.\n\nContrairement aux autres icônes, GIF et WebP ne retombent pas sur la couleur générale quand les deux extrémités d'icône sont vides — ils gardent leurs couleurs natives à ces extrémités (et continuent d'animer si le fichier est animé). C'est intentionnel pour vous permettre d'utiliser des icônes en couleur complète et animées si vous le souhaitez."
+  },
+  "cog-help-load-failed": {
+    "en-CA": "Could not load help/{file}. Redeploy the view/help folder with the mod.",
+    "fr-CA": "Impossible de charger help/{file}. Redéployez le dossier view/help avec le mod."
+  },
+  "cog-help-make-patches": {
+    "en-CA": "How can I make patches, changes, or Gizmos of my own?",
+    "fr-CA": "Comment puis-je créer mes propres correctifs, changements ou Gizmos?"
+  },
+  "cog-help-make-patches-body": {
+    "en-CA": "See our docs on Nexus Mods for more complex things, like registering Gears and writing custom Gizmos, as well as details on how to control Feed rules and send custom COG notifications.",
+    "fr-CA": "Consultez notre documentation sur Nexus Mods pour des sujets plus complexes, comme l'enregistrement d'Engrenages et la création de Gizmos personnalisés, ainsi que des détails sur le contrôle des règles de Flux et l'envoi de notifications COG personnalisées."
+  },
+  "cog-help-menu-not-coming-back": {
+    "en-CA": "Why isn't my mod's menu coming back after I removed the Gear from my screen?",
+    "fr-CA": "Pourquoi le menu de mon mod ne réapparaît-il pas après avoir retiré l'Engrenage de mon écran?"
+  },
+  "cog-help-menu-not-coming-back-body": {
+    "en-CA": "COG can soft-hide a linked HUD target while a Gear that opts into that link is exposed on a visible Group or Gauge. Gizmos may also be programmed to hide specific elements.\n\nSome mods, like Casting Bar, reuse one UI menu for several jobs and swap different movies into that same menu (spell, bow, shout). If COG is suppressing that menu for any of those functions, it is suppressing it for all of them. Use COG or the original mod for that whole set — mixing and matching is not possible with whole-menu hide.\n\nTo find out what's hiding a specific element, check the list at `? → Suppressions`",
+    "fr-CA": "COG peut masquer temporairement une cible HUD liée lorsqu'un Engrenage qui opte pour ce lien est exposé sur un Groupe ou une Jauge visible. Les Gizmos peuvent aussi être programmés pour masquer des éléments précis.\n\nCertains mods, comme Casting Bar, réutilisent un seul menu d'interface pour plusieurs fonctions et y intercalent différents films (sort, arc, cri). Si COG masque ce menu pour l'une de ces fonctions, il le masque pour toutes. Utilisez COG ou le mod d'origine pour tout l'ensemble — mélanger les deux n'est pas possible avec un masquage au niveau du menu entier.\n\nPour savoir ce qui masque un élément précis, consultez la liste à `? → Suppressions`"
+  },
+  "cog-help-opening-editor": {
+    "en-CA": "Opening the editor",
+    "fr-CA": "Ouvrir l'éditeur"
+  },
+  "cog-help-opening-editor-body": {
+    "en-CA": "Press the bound key (default **F3**) to focus the overlay editor. Press it again to close. Click the key label in the banner to rebind; press Escape or click again to cancel rebinding.",
+    "fr-CA": "Appuyez sur la touche assignée (par défaut **F3**) pour activer l'éditeur d'overlay. Appuyez de nouveau pour fermer. Cliquez sur l'étiquette de touche dans la bannière pour la réassigner; appuyez sur Échap ou cliquez de nouveau pour annuler la réassignation."
+  },
+  "cog-help-sec-basics": {
+    "en-CA": "The Basics",
+    "fr-CA": "Les bases"
+  },
+  "cog-help-sec-gauges": {
+    "en-CA": "Gauges",
+    "fr-CA": "Jauges"
+  },
+  "cog-help-sec-gears": {
+    "en-CA": "Gears",
+    "fr-CA": "Engrenages"
+  },
+  "cog-help-sec-gizmos": {
+    "en-CA": "Gizmos",
+    "fr-CA": "Gizmos"
+  },
+  "cog-help-sec-groups": {
+    "en-CA": "Groups",
+    "fr-CA": "Groupes"
+  },
+  "cog-help-sec-mod-authors": {
+    "en-CA": "For Mod Authors",
+    "fr-CA": "Pour les auteurs de mods"
+  },
+  "cog-help-settings-stored": {
+    "en-CA": "Where are settings stored?",
+    "fr-CA": "Où sont enregistrés les paramètres?"
+  },
+  "cog-help-settings-stored-body": {
+    "en-CA": "On disk under `Data/SKSE/Plugins/COG/`: `general.json`, `groups/`, `gears/`, `gauges/`, and `gizmos/`. The editor writes these while you play. \n\nIndividual Gizmos may have their own folders with settings files, like the Feed Gizmo. See our docs on Nexus Mods for how you can use and customize those.",
+    "fr-CA": "Sur le disque sous `Data/SKSE/Plugins/COG/`: `general.json`, `groups/`, `gears/`, `gauges/` et `gizmos/`. L'éditeur écrit ces fichiers pendant que vous jouez. \n\nCertains Gizmos peuvent avoir leurs propres dossiers avec des fichiers de paramètres, comme le Gizmo Flux. Consultez notre documentation sur Nexus Mods pour savoir comment les utiliser et les personnaliser."
+  },
+  "cog-help-what-is-suppression": {
+    "en-CA": "What is Suppression, and how does it work?",
+    "fr-CA": "Qu'est-ce que la Suppression, et comment ça fonctionne?"
+  },
+  "cog-help-what-is-suppression-body": {
+    "en-CA": "COG ships with the ability to suppress HUD elements, allowing you to replace them with your own COG elements. This allows us to do some neat things like hiding mod-added elements without the need to edit those mods in any way.\n\nGears have suppression options as a field that's registered when the gear is, but you can also edit it. Just make sure you know the exact location of the element you want to suppress (hud.stamina, for example, or hud.oxygen)",
+    "fr-CA": "COG permet de supprimer des éléments du HUD afin de les remplacer par vos propres éléments COG. Cela permet notamment de masquer des éléments ajoutés par des mods sans avoir à modifier ces mods.\n\nLes Engrenages ont des options de suppression enregistrées au moment de l'enregistrement de l'engrenage, mais vous pouvez aussi les modifier. Assurez-vous simplement de connaître l'emplacement exact de l'élément à supprimer (hud.stamina, par exemple, ou hud.oxygen)"
+  },
+  "cog-help-whats-a-suppressor": {
+    "en-CA": "What's a Suppressor?",
+    "fr-CA": "Qu'est-ce qu'un Suppresseur?"
+  },
+  "cog-help-whats-a-suppressor-body": {
+    "en-CA": "The Suppressor Gizmo allows you to hide HUD elements _without replacing them_, or show them _even though they've been replaced._ Use Always Hide / Never Hide for HUD soft-hide keys (see Definitions). The Suppressions help tab (? → Suppressions) lists live HUD soft-hide rules, and where those suppressions come from.\n\nThe Suppressor is editor-only. The visual element is there just to let the user know that there is a Suppressor present. It can be moved, rotated, and even expanded, but it is only a visual cue and will only appear when in the COG menu.",
+    "fr-CA": "Le Gizmo Suppresseur permet de masquer des éléments du HUD _sans les remplacer_, ou de les afficher _même s'ils ont été remplacés._ Utilisez Toujours masquer / Ne jamais masquer pour les clés de masquage soft du HUD (voir Définitions). L'onglet d'aide Suppressions (? → Suppressions) liste les règles de masquage soft du HUD en direct, et d'où viennent ces suppressions.\n\nLe Suppresseur n'existe que dans l'éditeur. L'élément visuel sert uniquement à indiquer qu'un Suppresseur est présent. Il peut être déplacé, tourné et même agrandi, mais ce n'est qu'un repère visuel et il n'apparaît que dans le menu COG."
+  },
+  "cog-hex": {
+    "en-CA": "Hex",
+    "fr-CA": "Hex"
+  },
+  "cog-hidden": {
+    "en-CA": "Hidden",
+    "fr-CA": "Masqué"
+  },
+  "cog-hide-when": {
+    "en-CA": "Hide when",
+    "fr-CA": "Masquer quand"
+  },
+  "cog-highlight-missing": {
+    "en-CA": "Highlight missing translations",
+    "fr-CA": "Surligner les traductions manquantes"
+  },
+  "cog-highlight-missing-tip": {
+    "en-CA": "Marks missing catalog strings with a gold badge (shows the en-CA fallback).",
+    "fr-CA": "Marque les chaînes manquantes du catalogue d'un badge doré (affiche le repli en-CA)."
+  },
+  "cog-hud-alias-activate": {
+    "en-CA": "Activate / rollover prompt",
+    "fr-CA": "Invite d'activation / survol"
+  },
+  "cog-hud-alias-active-effects": {
+    "en-CA": "SkyUI Active Effects",
+    "fr-CA": "Effets actifs SkyUI"
+  },
+  "cog-hud-alias-ammo": {
+    "en-CA": "Ammo / arrows",
+    "fr-CA": "Munitions / flèches"
+  },
+  "cog-hud-alias-casting": {
+    "en-CA": "Casting Bar (whole menu)",
+    "fr-CA": "Barre d'incantation (menu entier)"
+  },
+  "cog-hud-alias-charge": {
+    "en-CA": "Right / two-hand charge",
+    "fr-CA": "Charge main droite / à deux mains"
+  },
+  "cog-hud-alias-compass": {
+    "en-CA": "Compass / shout meter",
+    "fr-CA": "Boussole / compteur de cris"
+  },
+  "cog-hud-alias-crosshair": {
+    "en-CA": "Crosshair",
+    "fr-CA": "Réticule"
+  },
+  "cog-hud-alias-current-location": {
+    "en-CA": "Current location (LocationLockBase)",
+    "fr-CA": "Lieu actuel (LocationLockBase)"
+  },
+  "cog-hud-alias-enemy-health": {
+    "en-CA": "Enemy health",
+    "fr-CA": "Santé de l'ennemi"
+  },
+  "cog-hud-alias-health": {
+    "en-CA": "Health bar",
+    "fr-CA": "Barre de santé"
+  },
+  "cog-hud-alias-inventory": {
+    "en-CA": "Inventory (TrueHUD Recent Loot)",
+    "fr-CA": "Inventaire (TrueHUD Recent Loot)"
+  },
+  "cog-hud-alias-leftcharge": {
+    "en-CA": "Left-hand charge",
+    "fr-CA": "Charge main gauche"
+  },
+  "cog-hud-alias-magicka": {
+    "en-CA": "Magicka bar",
+    "fr-CA": "Barre de magie"
+  },
+  "cog-hud-alias-notifications": {
+    "en-CA": "Notifications (MessagesBlock)",
+    "fr-CA": "Notifications (MessagesBlock)"
+  },
+  "cog-hud-alias-oxygen": {
+    "en-CA": "Oxygen Meter 2",
+    "fr-CA": "Oxygen Meter 2"
+  },
+  "cog-hud-alias-quest-updates": {
+    "en-CA": "Quest updates",
+    "fr-CA": "Mises à jour de quête"
+  },
+  "cog-hud-alias-stamina": {
+    "en-CA": "Stamina bar",
+    "fr-CA": "Barre d'endurance"
+  },
+  "cog-hud-alias-stealth": {
+    "en-CA": "Stealth eye",
+    "fr-CA": "Œil de furtivité"
+  },
+  "cog-hud-alias-subtitles": {
+    "en-CA": "Subtitles",
+    "fr-CA": "Sous-titres"
+  },
+  "cog-hud-alias-tutorials": {
+    "en-CA": "Tutorial hints",
+    "fr-CA": "Astuces du tutoriel"
+  },
+  "cog-hud-key": {
+    "en-CA": "HUD key",
+    "fr-CA": "Clé HUD"
+  },
+  "cog-hud-key-placeholder": {
+    "en-CA": "hud.health or Menu|path",
+    "fr-CA": "hud.health or Menu|path"
+  },
+  "cog-hud-suppression": {
+    "en-CA": "HUD Suppression",
+    "fr-CA": "Suppression HUD"
+  },
+  "cog-hud-target": {
+    "en-CA": "HUD Target",
+    "fr-CA": "Cible HUD"
+  },
+  "cog-hud-target-placeholder": {
+    "en-CA": "hud.casting",
+    "fr-CA": "hud.casting"
+  },
+  "cog-hud-visible": {
+    "en-CA": "HUD Visible",
+    "fr-CA": "HUD visible"
+  },
+  "cog-icon": {
+    "en-CA": "Icon",
+    "fr-CA": "Icône"
+  },
+  "cog-icon-0": {
+    "en-CA": "Icon 0%",
+    "fr-CA": "Icône 0%"
+  },
+  "cog-icon-100": {
+    "en-CA": "Icon 100%",
+    "fr-CA": "Icône 100%"
+  },
+  "cog-icon-50": {
+    "en-CA": "Icon 50%",
+    "fr-CA": "Icône 50%"
+  },
+  "cog-icon-colour": {
+    "en-CA": "Icon Colour",
+    "fr-CA": "Couleur de l'icône"
+  },
+  "cog-icon-colours": {
+    "en-CA": "Icon colours",
+    "fr-CA": "Couleurs de l'icône"
+  },
+  "cog-icon-pack": {
+    "en-CA": "Icon pack",
+    "fr-CA": "Pack d'icônes"
+  },
+  "cog-icons": {
+    "en-CA": "Icons",
+    "fr-CA": "Icônes"
+  },
+  "cog-in": {
+    "en-CA": "In",
+    "fr-CA": "Entrée"
+  },
+  "cog-in-group": {
+    "en-CA": "in {group}",
+    "fr-CA": "dans {group}"
+  },
+  "cog-inside-size": {
+    "en-CA": "Inside Size",
+    "fr-CA": "Taille intérieure"
+  },
+  "cog-inventory": {
+    "en-CA": "Inventory",
+    "fr-CA": "Inventaire"
+  },
+  "cog-inventory-gear": {
+    "en-CA": "Inventory gear",
+    "fr-CA": "Engrenage d'inventaire"
+  },
+  "cog-inventory-gears": {
+    "en-CA": "Inventory Gears",
+    "fr-CA": "Engrenages d'inventaire"
+  },
+  "cog-inventory-gears-lede": {
+    "en-CA": "Track item counts from your inventory. Add items from your inventory into the temporary container; each new item becomes its own gear and is returned to your inventory when you close the container. These gears live here—not in Registered Gears above—but you can hook them to groups, gauges, and gizmos.",
+    "fr-CA": "Suivez le nombre d'objets de votre inventaire. Ajoutez des objets de votre inventaire dans le contenant temporaire; chaque nouvel objet devient son propre engrenage et est remis dans votre inventaire lorsque vous fermez le contenant. Ces engrenages vivent ici — pas dans Engrenages enregistrés ci-dessus — mais vous pouvez les lier à des groupes, jauges et gizmos."
+  },
+  "cog-keep-icon-colours": {
+    "en-CA": "Keep Icon Colours",
+    "fr-CA": "Conserver les couleurs de l'icône"
+  },
+  "cog-keep-number-colour": {
+    "en-CA": "Keep Number Colour",
+    "fr-CA": "Conserver la couleur du nombre"
+  },
+  "cog-keep-title-colour": {
+    "en-CA": "Keep Title Colour",
+    "fr-CA": "Conserver la couleur du titre"
+  },
+  "cog-known": {
+    "en-CA": "Known",
+    "fr-CA": "Connus"
+  },
+  "cog-language": {
+    "en-CA": "Language",
+    "fr-CA": "Langue"
+  },
+  "cog-left": {
+    "en-CA": "Left",
+    "fr-CA": "Gauche"
+  },
+  "cog-left-of-icon": {
+    "en-CA": "Left of icon",
+    "fr-CA": "À gauche de l'icône"
+  },
+  "cog-level-progress": {
+    "en-CA": "Level Progress",
+    "fr-CA": "Progression de niveau"
+  },
+  "cog-level-up-menu-never-blocked": {
+    "en-CA": "Level Up Menu is never blocked.",
+    "fr-CA": "Le menu de montée de niveau n'est jamais bloqué."
+  },
+  "cog-listening-esc-cancels": {
+    "en-CA": "Listening… Esc cancels",
+    "fr-CA": "Écoute… Échap annule"
+  },
+  "cog-loading": {
+    "en-CA": "Loading…",
+    "fr-CA": "Chargement…"
+  },
+  "cog-location": {
+    "en-CA": "Location",
+    "fr-CA": "Lieu"
+  },
+  "cog-location-discovery": {
+    "en-CA": "Location Discovery",
+    "fr-CA": "Découverte de lieu"
+  },
+  "cog-max": {
+    "en-CA": "Max",
+    "fr-CA": "Max"
+  },
+  "cog-max-remaining": {
+    "en-CA": "Max remaining",
+    "fr-CA": "Max restant"
+  },
+  "cog-meter": {
+    "en-CA": "Meter",
+    "fr-CA": "Compteur"
+  },
+  "cog-meter-settings": {
+    "en-CA": "Meter Settings",
+    "fr-CA": "Paramètres du compteur"
+  },
+  "cog-middle": {
+    "en-CA": "Middle",
+    "fr-CA": "Milieu"
+  },
+  "cog-min-remaining": {
+    "en-CA": "Min remaining",
+    "fr-CA": "Min restant"
+  },
+  "cog-missing-translation-title": {
+    "en-CA": "Missing {missing} — showing {fallback} fallback",
+    "fr-CA": "{missing} manquant — affichage du repli {fallback}"
+  },
+  "cog-mode": {
+    "en-CA": "Mode",
+    "fr-CA": "Mode"
+  },
+  "cog-mode-celestial": {
+    "en-CA": "Celestial",
+    "fr-CA": "Céleste"
+  },
+  "cog-mode-text-only": {
+    "en-CA": "Text-only",
+    "fr-CA": "Texte seulement"
+  },
+  "cog-more-info": {
+    "en-CA": "More info",
+    "fr-CA": "Plus d'infos"
+  },
+  "cog-neutral-icon-colour": {
+    "en-CA": "Neutral icon colour",
+    "fr-CA": "Couleur d'icône neutre"
+  },
+  "cog-never-hide": {
+    "en-CA": "Never Hide",
+    "fr-CA": "Ne jamais masquer"
+  },
+  "cog-never-hide-hint": {
+    "en-CA": "Keep these visible — wins over gear soft-hide and Always Hide.",
+    "fr-CA": "Gardez-les visibles — prioritaire sur le masquage soft des engrenages et Toujours masquer."
+  },
+  "cog-no-aliases-match": {
+    "en-CA": "No aliases match this filter.",
+    "fr-CA": "Aucun alias ne correspond à ce filtre."
+  },
+  "cog-no-gauges-yet": {
+    "en-CA": "No gauges yet.",
+    "fr-CA": "Aucune jauge pour l'instant."
+  },
+  "cog-no-gear": {
+    "en-CA": "No gear",
+    "fr-CA": "Aucun engrenage"
+  },
+  "cog-no-gears-on-line": {
+    "en-CA": "No gears on this line yet.",
+    "fr-CA": "Aucun engrenage sur cette ligne pour l'instant."
+  },
+  "cog-no-gears-registered": {
+    "en-CA": "No gears registered yet.",
+    "fr-CA": "Aucun engrenage enregistré pour l'instant."
+  },
+  "cog-no-gizmos-yet": {
+    "en-CA": "No gizmos yet. Choose a type from the gallery on the left to add one.",
+    "fr-CA": "Aucun gizmo pour l'instant. Choisissez un type dans la galerie à gauche pour en ajouter un."
+  },
+  "cog-no-hud-suppressions": {
+    "en-CA": "No HUD suppressions are active. Place a Gear with a HUD link, a Feed section, or a Suppressor entry to see rows here.",
+    "fr-CA": "Aucune suppression HUD active. Placez un Engrenage avec un lien HUD, une section Flux, ou une entrée Suppresseur pour voir des lignes ici."
+  },
+  "cog-no-icons-found": {
+    "en-CA": "No icons found under assets/icons.",
+    "fr-CA": "Aucune icône trouvée sous assets/icons."
+  },
+  "cog-no-icons-in-folder": {
+    "en-CA": "No icons found in {folder}.",
+    "fr-CA": "Aucune icône trouvée dans {folder}."
+  },
+  "cog-no-inventory-gears": {
+    "en-CA": "No inventory gears yet.",
+    "fr-CA": "Aucun engrenage d'inventaire pour l'instant."
+  },
+  "cog-no-matches": {
+    "en-CA": "No matches.",
+    "fr-CA": "Aucune correspondance."
+  },
+  "cog-no-other-icon-folders": {
+    "en-CA": "No other icon folders found.",
+    "fr-CA": "Aucun autre dossier d'icônes trouvé."
+  },
+  "cog-no-suppression-aliases": {
+    "en-CA": "No suppression aliases are available.",
+    "fr-CA": "Aucun alias de suppression disponible."
+  },
+  "cog-no-suppressions-match": {
+    "en-CA": "No suppressions match this filter.",
+    "fr-CA": "Aucune suppression ne correspond à ce filtre."
+  },
+  "cog-none": {
+    "en-CA": "None",
+    "fr-CA": "Aucun"
+  },
+  "cog-none-click-to-set": {
+    "en-CA": "None — click to set",
+    "fr-CA": "Aucun — cliquez pour définir"
+  },
+  "cog-notifications": {
+    "en-CA": "Notifications",
+    "fr-CA": "Notifications"
+  },
+  "cog-number-colour": {
+    "en-CA": "Number Colour",
+    "fr-CA": "Couleur du nombre"
+  },
+  "cog-number-format": {
+    "en-CA": "Number Format",
+    "fr-CA": "Format du nombre"
+  },
+  "cog-number-format-bar": {
+    "en-CA": "Show bar",
+    "fr-CA": "Afficher la barre"
+  },
+  "cog-number-format-bar-percent": {
+    "en-CA": "Show bar and percentage",
+    "fr-CA": "Afficher la barre et le pourcentage"
+  },
+  "cog-number-format-bar-total": {
+    "en-CA": "Show bar and value",
+    "fr-CA": "Afficher la barre et la valeur"
+  },
+  "cog-number-format-percent": {
+    "en-CA": "Show percentage",
+    "fr-CA": "Afficher le pourcentage"
+  },
+  "cog-number-format-total": {
+    "en-CA": "Show value",
+    "fr-CA": "Afficher la valeur"
+  },
+  "cog-off": {
+    "en-CA": "Off",
+    "fr-CA": "Désactivé"
+  },
+  "cog-on": {
+    "en-CA": "On",
+    "fr-CA": "Activé"
+  },
+  "cog-opacity": {
+    "en-CA": "Opacity",
+    "fr-CA": "Opacité"
+  },
+  "cog-out": {
+    "en-CA": "Out",
+    "fr-CA": "Sortie"
+  },
+  "cog-overlap": {
+    "en-CA": "Overlap",
+    "fr-CA": "Chevauchement"
+  },
+  "cog-percent": {
+    "en-CA": "Percent",
+    "fr-CA": "Pour cent"
+  },
+  "cog-percentage": {
+    "en-CA": "Percentage",
+    "fr-CA": "Pourcentage"
+  },
+  "cog-persist": {
+    "en-CA": "Persist",
+    "fr-CA": "Persister"
+  },
+  "cog-picture": {
+    "en-CA": "Picture",
+    "fr-CA": "Image"
+  },
+  "cog-picture-fill-direction-tip": {
+    "en-CA": "Note: Timers fill before emptying, so direction will appear reversed.",
+    "fr-CA": "Remarque : les minuteries se remplissent avant de se vider, donc la direction paraîtra inversée."
+  },
+  "cog-picture-mode": {
+    "en-CA": "Picture mode",
+    "fr-CA": "Mode image"
+  },
+  "cog-picture-rotation": {
+    "en-CA": "Picture Rotation",
+    "fr-CA": "Rotation de l'image"
+  },
+  "cog-position-and-size": {
+    "en-CA": "Position & size",
+    "fr-CA": "Position et taille"
+  },
+  "cog-press-a-key": {
+    "en-CA": "Press a key…",
+    "fr-CA": "Appuyez sur une touche…"
+  },
+  "cog-primary": {
+    "en-CA": "Primary",
+    "fr-CA": "Principal"
+  },
+  "cog-progress-bar": {
+    "en-CA": "Progress Bar",
+    "fr-CA": "Barre de progression"
+  },
+  "cog-progress-bar-hint": {
+    "en-CA": "Shared bar colour, width, and number format for Active Effects timers and Skills Level Progress.",
+    "fr-CA": "Couleur, largeur et format numérique partagés de la barre pour les minuteries des effets actifs et la progression de niveau des compétences."
+  },
+  "cog-registered-gears": {
+    "en-CA": "Registered Gears",
+    "fr-CA": "Engrenages enregistrés"
+  },
+  "cog-registered-gears-lede": {
+    "en-CA": "Search for a registered tracker to change its appearance. Changes update the HUD live. Placement still comes from the Groups tab.",
+    "fr-CA": "Recherchez un suivi enregistré pour modifier son apparence. Les modifications mettent à jour le HUD en direct. Le placement provient toujours de l'onglet Groupes."
+  },
+  "cog-remove": {
+    "en-CA": "Remove",
+    "fr-CA": "Retirer"
+  },
+  "cog-remove-colour-stop": {
+    "en-CA": "Remove colour stop",
+    "fr-CA": "Retirer l'arrêt de couleur"
+  },
+  "cog-remove-line": {
+    "en-CA": "Remove Line",
+    "fr-CA": "Retirer la ligne"
+  },
+  "cog-reset-backup-colours": {
+    "en-CA": "Reset backup colours",
+    "fr-CA": "Réinitialiser les couleurs de secours"
+  },
+  "cog-reset-picture": {
+    "en-CA": "Reset picture",
+    "fr-CA": "Réinitialiser l'image"
+  },
+  "cog-reset-shape": {
+    "en-CA": "Reset shape",
+    "fr-CA": "Réinitialiser la forme"
+  },
+  "cog-reset-to-defaults": {
+    "en-CA": "Reset to defaults",
+    "fr-CA": "Réinitialiser aux valeurs par défaut"
+  },
+  "cog-right": {
+    "en-CA": "Right",
+    "fr-CA": "Droite"
+  },
+  "cog-right-of-icon": {
+    "en-CA": "Right of icon",
+    "fr-CA": "À droite de l'icône"
+  },
+  "cog-rotation": {
+    "en-CA": "Rotation",
+    "fr-CA": "Rotation"
+  },
+  "cog-secondary": {
+    "en-CA": "Secondary",
+    "fr-CA": "Secondaire"
+  },
+  "cog-section": {
+    "en-CA": "Section",
+    "fr-CA": "Section"
+  },
+  "cog-see-all-icons": {
+    "en-CA": "See all Icons",
+    "fr-CA": "Voir toutes les icônes"
+  },
+  "cog-select-gear-to-edit": {
+    "en-CA": "Select a gear above to edit its appearance.",
+    "fr-CA": "Sélectionnez un engrenage ci-dessus pour modifier son apparence."
+  },
+  "cog-shape": {
+    "en-CA": "Shape",
+    "fr-CA": "Forme"
+  },
+  "cog-shout-meter-intro": {
+    "en-CA": "Shows your equipped shout in Dragon script. Words fill as you speak them; cooldown fades from the chosen edge with a gradient trail. The whole label rotates with the gizmo.",
+    "fr-CA": "Affiche votre cri équipé en écriture draconique. Les mots se remplissent à mesure que vous les prononcez; le temps de recharge s'estompe depuis le bord choisi avec une traînée en dégradé. Toute l'étiquette pivote avec le gizmo."
+  },
+  "cog-show-celestial-objects": {
+    "en-CA": "Show celestial objects",
+    "fr-CA": "Afficher les objets célestes"
+  },
+  "cog-show-default-group": {
+    "en-CA": "Show Default Group",
+    "fr-CA": "Afficher le groupe par défaut"
+  },
+  "cog-show-default-group-lede": {
+    "en-CA": "Gears that are not assigned to another group appear on the Default Group line. Turn this off to hide that line without deleting gears. The Default Group itself cannot be removed.",
+    "fr-CA": "Les engrenages non assignés à un autre groupe apparaissent sur la ligne Groupe par défaut. Désactivez ceci pour masquer cette ligne sans supprimer les engrenages. Le groupe par défaut lui-même ne peut pas être retiré."
+  },
+  "cog-show-icon": {
+    "en-CA": "Show Icon",
+    "fr-CA": "Afficher l'icône"
+  },
+  "cog-show-icons": {
+    "en-CA": "Show Icons",
+    "fr-CA": "Afficher les icônes"
+  },
+  "cog-show-number": {
+    "en-CA": "Show Number",
+    "fr-CA": "Afficher le nombre"
+  },
+  "cog-show-number-as-percentage": {
+    "en-CA": "Show Number as Percentage",
+    "fr-CA": "Afficher le nombre en pourcentage"
+  },
+  "cog-show-text": {
+    "en-CA": "Show text",
+    "fr-CA": "Afficher le texte"
+  },
+  "cog-show-timer": {
+    "en-CA": "Show timer",
+    "fr-CA": "Afficher la minuterie"
+  },
+  "cog-show-title": {
+    "en-CA": "Show Title",
+    "fr-CA": "Afficher le titre"
+  },
+  "cog-size": {
+    "en-CA": "Size",
+    "fr-CA": "Taille"
+  },
+  "cog-skills": {
+    "en-CA": "Skills",
+    "fr-CA": "Compétences"
+  },
   "cog-smoke-probe": {
     "en-CA": "Smoke probe",
-    "fr-CA": "Sonde de test"
+    "fr-CA": "Sonde de fumée"
+  },
+  "cog-sources": {
+    "en-CA": "Sources",
+    "fr-CA": "Sources"
+  },
+  "cog-spacing": {
+    "en-CA": "Spacing",
+    "fr-CA": "Espacement"
+  },
+  "cog-stack": {
+    "en-CA": "Stack",
+    "fr-CA": "Pile"
+  },
+  "cog-stolen": {
+    "en-CA": "Stolen",
+    "fr-CA": "Volé"
+  },
+  "cog-suppress-inventory": {
+    "en-CA": "Suppress inventory",
+    "fr-CA": "Masquer l'inventaire"
+  },
+  "cog-suppress-inventory-tip": {
+    "en-CA": "When on, inventory-style notification toasts are suppressed (not shown on the vanilla HUD or in this Notifications feed) while Notifications are active. Many activators and containers fire those even when you are not looting — leave this on unless you want them on the vanilla HUD. The Inventory section tracks real item changes separately.",
+    "fr-CA": "Lorsque c'est activé, les toasts de notification de style inventaire sont masqués (non affichés sur le HUD vanilla ni dans ce flux Notifications) tant que les Notifications sont actives. De nombreux activateurs et contenants les déclenchent même lorsque vous ne fouillez pas — laissez ceci activé sauf si vous les voulez sur le HUD vanilla. La section Inventaire suit les vrais changements d'objets séparément."
+  },
+  "cog-suppress-transform-effects": {
+    "en-CA": "Suppress Werewolf/Vampire transformation effects",
+    "fr-CA": "Masquer les effets de transformation de loup-garou/vampire"
+  },
+  "cog-suppressions-lede": {
+    "en-CA": "Gears can be registered to suppress default HUD elements while they are displayed, so the same information is not shown twice. Certain Gizmos — especially Feed — also suppress the vanilla notices they replace. The Suppressor gizmo can Always Hide extra targets or Never Hide ones that would otherwise be soft-hidden. Never Hide always wins over hide sources; (winning) marks the primary controller among those that support the current outcome (Suppressor > other Gizmos > Gauges > Groups).",
+    "fr-CA": "Les engrenages peuvent être enregistrés pour masquer les éléments HUD par défaut pendant qu'ils sont affichés, afin que la même information ne soit pas montrée deux fois. Certains Gizmos — surtout Flux — masquent aussi les avis vanilla qu'ils remplacent. Le gizmo Suppresseur peut Toujours masquer des cibles supplémentaires ou Ne jamais masquer celles qui seraient autrement masquées en douceur. Ne jamais masquer l'emporte toujours sur les sources de masquage; (gagnant) marque le contrôleur principal parmi ceux qui soutiennent le résultat actuel (Suppresseur > autres Gizmos > Jauges > Groupes)."
+  },
+  "cog-suppressions-render-failed": {
+    "en-CA": "Could not render Suppressions. Check COG.log / the browser console.",
+    "fr-CA": "Impossible d'afficher les Suppressions. Vérifiez COG.log / la console du navigateur."
+  },
+  "cog-suppressions-script-missing": {
+    "en-CA": "Suppressions UI script is missing from the deployed view. Redeploy COG (xmake -y) so _Help_Suppressions.js is copied.",
+    "fr-CA": "Le script d'IU des Suppressions est absent de la vue déployée. Redéployez COG (xmake -y) pour que _Help_Suppressions.js soit copié."
+  },
+  "cog-suppressor-lede": {
+    "en-CA": "Editor marker only (always hidden in-game). Always Hide forces soft-hide; Never Hide exempts a target from COG gear soft-hide and from Always Hide.",
+    "fr-CA": "Marqueur d'éditeur seulement (toujours masqué en jeu). Toujours masquer force le masquage doux; Ne jamais masquer exempte une cible du masquage doux des engrenages COG et de Toujours masquer."
+  },
+  "cog-tab-about": {
+    "en-CA": "About",
+    "fr-CA": "À propos"
+  },
+  "cog-tab-definitions": {
+    "en-CA": "Definitions",
+    "fr-CA": "Définitions"
+  },
+  "cog-tab-gauges": {
+    "en-CA": "Gauges",
+    "fr-CA": "Jauges"
+  },
+  "cog-tab-gears": {
+    "en-CA": "Gears",
+    "fr-CA": "Engrenages"
+  },
+  "cog-tab-general": {
+    "en-CA": "General",
+    "fr-CA": "Général"
+  },
+  "cog-tab-gizmos": {
+    "en-CA": "Gizmos",
+    "fr-CA": "Gizmos"
+  },
+  "cog-tab-groups": {
+    "en-CA": "Groups",
+    "fr-CA": "Groupes"
+  },
+  "cog-tab-help": {
+    "en-CA": "Help",
+    "fr-CA": "Aide"
+  },
+  "cog-tab-suppressions": {
+    "en-CA": "Suppressions",
+    "fr-CA": "Suppressions"
+  },
+  "cog-text-align": {
+    "en-CA": "Text align",
+    "fr-CA": "Alignement du texte"
+  },
+  "cog-text-colour": {
+    "en-CA": "Text Colour",
+    "fr-CA": "Couleur du texte"
+  },
+  "cog-text-settings": {
+    "en-CA": "Text settings",
+    "fr-CA": "Paramètres de texte"
+  },
+  "cog-threshold": {
+    "en-CA": "Threshold",
+    "fr-CA": "Seuil"
+  },
+  "cog-timer": {
+    "en-CA": "Timer",
+    "fr-CA": "Minuterie"
+  },
+  "cog-title": {
+    "en-CA": "Title",
+    "fr-CA": "Titre"
+  },
+  "cog-title-colour": {
+    "en-CA": "Title Colour",
+    "fr-CA": "Couleur du titre"
+  },
+  "cog-toggle-hides-flash": {
+    "en-CA": "Toggle also hides Flash HUD",
+    "fr-CA": "Le basculement masque aussi le Flash HUD"
+  },
+  "cog-toggle-hides-flash-tip": {
+    "en-CA": "On (default): also hide Flash HUD (vanilla, TrueHUD, MiniMap, and similar). Off: only COG gadgets hide; soft-suppressed Flash stays suppressed.",
+    "fr-CA": "Activé (par défaut) : masque aussi le Flash HUD (vanilla, TrueHUD, MiniMap et similaires). Désactivé : seuls les gadgets COG se masquent; le Flash masqué en douceur reste masqué."
+  },
+  "cog-toggle-key": {
+    "en-CA": "Toggle key",
+    "fr-CA": "Touche de bascule"
+  },
+  "cog-toggle-ui": {
+    "en-CA": "Toggle UI",
+    "fr-CA": "Basculer l'IU"
+  },
+  "cog-toggle-ui-lede": {
+    "en-CA": "Clear view for photos/immersion — not a vanilla-HUD mode. Hides all COG play gadgets (same idea as visibility None); does not undo gear links, Feed hides, or the Suppressor. Optional hotkey works only while playing with menus closed (not console, COG editor, or search fields). Click a bound key to clear it, click again to set a new one. Mods can call COG_API.SetUiHidden / ToggleUiHidden anytime.",
+    "fr-CA": "Vue dégagée pour photos/immersion — pas un mode HUD vanilla. Masque tous les gadgets de jeu COG (même idée que la visibilité None); n'annule pas les liens d'engrenages, les masquages du Flux ni le Suppresseur. Le raccourci optionnel ne fonctionne qu'en jeu avec les menus fermés (pas la console, l'éditeur COG ni les champs de recherche). Cliquez une touche liée pour l'effacer, cliquez à nouveau pour en définir une nouvelle. Les mods peuvent appeler COG_API.SetUiHidden / ToggleUiHidden à tout moment."
+  },
+  "cog-top": {
+    "en-CA": "Top",
+    "fr-CA": "Haut"
+  },
+  "cog-total": {
+    "en-CA": "Total",
+    "fr-CA": "Total"
+  },
+  "cog-trough-opacity": {
+    "en-CA": "Trough Opacity",
+    "fr-CA": "Opacité du canal"
+  },
+  "cog-type": {
+    "en-CA": "Type",
+    "fr-CA": "Type"
+  },
+  "cog-ui-visible": {
+    "en-CA": "UI Visible",
+    "fr-CA": "IU visible"
+  },
+  "cog-unknown": {
+    "en-CA": "Unknown",
+    "fr-CA": "Inconnu"
+  },
+  "cog-unlocked": {
+    "en-CA": "Unlocked",
+    "fr-CA": "Déverrouillé"
+  },
+  "cog-unplaced": {
+    "en-CA": "Unplaced",
+    "fr-CA": "Non placé"
+  },
+  "cog-up": {
+    "en-CA": "Up",
+    "fr-CA": "Haut"
+  },
+  "cog-use-bar-colour": {
+    "en-CA": "Use Bar Colour",
+    "fr-CA": "Utiliser la couleur de la barre"
+  },
+  "cog-use-border-colour": {
+    "en-CA": "Use Border Colour",
+    "fr-CA": "Utiliser la couleur de la bordure"
+  },
+  "cog-use-default": {
+    "en-CA": "Use default",
+    "fr-CA": "Utiliser la valeur par défaut"
+  },
+  "cog-use-endcap": {
+    "en-CA": "Use Endcap",
+    "fr-CA": "Utiliser l'embout"
+  },
+  "cog-use-group-colours": {
+    "en-CA": "Use group colours",
+    "fr-CA": "Utiliser les couleurs du groupe"
+  },
+  "cog-use-icon-colours": {
+    "en-CA": "Use Icon Colours",
+    "fr-CA": "Utiliser les couleurs d'icône"
+  },
+  "cog-use-title-colour": {
+    "en-CA": "Use Title Colour",
+    "fr-CA": "Utiliser la couleur du titre"
+  },
+  "cog-visibility": {
+    "en-CA": "Visibility",
+    "fr-CA": "Visibilité"
+  },
+  "cog-visible": {
+    "en-CA": "Visible",
+    "fr-CA": "Visible"
+  },
+  "cog-when-outdoors": {
+    "en-CA": "When outdoors",
+    "fr-CA": "À l'extérieur"
+  },
+  "cog-when-sky-visible": {
+    "en-CA": "When sky is visible",
+    "fr-CA": "Lorsque le ciel est visible"
+  },
+  "cog-width": {
+    "en-CA": "Width",
+    "fr-CA": "Largeur"
+  },
+  "cog-winning": {
+    "en-CA": " (winning)",
+    "fr-CA": " (gagnant)"
+  },
+  "cog-words-to-show": {
+    "en-CA": "Words to show",
+    "fr-CA": "Mots à afficher"
   }
 }

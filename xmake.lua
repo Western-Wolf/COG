@@ -154,6 +154,18 @@ target("COG")
 		if os.isfile(translations_src) then
 			os.cp(translations_src, path.join(cog_data, "translations", "_COG.json"))
 		end
+		-- Per-gizmo translation packs (gizmos/<typeId>/translations/*.json).
+		local gizmo_types_with_i18n = { "cog-clock", "cog-feed" }
+		for _, type_id in ipairs(gizmo_types_with_i18n) do
+			local pack_src = path.join(cog_dir, "plugin/gizmos", type_id, "translations")
+			local pack_dst = path.join(cog_data, "gizmos", type_id, "translations")
+			if os.isdir(pack_src) then
+				os.mkdir(pack_dst)
+				for _, file in ipairs(os.files(path.join(pack_src, "*.json"))) do
+					os.cp(file, path.join(pack_dst, path.filename(file)))
+				end
+			end
+		end
 
 		-- Drop legacy assets/endcaps deploy (now icons/Endcaps).
 		local legacy_endcaps = path.join(view_dir, "assets", "endcaps")

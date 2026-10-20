@@ -246,6 +246,9 @@
 			);
 		}
 		syncDocumentLang();
+		if (typeof global.updateKeybindHint === "function") {
+			global.updateKeybindHint();
+		}
 	}
 
 	function syncDocumentLang() {
@@ -256,16 +259,28 @@
 		}
 	}
 
-	function setTranslatedText(el, tag, fallback, typeId) {
+	function setTranslatedText(el, tag, fallback, vars, typeId) {
 		if (!el) {
 			return el;
 		}
+		// Back-compat: 4th arg may be typeId string (older call sites).
+		let v = vars;
+		let tid = typeId;
+		if (typeof vars === "string" && typeId == null) {
+			tid = vars;
+			v = undefined;
+		}
 		el.setAttribute("data-translation", tag);
 		el.setAttribute("data-translation-fallback", fallback == null ? "" : String(fallback));
-		if (typeId) {
-			el.setAttribute("data-translation-type", typeId);
+		if (v) {
+			el.setAttribute("data-translation-vars", JSON.stringify(v));
+		} else {
+			el.removeAttribute("data-translation-vars");
 		}
-		const r = tResult(tag, fallback, typeId);
+		if (tid) {
+			el.setAttribute("data-translation-type", tid);
+		}
+		const r = v ? tfResult(tag, fallback, v, tid) : tResult(tag, fallback, tid);
 		el.textContent = r.text;
 		ensureFallbackBadge(el, r.missing);
 		return el;
@@ -316,8 +331,8 @@
 		return el;
 	}
 
-	function setTranslatedOption(option, tag, fallback) {
-		return setTranslatedText(option, tag, fallback);
+	function setTranslatedOption(option, tag, fallback, typeId) {
+		return setTranslatedText(option, tag, fallback, undefined, typeId);
 	}
 
 	/** BCP 47 codes only — no friendly names (avoids maintaining a locale directory). */
@@ -345,7 +360,8 @@
 
 	/**
 	 * Languages from the C++ `languages` array plus any locale keys present in
-	 * loaded catalogs (so a shipped fr-CA file always appears even if the array lags).
+	 * loaded catalogs. Always include en-CA (hardcoded fallback). Every other
+	 * locale must come from translation JSON — never seed locales in code.
 	 */
 	function availableLanguages() {
 		const into = new Set();

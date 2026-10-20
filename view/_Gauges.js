@@ -381,6 +381,17 @@ function frameSlotSelectHtml(current, claimedByOthers) {
 		.join("");
 }
 
+const FRAME_SLOT_OPTION_TAGS = {
+	none: ["cog-off", "Off"],
+	top: ["cog-top", "Top"],
+	middle: ["cog-middle", "Middle"],
+	bottom: ["cog-bottom", "Bottom"]
+};
+
+function tagFrameSlotOptions(select) {
+	return tagSelectOptions(select, FRAME_SLOT_OPTION_TAGS);
+}
+
 function normalizeNumberFormatGauge(value) {
 	const raw = String(value || "").trim();
 	return NUMBER_FORMATS.includes(raw) ? raw : "barPercent";
@@ -438,6 +449,19 @@ function gaugePlacementSelectHtml(selected) {
 		<option value="centered"${v === "centered" ? " selected" : ""}>Centered</option>
 		<option value="up"${v === "up" ? " selected" : ""}>Up</option>
 		<option value="down"${v === "down" ? " selected" : ""}>Down</option>`;
+}
+
+const GAUGE_PLACEMENT_OPTION_TAGS = {
+	none: ["cog-none", "None"],
+	left: ["cog-left", "Left"],
+	right: ["cog-right", "Right"],
+	centered: ["cog-centered", "Centered"],
+	up: ["cog-up", "Up"],
+	down: ["cog-down", "Down"]
+};
+
+function tagGaugePlacementOptions(select) {
+	return tagSelectOptions(select, GAUGE_PLACEMENT_OPTION_TAGS);
 }
 
 function normalizeFillDirection(value) {

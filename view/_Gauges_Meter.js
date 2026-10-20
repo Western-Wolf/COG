@@ -999,6 +999,7 @@ function fillGaugeEditor(panel, gauge) {
 	const typeField = document.createElement("label");
 	typeField.className = "pos-field compact";
 	typeField.innerHTML = `<span>Type</span><select data-role="type"></select>`;
+	tagFieldLabel(typeField, "cog-type", "Type");
 	const typeSel = typeField.querySelector("select");
 	for (const opt of [
 		{ value: "meter", label: "Meter" },
@@ -1009,6 +1010,10 @@ function fillGaugeEditor(panel, gauge) {
 		o.textContent = opt.label;
 		typeSel.appendChild(o);
 	}
+	tagSelectOptions(typeSel, {
+		meter: ["cog-meter", "Meter"],
+		frame: ["cog-frame", "Frame"]
+	});
 	typeSel.value = normalizeGaugeType(gauge.type);
 	typeSel.addEventListener("change", () => {
 		const nextType = normalizeGaugeType(typeSel.value);
@@ -1054,10 +1059,14 @@ function fillGaugeEditor(panel, gauge) {
 	const gearField = document.createElement("label");
 	gearField.className = "pos-field compact wide";
 	gearField.innerHTML = `<span>Gear</span><select data-role="gear"></select>`;
+	tagFieldLabel(gearField, "cog-gear", "Gear");
 	const gearSel = gearField.querySelector("select");
 	const none = document.createElement("option");
 	none.value = "";
 	none.textContent = "None";
+	if (typeof setTranslatedOption === "function") {
+		setTranslatedOption(none, "cog-none", "None");
+	}
 	gearSel.appendChild(none);
 	const sources = (snapshot.sources || []).slice().sort((a, b) => {
 		const at = sourceTitle(a, a.name);
@@ -1083,6 +1092,7 @@ function fillGaugeEditor(panel, gauge) {
 	const alwaysVis = document.createElement("label");
 	alwaysVis.className = "pos-field compact mid";
 	alwaysVis.innerHTML = `<span>Always Visible</span><input type="checkbox" data-role="alwaysVisible">`;
+	tagFieldLabel(alwaysVis, "cog-always-visible", "Always Visible");
 	const alwaysBox = alwaysVis.querySelector("input");
 	alwaysBox.checked = !!gauge.alwaysVisible;
 	alwaysBox.addEventListener("change", () => {
@@ -1105,6 +1115,14 @@ function fillGaugeEditor(panel, gauge) {
 	const rotInput = pos.querySelector('[data-role="rotation"]');
 	const wInput = pos.querySelector('[data-role="width"]');
 	const hInput = pos.querySelector('[data-role="height"]');
+	// X/Y are single letters — leave untagged.
+	if (isFrame) {
+		tagFieldLabel(rotInput.closest("label"), "cog-frame-rotation", "Frame Rotation");
+	} else {
+		tagFieldLabel(rotInput.closest("label"), "cog-rotation", "Rotation");
+	}
+	tagFieldLabel(wInput.closest("label"), "cog-width", "Width");
+	tagFieldLabel(hInput.closest("label"), "cog-height", "Height");
 	const gaugeEditorBox = () => {
 		const g = live();
 		const iconSize =
@@ -1207,7 +1225,11 @@ function fillGaugeEditor(panel, gauge) {
 	appendEditorRule(panel);
 	const meterLede = document.createElement("p");
 	meterLede.className = "lede";
-	meterLede.textContent = "Meter Settings";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(meterLede, "cog-meter-settings", "Meter Settings");
+	} else {
+		meterLede.textContent = "Meter Settings";
+	}
 	panel.appendChild(meterLede);
 
 	const shapeRow = document.createElement("div");
@@ -1218,7 +1240,12 @@ function fillGaugeEditor(panel, gauge) {
 		<option value="bar">Bar</option>
 		<option value="arc">Arc</option>
 	</select>`;
+	tagFieldLabel(shapeField, "cog-shape", "Shape");
 	const shapeSel = shapeField.querySelector("select");
+	tagSelectOptions(shapeSel, {
+		bar: ["cog-bar", "Bar"],
+		arc: ["cog-arc", "Arc"]
+	});
 	shapeSel.value = normalizeGaugeShape(gauge.shape);
 	shapeSel.addEventListener("change", () => {
 		patchGauge(gid, { shape: normalizeGaugeShape(shapeSel.value) });
@@ -1232,7 +1259,10 @@ function fillGaugeEditor(panel, gauge) {
 	const iconPos = document.createElement("label");
 	iconPos.className = "pos-field compact mid";
 	iconPos.innerHTML = `<span>Show Icon</span><select data-role="showIcon">${gaugePlacementSelectHtml(gauge.showIcon)}</select>`;
-	iconPos.querySelector("select").addEventListener("change", (ev) => {
+	tagFieldLabel(iconPos, "cog-show-icon", "Show Icon");
+	const iconPosSel = iconPos.querySelector("select");
+	tagGaugePlacementOptions(iconPosSel);
+	iconPosSel.addEventListener("change", (ev) => {
 		patchGauge(gid, { showIcon: normalizeGaugePlacement(ev.target.value) });
 	});
 	iconRow.appendChild(iconPos);
@@ -1244,8 +1274,16 @@ function fillGaugeEditor(panel, gauge) {
 		<option value="bar">Use Bar Colour</option>
 		<option value="label">Use Title Colour</option>
 	</select>`;
-	iconColor.querySelector("select").value = normalizeIconColorMode(gauge.iconColorMode);
-	iconColor.querySelector("select").addEventListener("change", (ev) => {
+	tagFieldLabel(iconColor, "cog-icon-colour", "Icon Colour");
+	const iconColorSel = iconColor.querySelector("select");
+	tagSelectOptions(iconColorSel, {
+		border: ["cog-use-border-colour", "Use Border Colour"],
+		keep: ["cog-keep-icon-colours", "Keep Icon Colours"],
+		bar: ["cog-use-bar-colour", "Use Bar Colour"],
+		label: ["cog-use-title-colour", "Use Title Colour"]
+	});
+	iconColorSel.value = normalizeIconColorMode(gauge.iconColorMode);
+	iconColorSel.addEventListener("change", (ev) => {
 		patchGauge(gid, { iconColorMode: normalizeIconColorMode(ev.target.value) });
 	});
 	iconRow.appendChild(iconColor);
@@ -1256,7 +1294,10 @@ function fillGaugeEditor(panel, gauge) {
 	const titlePos = document.createElement("label");
 	titlePos.className = "pos-field compact mid";
 	titlePos.innerHTML = `<span>Show Title</span><select data-role="showLabel">${gaugePlacementSelectHtml(gauge.showLabel)}</select>`;
-	titlePos.querySelector("select").addEventListener("change", (ev) => {
+	tagFieldLabel(titlePos, "cog-show-title", "Show Title");
+	const titlePosSel = titlePos.querySelector("select");
+	tagGaugePlacementOptions(titlePosSel);
+	titlePosSel.addEventListener("change", (ev) => {
 		patchGauge(gid, { showLabel: normalizeGaugePlacement(ev.target.value) });
 	});
 	titleRow.appendChild(titlePos);
@@ -1268,8 +1309,16 @@ function fillGaugeEditor(panel, gauge) {
 		<option value="bar">Use Bar Colour</option>
 		<option value="icon">Use Icon Colours</option>
 	</select>`;
-	titleColor.querySelector("select").value = normalizeLabelColorMode(gauge.labelColorMode);
-	titleColor.querySelector("select").addEventListener("change", (ev) => {
+	tagFieldLabel(titleColor, "cog-title-colour", "Title Colour");
+	const titleColorSel = titleColor.querySelector("select");
+	tagSelectOptions(titleColorSel, {
+		border: ["cog-use-border-colour", "Use Border Colour"],
+		keep: ["cog-keep-title-colour", "Keep Title Colour"],
+		bar: ["cog-use-bar-colour", "Use Bar Colour"],
+		icon: ["cog-use-icon-colours", "Use Icon Colours"]
+	});
+	titleColorSel.value = normalizeLabelColorMode(gauge.labelColorMode);
+	titleColorSel.addEventListener("change", (ev) => {
 		patchGauge(gid, { labelColorMode: normalizeLabelColorMode(ev.target.value) });
 	});
 	titleRow.appendChild(titleColor);
@@ -1280,7 +1329,10 @@ function fillGaugeEditor(panel, gauge) {
 	const countPos = document.createElement("label");
 	countPos.className = "pos-field compact mid";
 	countPos.innerHTML = `<span>Show Number</span><select data-role="showNumber">${gaugePlacementSelectHtml(gauge.showNumber)}</select>`;
-	countPos.querySelector("select").addEventListener("change", (ev) => {
+	tagFieldLabel(countPos, "cog-show-number", "Show Number");
+	const countPosSel = countPos.querySelector("select");
+	tagGaugePlacementOptions(countPosSel);
+	countPosSel.addEventListener("change", (ev) => {
 		patchGauge(gid, { showNumber: normalizeGaugePlacement(ev.target.value) });
 	});
 	countRow.appendChild(countPos);
@@ -1292,14 +1344,23 @@ function fillGaugeEditor(panel, gauge) {
 		<option value="bar">Use Bar Colour</option>
 		<option value="icon">Use Icon Colours</option>
 	</select>`;
-	countColor.querySelector("select").value = normalizeLabelColorMode(gauge.numberColorMode);
-	countColor.querySelector("select").addEventListener("change", (ev) => {
+	tagFieldLabel(countColor, "cog-number-colour", "Number Colour");
+	const countColorSel = countColor.querySelector("select");
+	tagSelectOptions(countColorSel, {
+		border: ["cog-use-border-colour", "Use Border Colour"],
+		keep: ["cog-keep-number-colour", "Keep Number Colour"],
+		bar: ["cog-use-bar-colour", "Use Bar Colour"],
+		icon: ["cog-use-icon-colours", "Use Icon Colours"]
+	});
+	countColorSel.value = normalizeLabelColorMode(gauge.numberColorMode);
+	countColorSel.addEventListener("change", (ev) => {
 		patchGauge(gid, { numberColorMode: normalizeLabelColorMode(ev.target.value) });
 	});
 	countRow.appendChild(countColor);
 	const countPct = document.createElement("label");
 	countPct.className = "pos-field compact gauge-count-pct";
 	countPct.innerHTML = `<span>Show Number as Percentage</span><input type="checkbox" data-role="numberAsPercent">`;
+	tagFieldLabel(countPct, "cog-show-number-as-percentage", "Show Number as Percentage");
 	const countPctInput = countPct.querySelector("input");
 	countPctInput.checked = gauge.numberAsPercent === true;
 	countPctInput.addEventListener("change", () => {
@@ -1313,12 +1374,31 @@ function fillGaugeEditor(panel, gauge) {
 		appendEditorRule(panel);
 		const shapeLede = document.createElement("p");
 		shapeLede.className = "lede";
-		shapeLede.textContent = meterShape === "arc" ? "Arc Shape Settings" : "Bar Shape Settings";
+		if (meterShape === "arc") {
+			if (typeof setTranslatedText === "function") {
+				setTranslatedText(shapeLede, "cog-arc-shape-settings", "Arc Shape Settings");
+			} else {
+				shapeLede.textContent = "Arc Shape Settings";
+			}
+		} else if (typeof setTranslatedText === "function") {
+			setTranslatedText(shapeLede, "cog-bar-shape-settings", "Bar Shape Settings");
+		} else {
+			shapeLede.textContent = "Bar Shape Settings";
+		}
 		panel.appendChild(shapeLede);
 		if (meterShape === "arc") {
 			const arcHint = document.createElement("p");
 			arcHint.className = "hint";
-			arcHint.textContent = "Width is the arc diameter; Height is band thickness (same as a flat bar).";
+			if (typeof setTranslatedText === "function") {
+				setTranslatedText(
+					arcHint,
+					"cog-arc-shape-hint",
+					"Width is the arc diameter; Height is band thickness (same as a flat bar)."
+				);
+			} else {
+				arcHint.textContent =
+					"Width is the arc diameter; Height is band thickness (same as a flat bar).";
+			}
 			panel.appendChild(arcHint);
 		}
 
@@ -1331,11 +1411,13 @@ function fillGaugeEditor(panel, gauge) {
 			(hex, live) => patchGauge(gid, { borderColor: hex }, false, live)
 		);
 		borderColor.classList.add("compact");
+		tagFieldLabel(borderColor, "cog-border-colour", "Border Colour");
 		rowA.appendChild(borderColor);
 
 		const thick = document.createElement("label");
 		thick.className = "pos-field compact mid border-thickness-field";
 		thick.innerHTML = `<span>Border Thickness</span><input type="number" min="0" max="50" step="0.5" data-role="borderThickness">`;
+		tagFieldLabel(thick, "cog-border-thickness", "Border Thickness");
 		const thickInput = thick.querySelector("input");
 		thickInput.value = fmtDec(gauge.borderThickness, 1);
 		bindNumberField(thickInput, {
@@ -1353,7 +1435,12 @@ function fillGaugeEditor(panel, gauge) {
 			<option value="border">Extend Border</option>
 			<option value="endcap">Use Endcap</option>
 		</select>`;
+		tagFieldLabel(endMode, "cog-ends", "Ends");
 		const endModeSel = endMode.querySelector("select");
+		tagSelectOptions(endModeSel, {
+			border: ["cog-extend-border", "Extend Border"],
+			endcap: ["cog-use-endcap", "Use Endcap"]
+		});
 		endModeSel.value = normalizeEndCapMode(gauge.endCapMode, gauge.endCap);
 		rowA.appendChild(endMode);
 		endModeSel.addEventListener("change", () => {
@@ -1378,18 +1465,21 @@ function fillGaugeEditor(panel, gauge) {
 				value: gauge.endCap,
 				folder: "Endcaps",
 				endArtPicker: true,
-				clearLabel: "Clear endcap",
+				clearLabel:
+					typeof t === "function" ? t("cog-clear-endcap", "Clear endcap") : "Clear endcap",
 				showName: true,
 				onCommit: (path) => patchGauge(gid, { endCap: path || defaultEndCapArtPath() })
 			});
 			endCaps.classList.add("compact");
 			endCaps.dataset.role = "endCapArt";
+			tagFieldLabel(endCaps, "cog-endcap", "Endcap");
 			endArtRow.appendChild(endCaps);
 
 			const overlap = document.createElement("label");
 			overlap.className = "pos-field compact mid overlap-cap-field";
 			overlap.dataset.role = "endCapOverlapWrap";
 			overlap.innerHTML = `<span>Overlap</span><input type="number" min="0" max="45" step="0.5" data-role="endCapOverlap">`;
+			tagFieldLabel(overlap, "cog-overlap", "Overlap");
 			const overlapInput = overlap.querySelector("input");
 			overlapInput.value = fmtDec(gauge.endCapOverlap, 1);
 			bindNumberField(overlapInput, {
@@ -1408,6 +1498,7 @@ function fillGaugeEditor(panel, gauge) {
 		const trough = document.createElement("label");
 		trough.className = "pos-field compact mid";
 		trough.innerHTML = `<span>Trough Opacity</span><input type="number" min="0" max="100" step="1" data-role="troughOpacity">`;
+		tagFieldLabel(trough, "cog-trough-opacity", "Trough Opacity");
 		const troughInput = trough.querySelector("input");
 		troughInput.value = fmtDec(gauge.troughOpacity, 0);
 		bindNumberField(troughInput, {
@@ -1426,8 +1517,15 @@ function fillGaugeEditor(panel, gauge) {
 			<option value="right">From Right</option>
 			<option value="center">From Center</option>
 		</select>`;
-		fillDir.querySelector("select").value = normalizeFillDirection(gauge.fillDirection);
-		fillDir.querySelector("select").addEventListener("change", (ev) => {
+		tagFieldLabel(fillDir, "cog-fill-direction", "Fill Direction");
+		const fillDirSel = fillDir.querySelector("select");
+		tagSelectOptions(fillDirSel, {
+			left: ["cog-from-left", "From Left"],
+			right: ["cog-from-right", "From Right"],
+			center: ["cog-from-center", "From Center"]
+		});
+		fillDirSel.value = normalizeFillDirection(gauge.fillDirection);
+		fillDirSel.addEventListener("change", (ev) => {
 			patchGauge(gid, { fillDirection: normalizeFillDirection(ev.target.value) });
 		});
 		rowC.appendChild(fillDir);
@@ -1441,14 +1539,26 @@ function renderGauges(body) {
 	const add = document.createElement("button");
 	add.type = "button";
 	add.className = "action";
-	add.textContent = "Add Gauge";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(add, "cog-add-gauge", "Add Gauge");
+	} else {
+		add.textContent = "Add Gauge";
+	}
 	add.addEventListener("click", addGauge);
 	bar.appendChild(add);
 	body.appendChild(bar);
 	const intro = document.createElement("p");
 	intro.className = "lede";
-	intro.textContent =
-		"A gauge tracks one gear on its own - independent of groups. Open a gauge accordion to raise it above the editor for dragging, rotating, and resizing. Up/Down reorder the list — later gauges draw on top of earlier ones.";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(
+			intro,
+			"cog-gauges-intro",
+			"A gauge tracks one gear on its own - independent of groups. Open a gauge accordion to raise it above the editor for dragging, rotating, and resizing. Up/Down reorder the list — later gauges draw on top of earlier ones."
+		);
+	} else {
+		intro.textContent =
+			"A gauge tracks one gear on its own - independent of groups. Open a gauge accordion to raise it above the editor for dragging, rotating, and resizing. Up/Down reorder the list — later gauges draw on top of earlier ones.";
+	}
 	body.appendChild(intro);
 
 	if (!Array.isArray(snapshot.gauges)) {
@@ -1460,7 +1570,11 @@ function renderGauges(body) {
 	if (!snapshot.gauges.length) {
 		const empty = document.createElement("p");
 		empty.className = "lede";
-		empty.textContent = "No gauges yet.";
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(empty, "cog-no-gauges-yet", "No gauges yet.");
+		} else {
+			empty.textContent = "No gauges yet.";
+		}
 		body.appendChild(empty);
 		return;
 	}
@@ -1487,7 +1601,11 @@ function renderGauges(body) {
 		const edit = document.createElement("button");
 		edit.type = "button";
 		edit.className = "tiny";
-		edit.textContent = "Edit";
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(edit, "cog-edit", "Edit");
+		} else {
+			edit.textContent = "Edit";
+		}
 		end.appendChild(edit);
 		const finishRename = (save) => {
 			if (!details.classList.contains("is-renaming")) {
@@ -1531,7 +1649,11 @@ function renderGauges(body) {
 		const del = document.createElement("button");
 		del.type = "button";
 		del.className = "remove";
-		del.textContent = "Delete";
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(del, "cog-delete", "Delete");
+		} else {
+			del.textContent = "Delete";
+		}
 		del.addEventListener("click", () => removeGauge(gauge.id));
 		end.appendChild(del);
 		stopHeaderToggle(del);

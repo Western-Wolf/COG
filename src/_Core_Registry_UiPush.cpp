@@ -359,7 +359,9 @@ std::string CogRegistry::BuildSnapshotJson()
 	const auto* sky = RE::Sky::GetSingleton();
 	const auto* cal = RE::Calendar::GetSingleton();
 	std::ostringstream o;
-	// languages early so truncated/huge snapshots still expose available locales before catalogs.
+	// languages early (en-CA + codes discovered from loaded translation JSON). Full
+	// catalogs go via applyTranslationCatalogs — keep them out of this payload so
+	// Interop size limits cannot drop locales when the entity snapshot is huge.
 	{
 		std::vector<std::string> languages;
 		languages.push_back("en-CA");
@@ -666,7 +668,33 @@ std::string CogRegistry::BuildSnapshotJson()
 	}
 	o << ",\"suppressions\":" << CogHudSuppress::SuppressionsJson(*this);
 	o << ",\"suppressionAliases\":" << CogHudSuppress::KnownAliasesJson();
-	o << ",\"translations\":" << CogTranslations::CatalogToJson(_translations);
+	o << "}";
+	return o.str();
+}
+
+std::string CogRegistry::BuildTranslationCatalogsJson()
+{
+	std::lock_guard lock(_mutex);
+	std::vector<std::string> languages;
+	languages.push_back("en-CA");
+	CogTranslations::CollectLanguages(_translations, languages);
+	for (const auto& [typeId, cat] : _gizmoTranslations) {
+		(void)typeId;
+		CogTranslations::CollectLanguages(cat, languages);
+	}
+	std::sort(languages.begin(), languages.end());
+	languages.erase(std::unique(languages.begin(), languages.end()), languages.end());
+	std::ostringstream o;
+	o << "{\"languages\":[";
+	bool firstLang = true;
+	for (const auto& lang : languages) {
+		if (!firstLang) {
+			o << ",";
+		}
+		firstLang = false;
+		o << "\"" << EscapeJson(lang) << "\"";
+	}
+	o << "],\"translations\":" << CogTranslations::CatalogToJson(_translations);
 	o << ",\"gizmoTranslations\":" << CogTranslations::GizmoCatalogsToJson(_gizmoTranslations);
 	o << "}";
 	return o.str();
@@ -743,6 +771,8 @@ void CogRegistry::PushToUi()
 		fullSnapshot = _layoutDirty || _catalogDirty;
 	}
 	if (fullSnapshot) {
+		// Catalogs first — smaller payload so Interop limits cannot drop locale discovery.
+		CogUi::Interop("applyTranslationCatalogs", BuildTranslationCatalogsJson());
 		CogUi::Interop("applySnapshot", BuildSnapshotJson());
 	} else {
 		CogUi::Interop("applyLivePatch", BuildLivePatchJson());

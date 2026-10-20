@@ -293,6 +293,8 @@ public:
 	bool SetStateFromJson(const std::string& json);
 
 	std::string BuildSnapshotJson();
+	/** languages + translation catalogs (separate Interop from entity snapshot). */
+	std::string BuildTranslationCatalogsJson();
 	/** Lean tick payload: sources + gameTime + shoutMeter + gizmo livePayload (no layout/catalog). */
 	std::string BuildLivePatchJson();
 	void PushToUi();

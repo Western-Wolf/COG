@@ -544,7 +544,11 @@ function paintGaugeFrameGear(el, gauge, src, gear, inset) {
 	if (!src) {
 		const empty = document.createElement("div");
 		empty.className = "gauge-frame-gear-empty";
-		empty.textContent = "No gear";
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(empty, "cog-no-gear", "No gear");
+		} else {
+			empty.textContent = "No gear";
+		}
 		inner.appendChild(empty);
 		host.appendChild(inner);
 		return;
@@ -650,11 +654,23 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 	appendEditorRule(panel);
 	const lede = document.createElement("p");
 	lede.className = "lede";
-	lede.textContent = "Frame settings";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(lede, "cog-frame-settings", "Frame settings");
+	} else {
+		lede.textContent = "Frame settings";
+	}
 	panel.appendChild(lede);
 	const hint = document.createElement("p");
 	hint.className = "hint";
-	hint.textContent = "Rotation turns the frame bezel only. Gear and picture content stay upright.";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(
+			hint,
+			"cog-frame-settings-hint",
+			"Rotation turns the frame bezel only. Gear and picture content stay upright."
+		);
+	} else {
+		hint.textContent = "Rotation turns the frame bezel only. Gear and picture content stay upright.";
+	}
 	panel.appendChild(hint);
 
 	const modeRow = document.createElement("div");
@@ -663,11 +679,12 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 		label: "Shape",
 		value: gauge.frameShape || defaultFrameShapePath(),
 			folder: "Frames",
-		clearLabel: "Reset shape",
+		clearLabel: typeof t === "function" ? t("cog-reset-shape", "Reset shape") : "Reset shape",
 		showName: true,
 		onCommit: (path) => patchGauge(gid, { frameShape: path || defaultFrameShapePath() })
 	});
 	shapeCtrl.classList.add("compact");
+	tagFieldLabel(shapeCtrl, "cog-shape", "Shape");
 	modeRow.appendChild(shapeCtrl);
 
 	const modeField = document.createElement("label");
@@ -676,7 +693,12 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 		<option value="gear">Gear</option>
 		<option value="picture">Picture</option>
 	</select>`;
+	tagFieldLabel(modeField, "cog-display-mode", "Display Mode");
 	const modeSel = modeField.querySelector("select");
+	tagSelectOptions(modeSel, {
+		gear: ["cog-gear", "Gear"],
+		picture: ["cog-picture", "Picture"]
+	});
 	modeSel.value = normalizeGaugeDisplayMode(gauge.displayMode);
 	modeSel.addEventListener("change", () => {
 		patchGauge(gid, { displayMode: normalizeGaugeDisplayMode(modeSel.value) });
@@ -695,6 +717,7 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 		(hex, live) => patchGauge(gid, { frameFillColor: hex }, false, live)
 	);
 	fillColor.classList.add("compact");
+	tagFieldLabel(fillColor, "cog-frame-fill", "Frame Fill");
 	rowA.appendChild(fillColor);
 
 	const borderColor = makeOptionalColorField(
@@ -704,11 +727,13 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 		(hex, live) => patchGauge(gid, { frameBorderColor: hex }, false, live)
 	);
 	borderColor.classList.add("compact");
+	tagFieldLabel(borderColor, "cog-frame-border", "Frame Border");
 	rowA.appendChild(borderColor);
 
 	const thick = document.createElement("label");
 	thick.className = "pos-field compact mid";
 	thick.innerHTML = `<span>Border Thickness</span><input type="number" min="0" max="50" step="0.5" data-role="frameBorderThickness">`;
+	tagFieldLabel(thick, "cog-border-thickness", "Border Thickness");
 	const thickInput = thick.querySelector("input");
 	thickInput.value = fmtDec(gauge.frameBorderThickness, 1);
 	bindNumberField(thickInput, {
@@ -723,6 +748,7 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 	const inside = document.createElement("label");
 	inside.className = "pos-field compact narrow";
 	inside.innerHTML = `<span>Inside Size</span><input type="number" min="5" max="100" step="1" data-role="insideSize">`;
+	tagFieldLabel(inside, "cog-inside-size", "Inside Size");
 	const insideInput = inside.querySelector("input");
 	insideInput.value = fmtDec(gauge.insideSize, 0);
 	bindNumberField(insideInput, {
@@ -740,7 +766,11 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 	if (mode === "picture") {
 		const picLede = document.createElement("p");
 		picLede.className = "lede";
-		picLede.textContent = "Picture mode";
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(picLede, "cog-picture-mode", "Picture mode");
+		} else {
+			picLede.textContent = "Picture mode";
+		}
 		panel.appendChild(picLede);
 
 		const picRow = document.createElement("div");
@@ -749,21 +779,31 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 			label: "Picture",
 			value: gauge.pictureIcon || defaultPictureIconPath(),
 			folder: "Pictures",
-			clearLabel: "Reset picture",
+			clearLabel:
+				typeof t === "function" ? t("cog-reset-picture", "Reset picture") : "Reset picture",
 			showName: true,
 			onCommit: (path) => patchGauge(gid, { pictureIcon: path || defaultPictureIconPath() })
 		});
 		picCtrl.classList.add("compact");
+		tagFieldLabel(picCtrl, "cog-picture", "Picture");
 		picRow.appendChild(picCtrl);
 
 		const dirField = document.createElement("div");
 		dirField.className = "pos-field compact mid";
 		const dirTitle = document.createElement("span");
 		dirTitle.className = "field-title-row";
-		dirTitle.appendChild(document.createTextNode("Fill Direction"));
-		dirTitle.appendChild(
-			makeInfoTip("Note: Timers fill before emptying, so direction will appear reversed.")
+		const dirLabel = document.createElement("span");
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(dirLabel, "cog-fill-direction", "Fill Direction");
+		} else {
+			dirLabel.textContent = "Fill Direction";
+		}
+		dirTitle.appendChild(dirLabel);
+		const dirTip = makeInfoTip(
+			"Note: Timers fill before emptying, so direction will appear reversed.",
+			"cog-picture-fill-direction-tip"
 		);
+		dirTitle.appendChild(dirTip);
 		dirField.appendChild(dirTitle);
 		const dirSel = document.createElement("select");
 		dirSel.dataset.role = "pictureDirection";
@@ -774,6 +814,14 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 			<option value="down">Down</option>
 			<option value="left">Left</option>
 			<option value="right">Right</option>`;
+		tagSelectOptions(dirSel, {
+			out: ["cog-out", "Out"],
+			in: ["cog-in", "In"],
+			up: ["cog-up", "Up"],
+			down: ["cog-down", "Down"],
+			left: ["cog-left", "Left"],
+			right: ["cog-right", "Right"]
+		});
 		dirSel.value = normalizePictureDirection(gauge.pictureDirection);
 		dirSel.addEventListener("change", () => {
 			patchGauge(gid, { pictureDirection: normalizePictureDirection(dirSel.value) });
@@ -784,6 +832,7 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 		const picRot = document.createElement("label");
 		picRot.className = "pos-field compact mid";
 		picRot.innerHTML = `<span>Picture Rotation</span><input type="number" min="-180" max="180" step="0.1" data-role="pictureRotation">`;
+		tagFieldLabel(picRot, "cog-picture-rotation", "Picture Rotation");
 		const picRotInput = picRot.querySelector("input");
 		picRotInput.value = (Number(gauge.pictureRotation) || 0).toFixed(1);
 		bindNumberField(picRotInput, {
@@ -811,6 +860,7 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 			(hex, live) => patchGauge(gid, { pictureEmpty: hex || "#000000" }, false, live)
 		);
 		emptyColor.classList.add("compact");
+		tagFieldLabel(emptyColor, "cog-empty", "Empty");
 		colorRow.appendChild(emptyColor);
 		const fullColor = makeOptionalColorField(
 			"Full",
@@ -819,6 +869,7 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 			(hex, live) => patchGauge(gid, { pictureFull: hex || "#ffffff" }, false, live)
 		);
 		fullColor.classList.add("compact");
+		tagFieldLabel(fullColor, "cog-full", "Full");
 		colorRow.appendChild(fullColor);
 		const fadeColor = makeOptionalColorField(
 			"Fade",
@@ -827,6 +878,7 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 			(hex, live) => patchGauge(gid, { pictureFade: hex || frameDefaultPictureFade() }, false, live)
 		);
 		fadeColor.classList.add("compact");
+		tagFieldLabel(fadeColor, "cog-fade", "Fade");
 		colorRow.appendChild(fadeColor);
 		panel.appendChild(colorRow);
 		return;
@@ -834,7 +886,11 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 
 	const gearLede = document.createElement("p");
 	gearLede.className = "lede";
-	gearLede.textContent = "Gear mode";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(gearLede, "cog-gear-mode", "Gear mode");
+	} else {
+		gearLede.textContent = "Gear mode";
+	}
 	panel.appendChild(gearLede);
 
 	const gearRow = document.createElement("div");
@@ -850,8 +906,11 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 		titleSlot,
 		numberSlot
 	].filter((s) => s !== "none"))}</select>`;
-	showIcon.querySelector("select").value = iconSlot;
-	showIcon.querySelector("select").addEventListener("change", (ev) => {
+	tagFieldLabel(showIcon, "cog-show-icon", "Show Icon");
+	const showIconSel = showIcon.querySelector("select");
+	tagFrameSlotOptions(showIconSel);
+	showIconSel.value = iconSlot;
+	showIconSel.addEventListener("change", (ev) => {
 		patchGauge(gid, { showIcon: normalizeFrameSlot(ev.target.value) });
 		if (typeof renderEditor === "function") {
 			renderEditor(true);
@@ -865,8 +924,11 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 		iconSlot,
 		numberSlot
 	].filter((s) => s !== "none"))}</select>`;
-	showLabel.querySelector("select").value = titleSlot;
-	showLabel.querySelector("select").addEventListener("change", (ev) => {
+	tagFieldLabel(showLabel, "cog-show-title", "Show Title");
+	const showLabelSel = showLabel.querySelector("select");
+	tagFrameSlotOptions(showLabelSel);
+	showLabelSel.value = titleSlot;
+	showLabelSel.addEventListener("change", (ev) => {
 		patchGauge(gid, { showLabel: normalizeFrameSlot(ev.target.value) });
 		if (typeof renderEditor === "function") {
 			renderEditor(true);
@@ -880,8 +942,11 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 		iconSlot,
 		titleSlot
 	].filter((s) => s !== "none"))}</select>`;
-	showNumber.querySelector("select").value = numberSlot;
-	showNumber.querySelector("select").addEventListener("change", (ev) => {
+	tagFieldLabel(showNumber, "cog-show-number", "Show Number");
+	const showNumberSel = showNumber.querySelector("select");
+	tagFrameSlotOptions(showNumberSel);
+	showNumberSel.value = numberSlot;
+	showNumberSel.addEventListener("change", (ev) => {
 		patchGauge(gid, { showNumber: normalizeFrameSlot(ev.target.value) });
 		if (typeof renderEditor === "function") {
 			renderEditor(true);
@@ -898,8 +963,17 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 		<option value="percent">Percentage</option>
 		<option value="total">Total</option>
 	</select>`;
-	numberFormatField.querySelector("select").value = normalizeNumberFormatGauge(gauge.numberFormat);
-	numberFormatField.querySelector("select").addEventListener("change", (ev) => {
+	tagFieldLabel(numberFormatField, "cog-number-format", "Number Format");
+	const numberFormatSel = numberFormatField.querySelector("select");
+	tagSelectOptions(numberFormatSel, {
+		bar: ["cog-bar", "Bar"],
+		barPercent: ["cog-bar-and-percentage", "Bar and percentage"],
+		barTotal: ["cog-bar-and-total", "Bar and total"],
+		percent: ["cog-percentage", "Percentage"],
+		total: ["cog-total", "Total"]
+	});
+	numberFormatSel.value = normalizeNumberFormatGauge(gauge.numberFormat);
+	numberFormatSel.addEventListener("change", (ev) => {
 		patchGauge(gid, { numberFormat: normalizeNumberFormatGauge(ev.target.value) });
 	});
 	gearRow.appendChild(numberFormatField);
@@ -907,6 +981,7 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 	const trough = document.createElement("label");
 	trough.className = "pos-field compact mid";
 	trough.innerHTML = `<span>Bar trough</span><input type="checkbox" data-role="barTrough">`;
+	tagFieldLabel(trough, "cog-bar-trough", "Bar trough");
 	const troughBox = trough.querySelector("input");
 	troughBox.checked = gauge.barTrough === true;
 	troughBox.addEventListener("change", () => {

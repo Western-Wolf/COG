@@ -394,16 +394,19 @@ const DEFAULT_GIZMO_HEIGHT_CELESTIAL = 40;
 
 const DEFAULT_GIZMO_CELESTIAL_COLOR = "#ffffff";
 
-const CLOCK_TOKEN_LABELS = {
-	dayOfWeek: "Day of week",
-	day: "Day",
-	dayOrdinal: "Day + suffix",
-	month: "Month",
-	year: "Year",
-	time12: "Time (12h)",
-	time24: "Time (24h)"
+const CLOCK_TYPE_ID = "cog-clock";
+
+/** Harvestable [tag, en-CA] pairs — clock display token chips / picker. */
+const CLOCK_TOKENS = {
+	dayOfWeek: ["cog-clock-token-day-of-week", "Day of week"],
+	day: ["cog-clock-token-day", "Day"],
+	dayOrdinal: ["cog-clock-token-day-ordinal", "Day + suffix"],
+	month: ["cog-clock-token-month", "Month"],
+	year: ["cog-clock-token-year", "Year"],
+	time12: ["cog-clock-token-time-12h", "Time (12h)"],
+	time24: ["cog-clock-token-time-24h", "Time (24h)"]
 };
-const CLOCK_TOKEN_IDS = Object.keys(CLOCK_TOKEN_LABELS);
+const CLOCK_TOKEN_IDS = Object.keys(CLOCK_TOKENS);
 const SEASON_ICONS = {
 	spring: "Seasons/spring.svg",
 	summer: "Seasons/summer.svg",
@@ -1447,12 +1450,19 @@ function makeClockTemplateEditor(gizmo, gid) {
 				const token = lines[li][ti];
 				const chip = document.createElement("span");
 				chip.className = "clock-token";
-				chip.textContent = CLOCK_TOKEN_LABELS[token] || token;
+				const chipLabel = document.createElement("span");
+				const tokenEntry = CLOCK_TOKENS[token];
+				if (tokenEntry) {
+					setTranslatedText(chipLabel, tokenEntry[0], tokenEntry[1], CLOCK_TYPE_ID);
+				} else {
+					chipLabel.textContent = token;
+				}
+				chip.appendChild(chipLabel);
 				const remove = document.createElement("button");
 				remove.type = "button";
 				remove.className = "clock-token-remove";
 				remove.textContent = "×";
-				remove.title = "Remove";
+				setTranslatedTitle(remove, "cog-remove", "Remove");
 				remove.addEventListener("click", () => {
 					const next = normalizeDisplayLines(live().settings.displayLines, live().settings.timeFormat);
 					next[li] = next[li].filter((_, idx) => idx !== ti);
@@ -1469,7 +1479,7 @@ function makeClockTemplateEditor(gizmo, gid) {
 			addBtn.type = "button";
 			addBtn.className = "tiny clock-line-btn";
 			addBtn.textContent = "+";
-			addBtn.title = "Add Item";
+			setTranslatedTitle(addBtn, "cog-add-item", "Add Item");
 			const popover = document.createElement("div");
 			popover.className = "clock-token-popover";
 			popover.hidden = true;
@@ -1480,7 +1490,7 @@ function makeClockTemplateEditor(gizmo, gid) {
 				const pick = document.createElement("button");
 				pick.type = "button";
 				pick.className = "clock-token-pick";
-				pick.textContent = CLOCK_TOKEN_LABELS[id];
+				setTranslatedText(pick, CLOCK_TOKENS[id][0], CLOCK_TOKENS[id][1], CLOCK_TYPE_ID);
 				pick.addEventListener("click", (ev) => {
 					ev.preventDefault();
 					ev.stopPropagation();
@@ -1516,7 +1526,7 @@ function makeClockTemplateEditor(gizmo, gid) {
 			delBtn.type = "button";
 			delBtn.className = "tiny clock-line-btn";
 			delBtn.textContent = "−";
-			delBtn.title = "Remove Line";
+			setTranslatedTitle(delBtn, "cog-remove-line", "Remove Line");
 			delBtn.disabled = lines.length <= 1;
 			delBtn.addEventListener("click", () => {
 				const next = normalizeDisplayLines(live().settings.displayLines, live().settings.timeFormat).filter((_, idx) => idx !== li);
@@ -1534,8 +1544,8 @@ function makeClockTemplateEditor(gizmo, gid) {
 		const addLine = document.createElement("button");
 		addLine.type = "button";
 		addLine.className = "tiny clock-add-line";
-		addLine.textContent = "+ Add line";
-		addLine.title = "Add line";
+		setTranslatedText(addLine, "cog-add-line", "+ Add line");
+		setTranslatedTitle(addLine, "cog-add-line", "+ Add line");
 		addLine.addEventListener("click", () => {
 			const next = normalizeDisplayLines(live().settings.displayLines, live().settings.timeFormat).slice();
 			next.push(["time24"]);
@@ -1560,7 +1570,12 @@ function fillClockGizmoEditor(panel, gizmo) {
 		<option value="text">Text-only</option>
 		<option value="celestial">Celestial</option>
 	</select>`;
+	tagFieldLabel(modeField, "cog-mode", "Mode");
 	const modeSel = modeField.querySelector("select");
+	tagSelectOptions(modeSel, {
+		text: ["cog-mode-text-only", "Text-only"],
+		celestial: ["cog-mode-celestial", "Celestial"]
+	});
 	modeSel.value = normalizeGizmoDisplayMode(gizmo.settings.displayMode);
 	modeSel.addEventListener("change", () => {
 		const mode = normalizeGizmoDisplayMode(modeSel.value);
@@ -1580,12 +1595,16 @@ function fillClockGizmoEditor(panel, gizmo) {
 	displaySection.className = "gizmo-display-settings";
 	const displayLede = document.createElement("p");
 	displayLede.className = "lede";
-	displayLede.textContent = "Display";
+	setTranslatedText(displayLede, "cog-display", "Display");
 	displaySection.appendChild(displayLede);
 	const displayHint = document.createElement("p");
 	displayHint.className = "hint";
-	displayHint.textContent =
-		"Arrange date and time fields across lines. Each badge is one value in the order shown.";
+	setTranslatedText(
+		displayHint,
+		"cog-clock-display-hint",
+		"Arrange date and time fields across lines. Each badge is one value in the order shown.",
+		CLOCK_TYPE_ID
+	);
 	displaySection.appendChild(displayHint);
 	displaySection.appendChild(makeClockTemplateEditor(gizmo, gid));
 	panel.appendChild(displaySection);
@@ -1595,7 +1614,7 @@ function fillClockGizmoEditor(panel, gizmo) {
 	textSection.className = "gizmo-text-settings";
 	const textLede = document.createElement("p");
 	textLede.className = "lede";
-	textLede.textContent = "Text settings";
+	setTranslatedText(textLede, "cog-text-settings", "Text settings");
 	textSection.appendChild(textLede);
 	const textRow = document.createElement("div");
 	textRow.className = "style-row";
@@ -1606,7 +1625,17 @@ function fillClockGizmoEditor(panel, gizmo) {
 		<option value="clock">Clock</option>
 		<option value="season">Season</option>
 	</select>`;
+	tagFieldLabel(iconField, "cog-icon", "Icon");
 	const iconSel = iconField.querySelector("select");
+	tagSelectOptions(
+		iconSel,
+		{
+			none: ["cog-none", "None"],
+			clock: ["cog-clock-icon-clock", "Clock"],
+			season: ["cog-clock-icon-season", "Season"]
+		},
+		CLOCK_TYPE_ID
+	);
 	iconSel.value = normalizeClockIcon(gizmo.settings.clockIcon);
 	iconSel.addEventListener("change", () => {
 		patchGizmo(gid, { clockIcon: normalizeClockIcon(iconSel.value) });
@@ -1619,7 +1648,13 @@ function fillClockGizmoEditor(panel, gizmo) {
 		<option value="left">Left</option>
 		<option value="right">Right</option>
 	</select>`;
+	tagFieldLabel(alignField, "cog-text-align", "Text align");
 	const alignSel = alignField.querySelector("select");
+	tagSelectOptions(alignSel, {
+		center: ["cog-align-center", "Center"],
+		left: ["cog-align-left", "Left"],
+		right: ["cog-align-right", "Right"]
+	});
 	alignSel.value = normalizeClockTextAlign(gizmo.settings.textAlign);
 	alignSel.addEventListener("change", () => {
 		patchGizmo(gid, { textAlign: normalizeClockTextAlign(alignSel.value) });
@@ -1628,7 +1663,9 @@ function fillClockGizmoEditor(panel, gizmo) {
 	const fontField = document.createElement("label");
 	fontField.className = "pos-field compact";
 	fontField.innerHTML = `<span>Font</span><input type="text" data-role="fontSize" inputmode="numeric" placeholder="auto">`;
+	tagFieldLabel(fontField, "cog-font", "Font");
 	const fontInput = fontField.querySelector("input");
+	setTranslatedPlaceholder(fontInput, "cog-auto", "auto");
 	fontInput.value = gizmo.settings.fontSize > 0 ? String(Math.round(gizmo.settings.fontSize)) : "";
 	bindNumberField(fontInput, {
 		suffix: "px",
@@ -1654,6 +1691,7 @@ function fillClockGizmoEditor(panel, gizmo) {
 		(hex, live) => patchGizmo(gid, { iconColor: hex }, false, live)
 	);
 	iconColor.classList.add("compact");
+	tagFieldLabel(iconColor, "cog-icon-colour", "Icon Colour");
 	textColorRow.appendChild(iconColor);
 	const textColor = makeOptionalColorField(
 		"Text Colour",
@@ -1662,6 +1700,7 @@ function fillClockGizmoEditor(panel, gizmo) {
 		(hex, live) => patchGizmo(gid, { textColor: hex }, false, live)
 	);
 	textColor.classList.add("compact");
+	tagFieldLabel(textColor, "cog-text-colour", "Text Colour");
 	textColorRow.appendChild(textColor);
 	textSection.appendChild(textColorRow);
 	panel.appendChild(textSection);
@@ -1672,11 +1711,16 @@ function fillClockGizmoEditor(panel, gizmo) {
 	appendEditorRule(celestialSection);
 	const celestialLede = document.createElement("p");
 	celestialLede.className = "lede";
-	celestialLede.textContent = "Celestial settings";
+	setTranslatedText(celestialLede, "cog-celestial-settings", "Celestial settings");
 	celestialSection.appendChild(celestialLede);
 	const celestialHint = document.createElement("p");
 	celestialHint.className = "hint";
-	celestialHint.textContent = "Width is the arc diameter; Height is band thickness (same as an arc gauge).";
+	setTranslatedText(
+		celestialHint,
+		"cog-clock-celestial-hint",
+		"Width is the arc diameter; Height is band thickness (same as an arc gauge).",
+		CLOCK_TYPE_ID
+	);
 	celestialSection.appendChild(celestialHint);
 	const celestialRow = document.createElement("div");
 	celestialRow.className = "style-row celestial-main-row";
@@ -1687,7 +1731,13 @@ function fillClockGizmoEditor(panel, gizmo) {
 		<option value="sky">When sky is visible</option>
 		<option value="outdoors">When outdoors</option>
 	</select>`;
+	tagFieldLabel(celestialShowField, "cog-show-celestial-objects", "Show celestial objects");
 	const celestialShowSel = celestialShowField.querySelector("select");
+	tagSelectOptions(celestialShowSel, {
+		always: ["cog-always", "Always"],
+		sky: ["cog-when-sky-visible", "When sky is visible"],
+		outdoors: ["cog-when-outdoors", "When outdoors"]
+	});
 	celestialShowSel.value = normalizeCelestialShow(gizmo.settings.celestialShow);
 	celestialShowSel.addEventListener("change", () => {
 		patchGizmo(gid, { celestialShow: normalizeCelestialShow(celestialShowSel.value) });
@@ -1699,7 +1749,12 @@ function fillClockGizmoEditor(panel, gizmo) {
 		<option value="border">Extend Border</option>
 		<option value="endcap">Use Endcap</option>
 	</select>`;
+	tagFieldLabel(endMode, "cog-endcaps", "Endcaps");
 	const endModeSel = endMode.querySelector("select");
+	tagSelectOptions(endModeSel, {
+		border: ["cog-extend-border", "Extend Border"],
+		endcap: ["cog-use-endcap", "Use Endcap"]
+	});
 	endModeSel.value = normalizeEndCapMode(gizmo.settings.endCapMode, gizmo.settings.endCap);
 	celestialRow.appendChild(endMode);
 	const endModeNow = endModeSel.value;
@@ -1722,15 +1777,18 @@ function fillClockGizmoEditor(panel, gizmo) {
 			value: gizmo.settings.endCap,
 			folder: "Endcaps",
 			endArtPicker: true,
-			clearLabel: "Clear endcap",
+			clearLabel:
+				typeof t === "function" ? t("cog-clear-endcap", "Clear endcap") : "Clear endcap",
 			showName: true,
 			onCommit: (path) => patchGizmo(gid, { endCap: path || defaultEndCapArtPath() })
 		});
 		endCaps.classList.add("compact");
+		tagFieldLabel(endCaps, "cog-endcap", "Endcap");
 		endArtRow.appendChild(endCaps);
 		const overlap = document.createElement("label");
 		overlap.className = "pos-field compact narrow overlap-cap-field";
 		overlap.innerHTML = `<span>Overlap</span><input type="number" min="0" max="45" step="0.5" data-role="endCapOverlap">`;
+		tagFieldLabel(overlap, "cog-overlap", "Overlap");
 		const overlapInput = overlap.querySelector("input");
 		overlapInput.value = fmtDec(gizmo.settings.endCapOverlap, 1);
 		bindNumberField(overlapInput, {
@@ -1752,10 +1810,12 @@ function fillClockGizmoEditor(panel, gizmo) {
 		(hex, live) => patchGizmo(gid, { borderColor: hex }, false, live)
 	);
 	borderColor.classList.add("compact");
+	tagFieldLabel(borderColor, "cog-border-colour", "Border Colour");
 	celestialColorRow.appendChild(borderColor);
 	const thick = document.createElement("label");
 	thick.className = "pos-field compact narrow";
 	thick.innerHTML = `<span>Border Thickness</span><input type="number" min="0" max="50" step="0.5" data-role="borderThickness">`;
+	tagFieldLabel(thick, "cog-border-thickness", "Border Thickness");
 	const thickInput = thick.querySelector("input");
 	thickInput.value = fmtDec(gizmo.settings.borderThickness, 1);
 	bindNumberField(thickInput, {
@@ -1773,6 +1833,7 @@ function fillClockGizmoEditor(panel, gizmo) {
 		(hex, live) => patchGizmo(gid, { celestialColor: hex }, false, live)
 	);
 	celestialColor.classList.add("compact");
+	tagFieldLabel(celestialColor, "cog-celestial-colour", "Celestial Colour");
 	celestialColorRow.appendChild(celestialColor);
 	celestialSection.appendChild(celestialColorRow);
 	panel.appendChild(celestialSection);
