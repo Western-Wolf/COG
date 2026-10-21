@@ -1589,14 +1589,14 @@ function renderGauges(body) {
 		details.innerHTML = `
 			<summary>
 				<span class="group-title"></span>
-				<input class="name-field" data-role="name" spellcheck="false" hidden>
+				<input class="name-field" data-role="displayName" spellcheck="false" hidden>
 				<span class="end"></span>
 			</summary>
 			<div class="accordion-body" data-role="gaugeBody"></div>`;
 		const title = details.querySelector(".group-title");
-		const nameInput = details.querySelector('[data-role="name"]');
-		title.textContent = gauge.name || "Gauge";
-		nameInput.value = gauge.name || "Gauge";
+		const nameInput = details.querySelector('[data-role="displayName"]');
+		title.textContent = gauge.displayName || "Gauge";
+		nameInput.value = gauge.displayName || "Gauge";
 		const end = details.querySelector(".end");
 		const edit = document.createElement("button");
 		edit.type = "button";
@@ -1616,11 +1616,11 @@ function renderGauges(body) {
 			nameInput.hidden = true;
 			title.hidden = false;
 			if (save) {
-				const next = nameInput.value.trim() || gauge.name || "Gauge";
-				patchGauge(gauge.id, { name: next });
-				title.textContent = gaugeFor(gauge.id)?.name || next;
+				const next = nameInput.value.trim() || gauge.displayName || "Gauge";
+				patchGauge(gauge.id, { displayName: next });
+				title.textContent = gaugeFor(gauge.id)?.displayName || next;
 			} else {
-				nameInput.value = gauge.name || "Gauge";
+				nameInput.value = gauge.displayName || "Gauge";
 			}
 		};
 		edit.addEventListener("click", () => {
@@ -1628,7 +1628,7 @@ function renderGauges(body) {
 			details.classList.add("is-renaming");
 			title.hidden = true;
 			nameInput.hidden = false;
-			nameInput.value = gauge.name || "Gauge";
+			nameInput.value = gauge.displayName || "Gauge";
 			parkRenameFieldForEdit(details, nameInput);
 			nameInput.focus();
 			nameInput.select();

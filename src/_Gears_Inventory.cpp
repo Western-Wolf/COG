@@ -67,7 +67,7 @@ namespace
 
 	bool AppearanceEmpty(const CogGearAppearance& a)
 	{
-		return a.display.empty() && a.icon.empty() && a.iconColor.empty() && a.barColor.empty() &&
+		return a.displayName.empty() && a.icon.empty() && a.iconColor.empty() && a.barColor.empty() &&
 			   a.hideAt.empty();
 	}
 
@@ -480,7 +480,7 @@ void CogInventory::RegisterFromSaved()
 	auto& reg = CogRegistry::Get();
 	reg.BeginRegister(kInventoryGearMod, kCogPluginFile);
 	for (const auto& gear : inventoryGears) {
-		std::string display = !gear.settings.display.empty() ? gear.settings.display : gear.defaults.display;
+		std::string display = !gear.settings.displayName.empty() ? gear.settings.displayName : gear.defaults.displayName;
 		std::string icon = !gear.settings.icon.empty() ? gear.settings.icon : gear.defaults.icon;
 		if (icon.empty()) {
 			icon = "Treasure/bag.svg";
@@ -535,7 +535,7 @@ void CogInventory::EnsureBuiltinsUnlocked(CogRegistry& reg)
 		builtinVarNames.push_back(varName);
 
 		CogGearAppearance appearance;
-		appearance.display = preset.display;
+		appearance.displayName = preset.display;
 		appearance.icon = preset.icon;
 
 		CogGear* target = nullptr;

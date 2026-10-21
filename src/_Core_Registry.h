@@ -27,7 +27,7 @@ struct CogSource
 	std::int32_t receipt = 0;
 	std::string mod;
 	std::string name;
-	std::string display;
+	std::string displayName;
 	std::string category;
 	CogVarType type = CogVarType::Percent;
 	double value = 0.0;
@@ -60,7 +60,7 @@ struct CogGroupStyle
 
 struct CogGearAppearance
 {
-	std::string display;
+	std::string displayName;
 	std::string icon;
 	std::string iconColor;
 	std::string barColor;
@@ -84,7 +84,7 @@ struct CogGear
 struct CogGroup
 {
 	std::string id;
-	std::string name;
+	std::string displayName;
 	bool locked = false;
 	bool visible = true;
 	float x = 0.1f;
@@ -100,7 +100,7 @@ struct CogGroup
 struct CogGauge
 {
 	std::string id;
-	std::string name;
+	std::string displayName;
 	std::string type = "meter";
 	std::string shape = "bar";
 	bool locked = false;
@@ -150,7 +150,7 @@ struct CogGauge
 struct CogGizmo
 {
 	std::string id;
-	std::string name;
+	std::string displayName;
 	std::string type = "cog-clock";
 	// none | hud (HUD Visible) | ui (UI Visible / menus too)
 	std::string visibility = "hud";
@@ -205,6 +205,8 @@ struct CogGeneral
 	std::string language = "en-CA";
 	/** When on, missing catalog strings show a gold en-CA badge in the editor. */
 	bool highlightMissingTranslations = false;
+	/** When on, language changes rewrite still-stock entity displayName fields. */
+	bool updateStockTitlesOnTranslation = false;
 	/** Undocumented support toggle: "info" (default) or "debug". Not pushed to the editor UI. */
 	std::string logLevel = "info";
 };
@@ -236,7 +238,7 @@ public:
 		std::string mod,
 		std::string name,
 		std::string type,
-		std::string display,
+		std::string displayName,
 		std::string category,
 		std::string icon = {},
 		std::string iconColor = {},

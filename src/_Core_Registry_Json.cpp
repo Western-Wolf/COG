@@ -747,7 +747,7 @@ namespace CogRegistryJson
 	{
 		CogGroup g;
 		g.id = kDefaultGroupId;
-		g.name = "Default Group";
+		g.displayName = "Default Group";
 		g.locked = true;
 		g.visible = true;
 		g.x = 0.1f;
@@ -781,14 +781,19 @@ namespace CogRegistryJson
 
 	bool AppearanceEmpty(const CogGearAppearance& a)
 	{
-		return a.display.empty() && a.icon.empty() && a.iconColor.empty() && a.barColor.empty() &&
+		return a.displayName.empty() && a.icon.empty() && a.iconColor.empty() && a.barColor.empty() &&
 		       a.hideAt.empty();
 	}
 
 	CogGearAppearance ParseAppearance(const CogJson::Value& obj, CogJson::ParseContext& ctx)
 	{
 		CogGearAppearance a;
-		a.display = ctx.GetString(obj, "display");
+		a.displayName = ctx.GetString(obj, "displayName");
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy appearance title key "display" becomes displayName (never written back on save).
+		if (a.displayName.empty()) {
+			a.displayName = ctx.GetString(obj, "display");
+		}
 		a.icon = NormalizeIcon(ctx.GetString(obj, "icon"));
 		a.iconColor = ReadColorRampField(obj, ctx, "iconColor", true);
 		a.barColor = ReadColorRampField(obj, ctx, "barColor", false);
@@ -801,7 +806,7 @@ namespace CogRegistryJson
 	void AppendAppearance(CogJson::Writer& w, const CogGearAppearance& a)
 	{
 		w.BeginObject();
-		w.KeyString("display", a.display);
+		w.KeyString("displayName", a.displayName);
 		w.KeyString("icon", a.icon);
 		WriteColorRampField(w, "iconColor", a.iconColor);
 		WriteColorRampField(w, "barColor", a.barColor);
@@ -820,14 +825,19 @@ namespace CogRegistryJson
 	CogGroup ParseGroup(const CogJson::Value& obj, CogJson::ParseContext& ctx)
 	{
 		CogGroup g = DefaultGroup();
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy group title key "name" becomes displayName (never written back on save).
+		auto title = ctx.GetString(obj, "displayName");
+		if (title.empty()) {
+			title = ctx.GetString(obj, "name");
+		}
 		g.id = ctx.GetString(obj, "id");
 		if (g.id.empty()) {
-			g.id = FileStem(ctx.GetString(obj, "name"));
+			g.id = FileStem(title);
 		}
 		g.id = NormalizeGroupId(g.id);
-		const auto name = ctx.GetString(obj, "name");
-		if (!name.empty()) {
-			g.name = name;
+		if (!title.empty()) {
+			g.displayName = title;
 		}
 		g.locked = g.id == kDefaultGroupId || ctx.GetBool(obj, "locked", false);
 		g.visible = ctx.GetBool(obj, "visible", true);
@@ -856,7 +866,7 @@ namespace CogRegistryJson
 		}
 		if (g.id == kDefaultGroupId) {
 			g.locked = true;
-			g.name = "Default Group";
+			g.displayName = "Default Group";
 		}
 		g.gearIds = ctx.GetStringArray(obj, "gearIds");
 		return g;
@@ -923,9 +933,14 @@ namespace CogRegistryJson
 	{
 		CogGauge g;
 		g.id = ctx.GetString(obj, "id");
-		g.name = ctx.GetString(obj, "name");
+		g.displayName = ctx.GetString(obj, "displayName");
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy gauge title key "name" becomes displayName (never written back on save).
+		if (g.displayName.empty()) {
+			g.displayName = ctx.GetString(obj, "name");
+		}
 		if (g.id.empty()) {
-			g.id = FileStem(g.name);
+			g.id = FileStem(g.displayName);
 		}
 		g.type = NormalizeGaugeType(ctx.GetString(obj, "type"));
 		g.shape = NormalizeGaugeShape(ctx.GetString(obj, "shape"));
@@ -1079,7 +1094,7 @@ namespace CogRegistryJson
 	{
 		w.BeginObject();
 		w.KeyString("id", g.id);
-		w.KeyString("name", g.name);
+		w.KeyString("displayName", g.displayName);
 		w.KeyString("type", g.type);
 		w.KeyString("shape", g.shape);
 		w.KeyBool("locked", g.locked);
@@ -1446,9 +1461,14 @@ namespace CogRegistryJson
 	{
 		CogGizmo g;
 		g.id = ctx.GetString(obj, "id");
-		g.name = ctx.GetString(obj, "name");
+		g.displayName = ctx.GetString(obj, "displayName");
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy gizmo instance title key "name" becomes displayName (never written back on save).
+		if (g.displayName.empty()) {
+			g.displayName = ctx.GetString(obj, "name");
+		}
 		if (g.id.empty()) {
-			g.id = FileStem(g.name);
+			g.id = FileStem(g.displayName);
 		}
 		g.type = NormalizeGizmoType(ctx.GetString(obj, "type"));
 		const bool hasVisibility = ctx.Has(obj, "visibility");
@@ -1574,7 +1594,7 @@ namespace CogRegistryJson
 	{
 		w.BeginObject();
 		w.KeyString("id", g.id);
-		w.KeyString("name", g.name);
+		w.KeyString("displayName", g.displayName);
 		w.KeyString("type", g.type);
 		// Always persist visibility. Omitting "hud" made Feed's JS ensure treat a missing
 		// key as "ui" (new-feed default) and reset HUD Visible on the next snapshot push.
@@ -1633,7 +1653,7 @@ namespace CogRegistryJson
 	{
 		w.BeginObject();
 		w.KeyString("id", g.id);
-		w.KeyString("name", g.name);
+		w.KeyString("displayName", g.displayName);
 		w.KeyBool("locked", g.locked);
 		w.KeyBool("visible", g.visible);
 		w.KeyNumber("x", g.x);

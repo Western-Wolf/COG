@@ -1146,7 +1146,7 @@ void CogHudSuppress::CollectSuppressions(const CogRegistry& reg, std::vector<Cog
 			CogHudSuppressController c;
 			c.kind = "group";
 			c.id = group.id;
-			c.label = std::string("Group ") + group.name;
+			c.label = std::string("Group ") + group.displayName;
 			c.role = "hide";
 			c.active = visible;
 			if (!visible) {
@@ -1181,7 +1181,7 @@ void CogHudSuppress::CollectSuppressions(const CogRegistry& reg, std::vector<Cog
 		CogHudSuppressController c;
 		c.kind = "gauge";
 		c.id = gauge.id;
-		c.label = std::string("Gauge ") + (gauge.name.empty() ? gauge.id : gauge.name);
+		c.label = std::string("Gauge ") + (gauge.displayName.empty() ? gauge.id : gauge.displayName);
 		c.role = "hide";
 		c.active = gaugeVisible;
 		if (!gaugeVisible) {
@@ -1192,7 +1192,7 @@ void CogHudSuppress::CollectSuppressions(const CogRegistry& reg, std::vector<Cog
 
 	for (const auto& gizmo : reg._gizmos) {
 		const auto type = GizmoTypeKey(gizmo.type);
-		const auto gizmoLabel = std::string("Gizmo ") + (gizmo.name.empty() ? gizmo.id : gizmo.name);
+		const auto gizmoLabel = std::string("Gizmo ") + (gizmo.displayName.empty() ? gizmo.id : gizmo.displayName);
 		if (type == "cog-suppressor") {
 			for (const auto& raw : ParseStringArrayJson(
 					 CogRegistryJson::NormalizeHudKeyListJson(

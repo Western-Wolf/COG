@@ -251,7 +251,7 @@ std::string CogRegistry::BuildSnapshotJson()
 		}
 		first = false;
 		o << "{\"receipt\":" << src.receipt << ",\"mod\":\"" << EscapeJson(src.mod) << "\",\"name\":\""
-		  << EscapeJson(src.name) << "\",\"display\":\"" << EscapeJson(src.display) << "\",\"category\":\""
+		  << EscapeJson(src.name) << "\",\"displayName\":\"" << EscapeJson(src.displayName) << "\",\"category\":\""
 		  << EscapeJson(src.category) << "\",\"icon\":\"" << EscapeJson(src.icon) << "\",";
 		CogRegistryJson::AppendColorRampJson(o, "iconColor", src.iconColor);
 		o << ",";
@@ -279,7 +279,9 @@ std::string CogRegistry::BuildSnapshotJson()
 	  << "\",\"gadgetFont\":\"" << EscapeJson(_general.gadgetFont) << "\",\"language\":\""
 	  << EscapeJson(_general.language.empty() ? "en-CA" : _general.language)
 	  << "\",\"highlightMissingTranslations\":"
-	  << (_general.highlightMissingTranslations ? "true" : "false") << "},\"groups\":[";
+	  << (_general.highlightMissingTranslations ? "true" : "false")
+	  << ",\"updateStockTitlesOnTranslation\":"
+	  << (_general.updateStockTitlesOnTranslation ? "true" : "false") << "},\"groups\":[";
 	first = true;
 	for (const auto& g : _groups) {
 		if (!first) {
@@ -559,7 +561,7 @@ std::string CogRegistry::BuildLivePatchJson()
 		}
 		first = false;
 		o << "{\"receipt\":" << src.receipt << ",\"mod\":\"" << EscapeJson(src.mod) << "\",\"name\":\""
-		  << EscapeJson(src.name) << "\",\"display\":\"" << EscapeJson(src.display) << "\",\"category\":\""
+		  << EscapeJson(src.name) << "\",\"displayName\":\"" << EscapeJson(src.displayName) << "\",\"category\":\""
 		  << EscapeJson(src.category) << "\",\"icon\":\"" << EscapeJson(src.icon) << "\",";
 		CogRegistryJson::AppendColorRampJson(o, "iconColor", src.iconColor);
 		o << ",";

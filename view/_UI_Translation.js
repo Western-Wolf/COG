@@ -385,10 +385,248 @@
 		return [...into].sort();
 	}
 
+	/** Catalog tag for a stock English title key, e.g. name:Health or name:Group {num}. */
+	function nameCatalogTag(englishKey) {
+		return "name:" + String(englishKey || "");
+	}
+
+	/**
+	 * Resolve a name: tag in a catalog with case-insensitive key match.
+	 * Older gear JSON stored defaults.displayName as "stamina"/"magicka" while the
+	 * catalog is keyed name:Stamina / name:Magicka — exact lookup misses and falls
+	 * back to the English key (Health/Carry Weight were unaffected because casing matched).
+	 */
+	function findNameCatalogEntry(cat, englishKey) {
+		if (!cat || typeof cat !== "object") {
+			return null;
+		}
+		const raw = String(englishKey || "").trim();
+		if (!raw) {
+			return null;
+		}
+		const exact = nameCatalogTag(raw);
+		if (cat[exact]) {
+			return cat[exact];
+		}
+		const want = exact.toLowerCase();
+		for (const tag of Object.keys(cat)) {
+			if (tag.toLowerCase() === want) {
+				return cat[tag];
+			}
+		}
+		return null;
+	}
+
+	function hasStockNameKey(englishKey, typeId) {
+		const raw = String(englishKey || "").trim();
+		if (!raw) {
+			return false;
+		}
+		if (findNameCatalogEntry(catalogFor(typeId), raw)) {
+			return true;
+		}
+		return !!findNameCatalogEntry(
+			(global.snapshot && global.snapshot.translations) || null,
+			raw
+		);
+	}
+
+	function lookupNameTemplate(englishKey, lang, typeId) {
+		const code = String(lang || "").trim() || FALLBACK_LANG;
+		const gizmoCat = catalogFor(typeId);
+		const gizmoEntry = findNameCatalogEntry(gizmoCat, englishKey);
+		if (gizmoEntry && gizmoEntry[code] != null && gizmoEntry[code] !== "") {
+			return String(gizmoEntry[code]);
+		}
+		const globalCat = (global.snapshot && global.snapshot.translations) || null;
+		const globalEntry = findNameCatalogEntry(globalCat, englishKey);
+		if (globalEntry && globalEntry[code] != null && globalEntry[code] !== "") {
+			return String(globalEntry[code]);
+		}
+		if (code !== FALLBACK_LANG) {
+			return lookupNameTemplate(englishKey, FALLBACK_LANG, typeId);
+		}
+		// Prefer catalog en-CA title casing when only the key case drifted.
+		if (globalEntry && globalEntry[FALLBACK_LANG]) {
+			return String(globalEntry[FALLBACK_LANG]);
+		}
+		if (gizmoEntry && gizmoEntry[FALLBACK_LANG]) {
+			return String(gizmoEntry[FALLBACK_LANG]);
+		}
+		return String(englishKey || "");
+	}
+
+	/** Resolve a stock title for the active (or given) language. */
+	function tName(englishKey, vars, typeId, lang) {
+		const template = lookupNameTemplate(englishKey, lang || selectedLanguage(), typeId);
+		return formatVars(template, vars);
+	}
+
+	function formatStockName(englishKey, vars, typeId) {
+		return tName(englishKey, vars, typeId);
+	}
+
+	/** Case-insensitive trim match; also accepts legacy "Group $1" vs "Group 1". */
+	function stockNameEqual(a, b) {
+		const left = String(a == null ? "" : a).trim();
+		const right = String(b == null ? "" : b).trim();
+		if (!left || !right) {
+			return false;
+		}
+		if (left === right) {
+			return true;
+		}
+		if (left.toLowerCase() === right.toLowerCase()) {
+			return true;
+		}
+		const normLeft = left.replace(/\s+\$(\d+)$/, " $1");
+		const normRight = right.replace(/\s+\$(\d+)$/, " $1");
+		return (
+			normLeft === normRight || normLeft.toLowerCase() === normRight.toLowerCase()
+		);
+	}
+
+	/**
+	 * Still-stock if current equals fromLang or en-CA catalog string (or defaultsDisplayName).
+	 * Does not scan every locale (avoids false positives on push).
+	 */
+	function isStockName(current, englishKey, fromLang, opts) {
+		const cur = String(current == null ? "" : current).trim();
+		const key = String(englishKey || "").trim();
+		if (!cur || !key) {
+			return false;
+		}
+		const vars = opts && opts.vars;
+		const typeId = opts && opts.typeId;
+		const en = formatVars(lookupNameTemplate(key, FALLBACK_LANG, typeId), vars).trim();
+		const from = formatVars(
+			lookupNameTemplate(key, fromLang || FALLBACK_LANG, typeId),
+			vars
+		).trim();
+		if (stockNameEqual(cur, en) || stockNameEqual(cur, from)) {
+			return true;
+		}
+		const def = opts && opts.defaultsDisplayName;
+		if (def != null && stockNameEqual(cur, def)) {
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Former fr-CA strings we shipped before aligning to official Skyrim FR.
+	 * Still treat as stock so display-time resolve / push can rewrite them.
+	 */
+	const LEGACY_STOCK_NAME_ALIASES = {
+		Stamina: ["Endurance"],
+		"Mount Stamina": ["Endurance de monture"]
+	};
+
+	/**
+	 * True if `current` matches this key's catalog string in any loaded locale (or defaults).
+	 * Used for display-time resolution; narrower than scanning arbitrary user text.
+	 */
+	function isStockNameAnyLocale(current, englishKey, opts) {
+		const cur = String(current == null ? "" : current).trim();
+		const key = String(englishKey || "").trim();
+		if (!key) {
+			return false;
+		}
+		if (!cur) {
+			return true;
+		}
+		if (isStockName(cur, key, FALLBACK_LANG, opts)) {
+			return true;
+		}
+		for (const lang of availableLanguages()) {
+			if (lang !== FALLBACK_LANG && isStockName(cur, key, lang, opts)) {
+				return true;
+			}
+		}
+		const aliasKey = Object.keys(LEGACY_STOCK_NAME_ALIASES).find(
+			(k) => k.toLowerCase() === key.toLowerCase()
+		);
+		const aliases = aliasKey ? LEGACY_STOCK_NAME_ALIASES[aliasKey] : null;
+		if (aliases) {
+			for (const alias of aliases) {
+				if (stockNameEqual(cur, alias)) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	function localizeStockName(current, englishKey, toLang, fromLang, opts) {
+		if (!isStockName(current, englishKey, fromLang, opts)) {
+			return current;
+		}
+		return tName(englishKey, opts && opts.vars, opts && opts.typeId, toLang || selectedLanguage());
+	}
+
+	/**
+	 * Display-time stock title: if still stock (any locale), show active-language catalog form.
+	 * Custom titles pass through unchanged. Empty stored → catalog for englishKey.
+	 */
+	function resolveStockDisplayName(stored, englishKey, opts) {
+		const key = String(englishKey || "").trim();
+		const cur = String(stored == null ? "" : stored).trim();
+		if (!key) {
+			return cur;
+		}
+		if (!isStockNameAnyLocale(cur, key, opts)) {
+			return cur;
+		}
+		return tName(key, opts && opts.vars, opts && opts.typeId, selectedLanguage());
+	}
+
+	/** Built-in instance title templates (English keys). */
+	const STOCK_INSTANCE_TEMPLATES = [
+		"Group {num}",
+		"Gauge {num}",
+		"Clock {num}",
+		"Feed {num}",
+		"Shout Meter {num}",
+		"Suppressor {num}",
+		"Example (Gear Updated) {num}",
+		"Example (Push Updated) {num}"
+	];
+
+	function matchStockInstanceTitle(current, fromLang) {
+		const cur = String(current == null ? "" : current).trim();
+		// Legacy titles used "${num}" which formatVars turned into "$1".
+		const normalized = cur.replace(/\s+\$(\d+)$/, " $1");
+		const candidates = normalized === cur ? [cur] : [cur, normalized];
+		for (const candidate of candidates) {
+			const m = candidate.match(/^(.*)\s+(\d+)$/);
+			if (!m) {
+				continue;
+			}
+			const num = m[2];
+			const vars = { num };
+			for (const key of STOCK_INSTANCE_TEMPLATES) {
+				if (isStockName(candidate, key, fromLang, { vars })) {
+					return { key, vars };
+				}
+			}
+		}
+		return null;
+	}
+
 	global.t = t;
 	global.tf = tf;
 	global.tResult = tResult;
 	global.tfResult = tfResult;
+	global.tName = tName;
+	global.formatStockName = formatStockName;
+	global.isStockName = isStockName;
+	global.isStockNameAnyLocale = isStockNameAnyLocale;
+	global.localizeStockName = localizeStockName;
+	global.resolveStockDisplayName = resolveStockDisplayName;
+	global.hasStockNameKey = hasStockNameKey;
+	global.matchStockInstanceTitle = matchStockInstanceTitle;
+	global.STOCK_INSTANCE_TEMPLATES = STOCK_INSTANCE_TEMPLATES;
+	global.nameCatalogTag = nameCatalogTag;
 	global.applyTranslations = applyTranslations;
 	global.setTranslatedText = setTranslatedText;
 	global.setTranslatedTitle = setTranslatedTitle;

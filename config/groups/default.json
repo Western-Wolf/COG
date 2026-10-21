@@ -1,6 +1,6 @@
 {
 	"id": "default",
-	"name": "Default Group",
+	"displayName": "Default Group",
 	"locked": true,
 	"visible": true,
 	"x": 0.1,

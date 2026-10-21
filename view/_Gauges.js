@@ -478,7 +478,10 @@ function normalizeFillDirection(value) {
 function defaultGauge(n) {
 	return {
 		id: `gauge_${Date.now().toString(36)}`,
-		name: `Gauge ${n}`,
+		displayName:
+			typeof formatStockName === "function"
+				? formatStockName("Gauge {num}", { num: n })
+				: `Gauge ${n}`,
 		type: "meter",
 		shape: "bar",
 		locked: false,
@@ -527,6 +530,13 @@ function defaultGauge(n) {
 function ensureGauge(gauge) {
 	if (!gauge || typeof gauge !== "object") {
 		return gauge;
+	}
+	// Migration Code for Transition from v1.01 or earlier to v1.1: copy legacy title `name` into `displayName` when empty.
+	if (!String(gauge.displayName || "").trim() && String(gauge.name || "").trim()) {
+		gauge.displayName = String(gauge.name).trim();
+	}
+	if (typeof gauge.displayName !== "string") {
+		gauge.displayName = "";
 	}
 	gauge.type = normalizeGaugeType(gauge.type);
 	gauge.shape = normalizeGaugeShape(gauge.shape);
@@ -661,9 +671,9 @@ function patchGauge(id, patch, skipHud, live) {
 		// live === false: colour commit — this gauge only (already synced).
 		if (live !== false && !drag) {
 		renderGears();
-		}
 	}
-	if (Object.prototype.hasOwnProperty.call(patch, "name")) {
+	}
+	if (Object.prototype.hasOwnProperty.call(patch, "displayName")) {
 		renderEditor(true);
 	}
 }
@@ -848,7 +858,13 @@ function gaugeStyleSig(gauge) {
 		gauge.pictureFade,
 		gauge.gearMod,
 		gauge.gearName,
-		icon
+		icon,
+		// Gear label text (stock titles follow UI language) — must invalidate live-patch reuse.
+		typeof gearTitleSig === "function"
+			? gearTitleSig(src, gear)
+			: typeof sourceTitle === "function"
+				? sourceTitle(src, gear && gear.name, gear)
+				: ""
 	].join("|");
 }
 

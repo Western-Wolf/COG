@@ -70,7 +70,10 @@ function defaultShoutMeterGizmo(n) {
 	};
 	return {
 		id: `gizmo_${Date.now().toString(36)}`,
-		name: `Shout Meter ${n}`,
+		displayName:
+			typeof formatStockName === "function"
+				? formatStockName("Shout Meter {num}", { num: n })
+				: `Shout Meter ${n}`,
 		type: "cog-shout-meter",
 		visibility: "hud",
 		x: DEFAULT_HUD_X,
@@ -84,6 +87,7 @@ function defaultShoutMeterGizmo(n) {
 	};
 }
 function ensureShoutMeterGizmo(gizmo) {
+	ensureGizmoDisplayName(gizmo);
 	const s = ensureGizmoSettings(gizmo);
 	gizmo.x = Number.isFinite(Number(gizmo.x)) ? Number(gizmo.x) : DEFAULT_HUD_X;
 	gizmo.y = Number.isFinite(Number(gizmo.y)) ? Number(gizmo.y) : DEFAULT_HUD_Y;

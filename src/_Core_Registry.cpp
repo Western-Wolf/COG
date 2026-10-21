@@ -236,12 +236,21 @@ void CogRegistry::EnsureGearDefinitionUnlocked(const std::string& mod, const std
 		gear.defaults = appearance;
 		if (AppearanceEmpty(gear.settings)) {
 			gear.settings = appearance;
-		} else if (!appearance.icon.empty() &&
-			(gear.settings.icon.empty() || gear.settings.icon == CogIcon::kFallbackRelPath ||
-				gear.settings.icon == previousDefaultIcon)) {
-			// Track Register's icon when the user hasn't chosen a different custom icon
-			// (covers failed-import cog fallback and superseded library remaps).
-			gear.settings.icon = appearance.icon;
+		} else {
+			// Same title with drifted casing (disk "stamina" vs Register "Stamina") —
+			// heal so name: catalog keys resolve; leave truly custom titles alone.
+			if (!appearance.displayName.empty() &&
+				Lower(gear.settings.displayName) == Lower(appearance.displayName) &&
+				gear.settings.displayName != appearance.displayName) {
+				gear.settings.displayName = appearance.displayName;
+			}
+			if (!appearance.icon.empty() &&
+				(gear.settings.icon.empty() || gear.settings.icon == CogIcon::kFallbackRelPath ||
+					gear.settings.icon == previousDefaultIcon)) {
+				// Track Register's icon when the user hasn't chosen a different custom icon
+				// (covers failed-import cog fallback and superseded library remaps).
+				gear.settings.icon = appearance.icon;
+			}
 		}
 		return;
 	}
@@ -262,7 +271,7 @@ std::int32_t CogRegistry::Register(
 	std::string mod,
 	std::string name,
 	std::string type,
-	std::string display,
+	std::string displayName,
 	std::string category,
 	std::string icon,
 	std::string iconColor,
@@ -293,8 +302,8 @@ std::int32_t CogRegistry::Register(
 	if (auto existing = _index.find(key); existing != _index.end()) {
 		auto& src = _sources[existing->second];
 		src.type = ParseType(type);
-		if (!display.empty()) {
-			src.display = std::move(display);
+		if (!displayName.empty()) {
+			src.displayName = std::move(displayName);
 		}
 		if (!category.empty()) {
 			src.category = std::move(category);
@@ -316,7 +325,7 @@ std::int32_t CogRegistry::Register(
 		src.receipt = _nextReceipt++;
 		src.mod = std::move(mod);
 		src.name = std::move(name);
-		src.display = display.empty() ? src.name : std::move(display);
+		src.displayName = displayName.empty() ? src.name : std::move(displayName);
 		src.category = std::move(category);
 		src.type = ParseType(type);
 		if (icon.empty()) {
@@ -344,7 +353,7 @@ std::int32_t CogRegistry::Register(
 			kFallbackIcon);
 	}
 	CogGearAppearance appearance;
-	appearance.display = src.display;
+	appearance.displayName = src.displayName;
 	appearance.icon = src.icon;
 	appearance.iconColor = src.iconColor;
 	appearance.barColor = src.barColor;
@@ -1049,7 +1058,7 @@ bool CogRegistry::EnsureDefaultGroup()
 		return true;
 	}
 	it->locked = true;
-	it->name = "Default Group";
+	it->displayName = "Default Group";
 	if (it != _groups.begin()) {
 		std::rotate(_groups.begin(), it, std::next(it));
 	}
@@ -1228,7 +1237,7 @@ void CogRegistry::SetViewReady(bool ready)
 					visibleDetail += "; ";
 				}
 				std::ostringstream one;
-				one << "id=\"" << g.id << "\" name=\"" << g.name << "\" visibility=" << g.visibility
+				one << "id=\"" << g.id << "\" displayName=\"" << g.displayName << "\" visibility=" << g.visibility
 					<< " notif=" << (GizmoSettingsBool(g, "showNotifications", false) ? 1 : 0)
 					<< " inv=" << (GizmoSettingsBool(g, "showInventory", false) ? 1 : 0)
 					<< " loc=" << (GizmoSettingsBool(g, "showLocation", false) ? 1 : 0)

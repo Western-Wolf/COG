@@ -117,7 +117,10 @@ function defaultSuppressorGizmo(n) {
 	};
 	return {
 		id: `gizmo_${Date.now().toString(36)}`,
-		name: `Suppressor ${n}`,
+		displayName:
+			typeof formatStockName === "function"
+				? formatStockName("Suppressor {num}", { num: n })
+				: `Suppressor ${n}`,
 		type: "cog-suppressor",
 		visibility: "none",
 		x: DEFAULT_HUD_X,
@@ -132,6 +135,7 @@ function defaultSuppressorGizmo(n) {
 }
 
 function ensureSuppressorGizmo(gizmo) {
+	ensureGizmoDisplayName(gizmo);
 	const s = ensureGizmoSettings(gizmo);
 	gizmo.type = "cog-suppressor";
 	gizmo.x = Number.isFinite(Number(gizmo.x)) ? Number(gizmo.x) : DEFAULT_HUD_X;

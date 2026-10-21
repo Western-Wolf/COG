@@ -304,11 +304,26 @@ function syncGizmoSettingsJson(gizmo) {
 	return settings;
 }
 
+/** Gizmo instance title lives in `displayName` (`name` was the title key before v1.1). */
+function ensureGizmoDisplayName(gizmo) {
+	if (!gizmo || typeof gizmo !== "object") {
+		return;
+	}
+	// Migration Code for Transition from v1.01 or earlier to v1.1: copy legacy title `name` into `displayName` when empty.
+	if (!String(gizmo.displayName || "").trim() && String(gizmo.name || "").trim()) {
+		gizmo.displayName = String(gizmo.name).trim();
+	}
+	if (typeof gizmo.displayName !== "string") {
+		gizmo.displayName = "";
+	}
+}
+
 function ensureGizmoSettings(gizmo) {
 	return syncGizmoSettingsJson(gizmo);
 }
 
 function ensureCustomGizmo(gizmo) {
+	ensureGizmoDisplayName(gizmo);
 	gizmo.type = normalizeGizmoType(gizmo.type);
 	const typeDef = gizmoTypeDef(gizmo.type);
 	if (typeof gizmo.width !== "number" || !(gizmo.width > 0)) {
@@ -362,10 +377,14 @@ function addGizmoFromType(typeDef) {
 	const settings = defaultsFromSchema(schema);
 	const baseName = typeDef.displayName || typeId;
 	const n = nextGizmoTypeIndex(typeId);
+	const stockKey = `${baseName} {num}`;
 	placeNewGizmo(
 		ensureCustomGizmo({
 			id: "gizmo_" + Date.now().toString(36),
-			name: baseName + " " + n,
+			displayName:
+				typeof formatStockName === "function"
+					? formatStockName(stockKey, { num: n })
+					: `${baseName} ${n}`,
 			type: typeId,
 			sourceMod: typeDef.sourceMod || "",
 			visibility: normalizeGizmoVisibility(typeDef.defaultVisibility || "hud"),
@@ -414,7 +433,7 @@ function paintGizmoCustom(el, gizmo) {
 	if (!host.dataset.placeholder) {
 		host.dataset.placeholder = "1";
 		host.classList.add("is-placeholder");
-		host.textContent = gizmo.name || gizmo.type;
+		host.textContent = gizmo.displayName || gizmo.type;
 	}
 }
 
@@ -457,12 +476,12 @@ function buildGizmoCustomEl(gizmo, preview) {
 			}
 			host.classList.add("is-placeholder");
 			host.dataset.placeholder = "1";
-			host.textContent = gizmo.name || gizmo.type;
+			host.textContent = gizmo.displayName || gizmo.type;
 		}
 	} else {
 		host.classList.add("is-placeholder");
 		host.dataset.placeholder = "1";
-		host.textContent = gizmo.name || gizmo.type;
+		host.textContent = gizmo.displayName || gizmo.type;
 	}
 	if (preview) {
 		attachGizmoHandles(el, gizmo);
@@ -814,6 +833,7 @@ function ensureGizmo(gizmo) {
 	if (!gizmo || typeof gizmo !== "object") {
 		return gizmo;
 	}
+	ensureGizmoDisplayName(gizmo);
 	gizmo.type = normalizeGizmoType(gizmo.type);
 	const api = gizmoRendererApi(gizmo.type);
 	if (api && typeof api.ensure === "function") {
@@ -929,7 +949,7 @@ function patchGizmo(id, patch, skipHud, live) {
 			renderGears();
 		}
 	}
-	if (Object.prototype.hasOwnProperty.call(patch, "name") || Object.prototype.hasOwnProperty.call(patch, "visibility")) {
+	if (Object.prototype.hasOwnProperty.call(patch, "displayName") || Object.prototype.hasOwnProperty.call(patch, "visibility")) {
 		renderEditor(true);
 	}
 }
@@ -1512,7 +1532,9 @@ function renderGizmos(body) {
 			icon.alt = "";
 			bindIconImgFallback(icon);
 			const label = document.createElement("span");
-			label.textContent = typeDef.displayName || typeDef.typeId || "Gizmo";
+			const typeTitle = typeDef.displayName || typeDef.typeId || "Gizmo";
+			label.textContent =
+				typeof tName === "function" ? tName(typeTitle) : typeTitle;
 			btn.appendChild(icon);
 			btn.appendChild(label);
 			btn.addEventListener("click", () => addGizmoFromType(typeDef));
@@ -1576,14 +1598,14 @@ function renderGizmosList(host) {
 		details.innerHTML = `
 			<summary>
 				<span class="group-title"></span>
-				<input class="name-field" data-role="name" spellcheck="false" hidden>
+				<input class="name-field" data-role="displayName" spellcheck="false" hidden>
 				<span class="end"></span>
 			</summary>
 			<div class="accordion-body" data-role="gizmoBody"></div>`;
 		const title = details.querySelector(".group-title");
-		const nameInput = details.querySelector('[data-role="name"]');
-		title.textContent = gizmo.name || "Clock";
-		nameInput.value = gizmo.name || "Clock";
+		const nameInput = details.querySelector('[data-role="displayName"]');
+		title.textContent = gizmo.displayName || "Clock";
+		nameInput.value = gizmo.displayName || "Clock";
 		const end = details.querySelector(".end");
 		const edit = document.createElement("button");
 		edit.type = "button";
@@ -1603,11 +1625,11 @@ function renderGizmosList(host) {
 			nameInput.hidden = true;
 			title.hidden = false;
 			if (save) {
-				const next = nameInput.value.trim() || gizmo.name || "Clock";
-				patchGizmo(gizmo.id, { name: next });
-				title.textContent = gizmoFor(gizmo.id)?.name || next;
+				const next = nameInput.value.trim() || gizmo.displayName || "Clock";
+				patchGizmo(gizmo.id, { displayName: next });
+				title.textContent = gizmoFor(gizmo.id)?.displayName || next;
 			} else {
-				nameInput.value = gizmo.name || "Clock";
+				nameInput.value = gizmo.displayName || "Clock";
 			}
 		};
 		edit.addEventListener("click", () => {
@@ -1615,7 +1637,7 @@ function renderGizmosList(host) {
 			details.classList.add("is-renaming");
 			title.hidden = true;
 			nameInput.hidden = false;
-			nameInput.value = gizmo.name || "Clock";
+			nameInput.value = gizmo.displayName || "Clock";
 			parkRenameFieldForEdit(details, nameInput);
 			nameInput.focus();
 			nameInput.select();

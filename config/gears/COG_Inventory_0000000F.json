@@ -6,7 +6,7 @@
   "locked": false,
   "exemptFromGroupColors": false,
   "defaults": {
-    "display": "Septims",
+    "displayName": "Septims",
     "icon": "Treasure/bag-of-coin.svg",
     "startColor": "",
     "endColor": "",
@@ -14,7 +14,7 @@
     "hideAt": ""
   },
   "settings": {
-    "display": "Septims",
+    "displayName": "Septims",
     "icon": "Treasure/bag-of-coin.svg",
     "startColor": "",
     "endColor": "",

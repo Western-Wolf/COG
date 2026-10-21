@@ -7,6 +7,104 @@ const ICON_IMPORT_ROOT = "assets/imports/icons/";
 const FONT_IMPORT_ROOT = "assets/imports/fonts/";
 /** Shipped fallback when a gear/feed icon path is empty or missing from the catalog. */
 const FALLBACK_ICON_REL = "COG/cog.svg";
+
+/**
+ * Opt-in rewrite of still-stock entity titles into toLang.
+ * Gears: settings.displayName only (keyed by defaults.displayName).
+ * Groups/gauges/gizmos: displayName when it matches a stock template in fromLang or en-CA.
+ * Default Group is display-time only — skipped here.
+ */
+function pushStockEntityTitles(fromLang, toLang) {
+	if (!snapshot || typeof localizeStockName !== "function") {
+		return false;
+	}
+	const from = fromLang || (typeof COG_FALLBACK_LANG !== "undefined" ? COG_FALLBACK_LANG : "en-CA");
+	const to = toLang || (snapshot.general && snapshot.general.language) || from;
+	let changed = false;
+
+	for (const gear of snapshot.gears || []) {
+		if (typeof ensureGearAppearance === "function") {
+			ensureGearAppearance(gear);
+		}
+		const src =
+			typeof sourceFor === "function" ? sourceFor(gear.mod, gear.name) : null;
+		// Prefer a name: catalog key (case-insensitive) so drifted "stamina" still pushes.
+		const keyCandidates = [
+			src && (src.displayName || src.display),
+			gear.defaults && gear.defaults.displayName,
+			gear.settings && gear.settings.displayName,
+			src && src.name,
+			gear.name
+		];
+		let key = "";
+		if (typeof hasStockNameKey === "function") {
+			for (const candidate of keyCandidates) {
+				const k = String(candidate || "").trim();
+				if (k && hasStockNameKey(k)) {
+					key = k;
+					break;
+				}
+			}
+		}
+		if (!key) {
+			key = String(
+				(src && (src.displayName || src.display)) ||
+					(gear.defaults && gear.defaults.displayName) ||
+					""
+			).trim();
+		}
+		if (!key) {
+			continue;
+		}
+		// Empty settings.displayName still shows src English — treat as stock.
+		const cur = String((gear.settings && gear.settings.displayName) || key).trim();
+		const next =
+			typeof isStockNameAnyLocale === "function" &&
+			isStockNameAnyLocale(cur, key, { defaultsDisplayName: key })
+				? typeof tName === "function"
+					? tName(key, null, null, to)
+					: cur
+				: localizeStockName(cur, key, to, from, { defaultsDisplayName: key });
+		if (next && next !== (gear.settings && gear.settings.displayName)) {
+			gear.settings.displayName = next;
+			changed = true;
+		}
+	}
+
+	const rewriteInstance = (entity) => {
+		if (!entity || entity.id === "default") {
+			return;
+		}
+		const cur = entity.displayName;
+		const matched =
+			typeof matchStockInstanceTitle === "function"
+				? matchStockInstanceTitle(cur, from)
+				: null;
+		if (!matched) {
+			return;
+		}
+		const next = localizeStockName(cur, matched.key, to, from, { vars: matched.vars });
+		if (next !== cur) {
+			entity.displayName = next;
+			changed = true;
+		}
+	};
+
+	for (const group of snapshot.groups || []) {
+		rewriteInstance(group);
+	}
+	for (const gauge of snapshot.gauges || []) {
+		rewriteInstance(gauge);
+	}
+	for (const gizmo of snapshot.gizmos || []) {
+		rewriteInstance(gizmo);
+	}
+
+	if (changed) {
+		snapshot.general.namesLanguage = to;
+	}
+	return changed;
+}
 /** Hrefs that failed to load; resolveDisplayIconHref / paintMaskedFace use fallback. */
 const missingIconHrefSet = new Set();
 
@@ -2764,13 +2862,13 @@ function isEditingField() {
 }
 
 function currentEditorKey() {
-	const groups = snapshot.groups.map((g) => `${g.id}:${g.name || ""}`).join("|");
+	const groups = snapshot.groups.map((g) => `${g.id}:${g.displayName || ""}`).join("|");
 	const gears = snapshot.gears.map((g) => g.id).join("|");
-	const gauges = (snapshot.gauges || []).map((g) => `${g.id}:${g.name || ""}:${g.type || ""}:${g.shape || ""}`).join("|");
+	const gauges = (snapshot.gauges || []).map((g) => `${g.id}:${g.displayName || ""}:${g.type || ""}:${g.shape || ""}`).join("|");
 	const gizmos = (snapshot.gizmos || []).map((z) =>
-		`${z.id}:${z.name || ""}:${z.type || ""}:${z.visibility || ""}:${z.width || ""}:${z.height || ""}:${typeof z.settingsJson === "string" ? z.settingsJson : JSON.stringify(z.settings || {})}`
+		`${z.id}:${z.displayName || ""}:${z.type || ""}:${z.visibility || ""}:${z.width || ""}:${z.height || ""}:${typeof z.settingsJson === "string" ? z.settingsJson : JSON.stringify(z.settings || {})}`
 	).join("|");
-	return `${activeTab}|${helpMode ? "help" : "main"}|${helpSubTab}|${snapshot.general.showDefaultGroup}|${snapshot.general.editorKey}|${snapshot.general.hideToggleKey || ""}|${snapshot.general.hideIncludesFlash !== false}|${!!window.__cogHideKeyListening}|${snapshot.general.fillColor}|${snapshot.general.borderColor}|${snapshot.general.iconColor || themeIconColor()}|${snapshot.general.neutralIconMode}|${snapshot.general.gadgetFont}|${snapshot.general.language || ""}|${!!snapshot.general.highlightMissingTranslations}|${groups}|${gears}|${gauges}|${gizmos}|${typeof suppressionsFingerprint === "function" ? suppressionsFingerprint() : ""}`;
+	return `${activeTab}|${helpMode ? "help" : "main"}|${helpSubTab}|${snapshot.general.showDefaultGroup}|${snapshot.general.editorKey}|${snapshot.general.hideToggleKey || ""}|${snapshot.general.hideIncludesFlash !== false}|${!!window.__cogHideKeyListening}|${snapshot.general.fillColor}|${snapshot.general.borderColor}|${snapshot.general.iconColor || themeIconColor()}|${snapshot.general.neutralIconMode}|${snapshot.general.gadgetFont}|${snapshot.general.language || ""}|${!!snapshot.general.highlightMissingTranslations}|${!!snapshot.general.updateStockTitlesOnTranslation}|${groups}|${gears}|${gauges}|${gizmos}|${typeof suppressionsFingerprint === "function" ? suppressionsFingerprint() : ""}`;
 }
 
 /** Tag a .pos-field / label's leading <span> via data-translation helpers. */
@@ -3314,7 +3412,15 @@ function renderGeneral(body) {
 		langSel.appendChild(opt);
 	}
 	langSel.addEventListener("change", () => {
-		snapshot.general.language = langSel.value || "en-CA";
+		const fromLang = currentLang;
+		const toLang = langSel.value || "en-CA";
+		snapshot.general.language = toLang;
+		if (
+			snapshot.general.updateStockTitlesOnTranslation &&
+			typeof pushStockEntityTitles === "function"
+		) {
+			pushStockEntityTitles(fromLang, toLang);
+		}
 		scheduleSave(true);
 		if (typeof syncDocumentLang === "function") {
 			syncDocumentLang();
@@ -3325,6 +3431,39 @@ function renderGeneral(body) {
 	});
 	langField.appendChild(langSel);
 	prefsRow.appendChild(langField);
+
+	const pushTitlesRow = document.createElement("label");
+	pushTitlesRow.className = "check-row compact";
+	const pushTitlesBox = document.createElement("input");
+	pushTitlesBox.type = "checkbox";
+	pushTitlesBox.checked = !!snapshot.general.updateStockTitlesOnTranslation;
+	pushTitlesBox.dataset.role = "updateStockTitlesOnTranslation";
+	pushTitlesBox.addEventListener("change", () => {
+		snapshot.general.updateStockTitlesOnTranslation = pushTitlesBox.checked;
+		scheduleSave(true);
+	});
+	pushTitlesRow.appendChild(pushTitlesBox);
+	const pushTitlesTitle = document.createElement("span");
+	pushTitlesTitle.className = "field-title-row";
+	const pushTitlesLabel = document.createElement("span");
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(
+			pushTitlesLabel,
+			"cog-push-stock-titles",
+			"Update stock titles on translation"
+		);
+	} else {
+		pushTitlesLabel.textContent = "Update stock titles on translation";
+	}
+	pushTitlesTitle.appendChild(pushTitlesLabel);
+	pushTitlesTitle.appendChild(
+		makeInfoTip(
+			"When changing language, rewrite gears, groups, gauges, and gizmos that still use the default name.",
+			"cog-push-stock-titles-tip"
+		)
+	);
+	pushTitlesRow.appendChild(pushTitlesTitle);
+	prefsRow.appendChild(pushTitlesRow);
 
 	const highlightRow = document.createElement("label");
 	highlightRow.className = "check-row compact";

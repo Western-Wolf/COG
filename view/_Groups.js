@@ -101,6 +101,20 @@ function ensureGroupStyle(group) {
 	return group.style;
 }
 
+/** Group title lives in `displayName` (`name` was the title key before v1.1). */
+function ensureGroup(group) {
+	if (!group) {
+		return;
+	}
+	// Migration Code for Transition from v1.01 or earlier to v1.1: copy legacy title `name` into `displayName` when empty.
+	if (!String(group.displayName || "").trim() && String(group.name || "").trim()) {
+		group.displayName = String(group.name).trim();
+	}
+	if (typeof group.displayName !== "string") {
+		group.displayName = "";
+	}
+}
+
 function ensureGroupLine(group) {
 	if (group.rotation == null) {
 		group.rotation = 0;
@@ -185,7 +199,7 @@ function ensureDefaultGroup() {
 	if (!snapshot.groups.some((g) => g.id === DEFAULT_GROUP_ID)) {
 		snapshot.groups.unshift({
 			id: DEFAULT_GROUP_ID,
-			name: "Default Group",
+			displayName: "Default Group",
 			locked: true,
 			visible: !!(snapshot.general && snapshot.general.showDefaultGroup),
 			x: DEFAULT_HUD_X,
@@ -200,13 +214,14 @@ function ensureDefaultGroup() {
 	}
 	const defaultGroup = snapshot.groups.find((g) => g.id === DEFAULT_GROUP_ID);
 	defaultGroup.locked = true;
-	defaultGroup.name = "Default Group";
+	defaultGroup.displayName = "Default Group";
 	defaultGroup.visible = !!(snapshot.general && snapshot.general.showDefaultGroup);
 }
 
 function normalizeGroupsSnapshot() {
 	ensureDefaultGroup();
 	for (const group of snapshot.groups) {
+		ensureGroup(group);
 		ensureGroupStyle(group);
 		ensureGroupLine(group);
 	}
@@ -417,7 +432,7 @@ function patchGroup(id, patch, skipHud, live) {
 	Object.assign(group, patch);
 	if (id === DEFAULT_GROUP_ID) {
 		group.locked = true;
-		group.name = "Default Group";
+		group.displayName = "Default Group";
 		group.visible = snapshot.general.showDefaultGroup;
 	}
 	if (live === true) {
@@ -434,7 +449,7 @@ function patchGroup(id, patch, skipHud, live) {
 			renderGears();
 		}
 	}
-	if (Object.prototype.hasOwnProperty.call(patch, "name")) {
+	if (Object.prototype.hasOwnProperty.call(patch, "displayName")) {
 		renderEditor(true);
 	}
 }
@@ -445,7 +460,10 @@ function addGroup() {
 	openGroupId = id;
 	snapshot.groups.push({
 		id,
-		name: `Group ${n}`,
+		displayName:
+			typeof formatStockName === "function"
+				? formatStockName("Group {num}", { num: n })
+				: `Group ${n}`,
 		locked: false,
 		visible: true,
 		x: DEFAULT_HUD_X,
@@ -477,7 +495,21 @@ function removeGroup(id) {
 
 function groupDisplayName(groupId) {
 	const group = groupFor(groupId) || groupFor(DEFAULT_GROUP_ID);
-	return group ? group.name : "Default Group";
+	if (!group) {
+		return typeof tName === "function" ? tName("Default Group") : "Default Group";
+	}
+	// Default Group is locked / uneditable — keep English on disk, translate at display time only
+	// (pushStockEntityTitles skips id === "default" on purpose).
+	if (group.id === DEFAULT_GROUP_ID) {
+		const key = "Default Group";
+		if (typeof resolveStockDisplayName === "function") {
+			return resolveStockDisplayName(group.displayName || key, key, {
+				defaultsDisplayName: key
+			});
+		}
+		return typeof tName === "function" ? tName(key) : key;
+	}
+	return group.displayName || "Default Group";
 }
 
 function sourcesNotInGroup(groupId) {
@@ -566,7 +598,7 @@ function renderGroups(body) {
 		details.innerHTML = `
 			<summary>
 				<span class="group-title"></span>
-				<input class="name-field" data-role="name" spellcheck="false" hidden>
+				<input class="name-field" data-role="displayName" spellcheck="false" hidden>
 				<span class="end"></span>
 			</summary>
 			<div class="accordion-body">
@@ -647,10 +679,10 @@ function renderGroups(body) {
 				</details>
 			</div>`;
 		const title = details.querySelector(".group-title");
-		const nameInput = details.querySelector('[data-role="name"]');
-		title.textContent = group.name;
-		nameInput.value = group.name;
+		const nameInput = details.querySelector('[data-role="displayName"]');
+		nameInput.value = group.displayName;
 		const end = details.querySelector(".end");
+		title.textContent = groupDisplayName(group.id);
 		if (canRename) {
 			const edit = document.createElement("button");
 			edit.type = "button";
@@ -670,11 +702,11 @@ function renderGroups(body) {
 				nameInput.hidden = true;
 				title.hidden = false;
 				if (save) {
-					const next = nameInput.value.trim() || group.name;
-					patchGroup(group.id, { name: next });
-					title.textContent = group.name;
+					const next = nameInput.value.trim() || group.displayName;
+					patchGroup(group.id, { displayName: next });
+					title.textContent = groupDisplayName(group.id);
 				} else {
-					nameInput.value = group.name;
+					nameInput.value = group.displayName;
 				}
 			};
 			edit.addEventListener("click", () => {
@@ -682,7 +714,7 @@ function renderGroups(body) {
 				details.classList.add("is-renaming");
 				title.hidden = true;
 				nameInput.hidden = false;
-				nameInput.value = group.name;
+				nameInput.value = group.displayName;
 				parkRenameFieldForEdit(details, nameInput);
 				nameInput.focus();
 				nameInput.select();

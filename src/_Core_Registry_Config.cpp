@@ -616,6 +616,7 @@ void CogRegistry::LoadGeneralFile(bool& repaired)
 		_general.language = lang.empty() ? "en-CA" : std::move(lang);
 	}
 	_general.highlightMissingTranslations = ctx.GetBool(root, "highlightMissingTranslations", false);
+	_general.updateStockTitlesOnTranslation = ctx.GetBool(root, "updateStockTitlesOnTranslation", false);
 	if (ctx.Has(root, "logLevel")) {
 		_general.logLevel = NormalizeLogLevel(ctx.GetString(root, "logLevel"));
 	} else {
@@ -971,6 +972,10 @@ bool CogRegistry::ApplyStateJson(const std::string& json)
 		if (ctx.Has(*src, "highlightMissingTranslations")) {
 			_general.highlightMissingTranslations = ctx.GetBool(*src, "highlightMissingTranslations", false);
 		}
+		if (ctx.Has(*src, "updateStockTitlesOnTranslation")) {
+			_general.updateStockTitlesOnTranslation =
+				ctx.GetBool(*src, "updateStockTitlesOnTranslation", false);
+		}
 		if (ctx.Has(*src, "logLevel")) {
 			_general.logLevel = NormalizeLogLevel(ctx.GetString(*src, "logLevel"));
 			ApplyLogLevelUnlocked();
@@ -1069,7 +1074,7 @@ bool CogRegistry::ApplyStateJson(const std::string& json)
 		if (group.id == kDefaultGroupId) {
 			group.visible = _general.showDefaultGroup;
 			group.locked = true;
-			group.name = "Default Group";
+			group.displayName = "Default Group";
 		}
 	}
 	return true;
@@ -1093,6 +1098,8 @@ void CogRegistry::SaveConfigUnlocked() const
 			<< "\",\n\t\"language\": \"" << EscapeJson(_general.language.empty() ? "en-CA" : _general.language)
 			<< "\",\n\t\"highlightMissingTranslations\": "
 			<< (_general.highlightMissingTranslations ? "true" : "false")
+			<< ",\n\t\"updateStockTitlesOnTranslation\": "
+			<< (_general.updateStockTitlesOnTranslation ? "true" : "false")
 			<< ",\n\t\"logLevel\": \"" << EscapeJson(NormalizeLogLevel(_general.logLevel)) << "\"\n}\n";
 	WriteAll(root / "general.json", general.str());
 

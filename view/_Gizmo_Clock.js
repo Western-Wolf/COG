@@ -590,7 +590,10 @@ function defaultClockGizmo(n) {
 	};
 	return {
 		id: `gizmo_${Date.now().toString(36)}`,
-		name: `Clock ${n}`,
+		displayName:
+			typeof formatStockName === "function"
+				? formatStockName("Clock {num}", { num: n })
+				: `Clock ${n}`,
 		type: "cog-clock",
 		visibility: "hud",
 		x: DEFAULT_HUD_X,
@@ -604,6 +607,7 @@ function defaultClockGizmo(n) {
 	};
 }
 function ensureClockGizmo(gizmo) {
+	ensureGizmoDisplayName(gizmo);
 	const s = ensureGizmoSettings(gizmo);
 	s.displayMode = normalizeGizmoDisplayMode(s.displayMode);
 	if (!Array.isArray(s.displayLines) || !s.displayLines.length) {

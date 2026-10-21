@@ -2,7 +2,7 @@
 // Classic script; loads last after all section scripts.
 
 // var (not let): _UI_Translation.js and other classic scripts read window.snapshot.
-var snapshot = { sources: [], shoutMeter: null, general: { showDefaultGroup: true, editorKey: "F3", hideToggleKey: "", hideIncludesFlash: true, uiHidden: false, fillColor: "#c4a35a", borderColor: "#e8d2a0", iconColor: "#ffffff", neutralIconMode: "white", gadgetFont: "Roboto", language: "en-CA", highlightMissingTranslations: false }, groups: [], gears: [], gauges: [], gizmos: [], gizmoTypes: [], icons: [], importedIcons: [], fonts: [], suppressions: [], languages: ["en-CA"], translations: {}, gizmoTranslations: {} };
+var snapshot = { sources: [], shoutMeter: null, general: { showDefaultGroup: true, editorKey: "F3", hideToggleKey: "", hideIncludesFlash: true, uiHidden: false, fillColor: "#c4a35a", borderColor: "#e8d2a0", iconColor: "#ffffff", neutralIconMode: "white", gadgetFont: "Roboto", language: "en-CA", highlightMissingTranslations: false, updateStockTitlesOnTranslation: false }, groups: [], gears: [], gauges: [], gizmos: [], gizmoTypes: [], icons: [], importedIcons: [], fonts: [], suppressions: [], languages: ["en-CA"], translations: {}, gizmoTranslations: {} };
 let saveTimer = null;
 let activeTab = "general";
 let drag = null;
@@ -57,6 +57,10 @@ function refreshAfterTranslationCatalogs() {
 	}
 	if (drag) {
 		return;
+	}
+	// Stock gear/gauge titles resolve from the catalog — rebuild HUD labels.
+	if (typeof renderGears === "function") {
+		renderGears();
 	}
 	// Rebuild General so the language <select> picks up new locale codes.
 	if (activeTab === "general" && !helpMode) {
@@ -137,6 +141,10 @@ window.applySnapshot = (jsonStr) => {
 				}
 				if (typeof incoming.general.highlightMissingTranslations === "boolean") {
 					snapshot.general.highlightMissingTranslations = incoming.general.highlightMissingTranslations;
+				}
+				if (typeof incoming.general.updateStockTitlesOnTranslation === "boolean") {
+					snapshot.general.updateStockTitlesOnTranslation =
+						incoming.general.updateStockTitlesOnTranslation;
 				}
 			}
 			if (Array.isArray(incoming.gizmos) && Array.isArray(snapshot.gizmos)) {
@@ -369,6 +377,9 @@ function normalizeSnapshot() {
 	}
 	if (typeof snapshot.general.highlightMissingTranslations !== "boolean") {
 		snapshot.general.highlightMissingTranslations = false;
+	}
+	if (typeof snapshot.general.updateStockTitlesOnTranslation !== "boolean") {
+		snapshot.general.updateStockTitlesOnTranslation = false;
 	}
 	if (!Array.isArray(snapshot.languages)) {
 		snapshot.languages = [];
@@ -893,7 +904,8 @@ function flushSave() {
 			neutralIconMode: snapshot.general?.neutralIconMode,
 			gadgetFont: snapshot.general?.gadgetFont,
 			language: snapshot.general?.language || "en-CA",
-			highlightMissingTranslations: !!snapshot.general?.highlightMissingTranslations
+			highlightMissingTranslations: !!snapshot.general?.highlightMissingTranslations,
+			updateStockTitlesOnTranslation: !!snapshot.general?.updateStockTitlesOnTranslation
 		},
 		groups: snapshot.groups,
 		gears: snapshot.gears,

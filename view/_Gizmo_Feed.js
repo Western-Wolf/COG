@@ -253,7 +253,10 @@ function defaultFeedGizmo(n) {
 	};
 	return {
 		id: `gizmo_${Date.now().toString(36)}`,
-		name: `Feed ${n}`,
+		displayName:
+			typeof formatStockName === "function"
+				? formatStockName("Feed {num}", { num: n })
+				: `Feed ${n}`,
 		type: "cog-feed",
 		visibility: "ui",
 		x: DEFAULT_HUD_X,
@@ -268,6 +271,7 @@ function defaultFeedGizmo(n) {
 }
 
 function ensureFeedGizmo(gizmo) {
+	ensureGizmoDisplayName(gizmo);
 	const s = ensureGizmoSettings(gizmo);
 	gizmo.x = Number.isFinite(Number(gizmo.x)) ? Number(gizmo.x) : DEFAULT_HUD_X;
 	gizmo.y = Number.isFinite(Number(gizmo.y)) ? Number(gizmo.y) : DEFAULT_HUD_Y;
@@ -501,7 +505,7 @@ function notificationFeedPreviewSamples(gizmo) {
 	const showIcons = gizmo.settings.showNotificationIcons === true;
 
 	const samples = [
-		{ text: "Something happened.", color: "", icon: "" },
+	{ text: "Something happened.", color: "", icon: "" },
 		{ text: "A second notice fades soon.", color: "", icon: "" }
 	];
 
@@ -636,7 +640,7 @@ function enqueueNotificationFeedLine(text, color, id, icon, opts) {
 	notificationFeedLines.push(entry);
 	notificationFeedLines = pruneFeedLineRing(notificationFeedLines, now);
 	if (!opts || opts.paint !== false) {
-		paintAllFeeds();
+	paintAllFeeds();
 	}
 }
 
@@ -662,7 +666,7 @@ function enqueueInventoryFeedLine(name, count, added, icon, id, stolen, opts) {
 	inventoryFeedLines.push(entry);
 	inventoryFeedLines = pruneFeedLineRing(inventoryFeedLines, now);
 	if (!opts || opts.paint !== false) {
-		paintAllFeeds();
+	paintAllFeeds();
 	}
 }
 
@@ -808,7 +812,7 @@ window.pushNotification = (jsonStr) => {
 		if (typeof window.cogReportError === "function") {
 			window.cogReportError("pushNotification", e);
 		} else {
-			console.error("pushNotification", e);
+		console.error("pushNotification", e);
 		}
 	}
 };
@@ -831,7 +835,7 @@ window.pushInventory = (jsonStr) => {
 		if (typeof window.cogReportError === "function") {
 			window.cogReportError("pushInventory", e);
 		} else {
-			console.error("pushInventory", e);
+		console.error("pushInventory", e);
 		}
 	}
 };
@@ -1093,8 +1097,8 @@ function feedVisibleLines(gizmo, now, preview) {
 		}
 		for (const line of source) {
 			if (!line.demo && now - line.addedAt >= life) {
-				continue;
-			}
+			continue;
+		}
 			merged.push({
 				kind: "skill",
 				key: `s-${line.id}`,
@@ -1158,20 +1162,20 @@ function rebuildInventoryLineContent(content, showIcons, iconPlacement) {
 	content.dataset.iconPlacement = place;
 
 	const appendIcon = () => {
-		const host = document.createElement("div");
-		host.className = "inventory-line-icon";
-		host.dataset.slot = "icon";
-		content.appendChild(host);
+			const host = document.createElement("div");
+			host.className = "inventory-line-icon";
+			host.dataset.slot = "icon";
+			content.appendChild(host);
 	};
 	const appendNameThenTotal = () => {
 		const text = document.createElement("div");
 		text.className = "inventory-line-text";
 		text.dataset.slot = "text";
 		content.appendChild(text);
-		const change = document.createElement("div");
-		change.className = "inventory-line-change";
-		change.dataset.slot = "change";
-		content.appendChild(change);
+			const change = document.createElement("div");
+			change.className = "inventory-line-change";
+			change.dataset.slot = "change";
+			content.appendChild(change);
 	};
 
 	if (showIcons && place === "left") {
@@ -1202,8 +1206,8 @@ function rebuildNotificationLineContent(row, showIcons, iconPlacement) {
 			content.appendChild(text);
 			content.appendChild(icon);
 		} else {
-			content.appendChild(icon);
-			content.appendChild(text);
+		content.appendChild(icon);
+		content.appendChild(text);
 		}
 		row.appendChild(content);
 	} else {
@@ -1841,7 +1845,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 			FEED_TYPE_ID
 		);
 	} else {
-		intro.textContent =
+	intro.textContent =
 			"Combined notification and inventory message feed. Add as many sections as you like, or split sections into multiple feeds.";
 	}
 	panel.appendChild(intro);
@@ -2017,7 +2021,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 			"Soft gradient behind each message. Setting opacity to 0 disables."
 		);
 	} else {
-		fadeHint.textContent =
+	fadeHint.textContent =
 			"Soft gradient behind each message. Setting opacity to 0 disables.";
 	}
 	textSection.appendChild(fadeHint);
@@ -2071,7 +2075,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 	textSection.appendChild(backdropRow);
 	panel.appendChild(textSection);
 
-	appendEditorRule(panel);
+		appendEditorRule(panel);
 	const progressSection = document.createElement("div");
 	progressSection.className = "gizmo-text-settings";
 	const progressLede = document.createElement("p");
@@ -2758,7 +2762,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 	}
 
 	if (gizmo.settings.showNotifications) {
-		appendEditorRule(panel);
+	appendEditorRule(panel);
 		const notifSection = document.createElement("div");
 		notifSection.className = "gizmo-text-settings";
 		const notifLede = document.createElement("p");
