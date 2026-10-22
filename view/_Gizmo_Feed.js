@@ -251,20 +251,21 @@ function defaultFeedGizmo(n) {
 		backdropDirection: DEFAULT_FEED_BACKDROP_DIRECTION,
 		icon: DEFAULT_FEED_INVENTORY_ICON
 	};
+	settings.displayName =
+		typeof formatStockName === "function"
+			? formatStockName("Feed {num}", { num: n })
+			: `Feed ${n}`;
 	return {
 		id: `gizmo_${Date.now().toString(36)}`,
-		displayName:
-			typeof formatStockName === "function"
-				? formatStockName("Feed {num}", { num: n })
-				: `Feed ${n}`,
-		type: "cog-feed",
+		typeId: "cog-feed",
 		visibility: "ui",
-		x: DEFAULT_HUD_X,
-		y: Math.min(0.92, DEFAULT_HUD_Y + 0.08),
-		posAnchor: "tlc",
-		rotation: 0,
-		width: DEFAULT_FEED_WIDTH,
-		height: DEFAULT_FEED_HEIGHT,
+		position: {
+			x: DEFAULT_HUD_X,
+			y: Math.min(0.92, DEFAULT_HUD_Y + 0.08),
+			rotation: 0,
+			width: DEFAULT_FEED_WIDTH,
+			height: DEFAULT_FEED_HEIGHT
+		},
 		settings,
 		settingsJson: JSON.stringify(settings)
 	};
@@ -273,11 +274,19 @@ function defaultFeedGizmo(n) {
 function ensureFeedGizmo(gizmo) {
 	ensureGizmoDisplayName(gizmo);
 	const s = ensureGizmoSettings(gizmo);
-	gizmo.x = Number.isFinite(Number(gizmo.x)) ? Number(gizmo.x) : DEFAULT_HUD_X;
-	gizmo.y = Number.isFinite(Number(gizmo.y)) ? Number(gizmo.y) : DEFAULT_HUD_Y;
-	gizmo.rotation = Number(gizmo.rotation) || 0;
-	gizmo.width = Math.max(MIN_GIZMO_WIDTH, Number(gizmo.width) || DEFAULT_FEED_WIDTH);
-	gizmo.height = Math.max(MIN_GIZMO_HEIGHT, Number(gizmo.height) || DEFAULT_FEED_HEIGHT);
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Legacy flat placement keys x/y/rotation/width/height move under nested "position" (never written back flat on save).
+	// Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
+	migrateEntityPosition(gizmo, {
+		sized: true,
+		x: DEFAULT_HUD_X,
+		y: DEFAULT_HUD_Y,
+		rotation: 0,
+		width: DEFAULT_FEED_WIDTH,
+		height: DEFAULT_FEED_HEIGHT,
+		minW: MIN_GIZMO_WIDTH,
+		minH: MIN_GIZMO_HEIGHT
+	});
 	s.fontSize = Math.max(0, Number(s.fontSize) || DEFAULT_GIZMO_FONT_SIZE);
 	s.textAlign = normalizeClockTextAlign(s.textAlign || DEFAULT_FEED_TEXT_ALIGN);
 	s.iconPlacement = normalizeFeedIconPlacement(s.iconPlacement || DEFAULT_FEED_ICON_PLACEMENT);
@@ -347,8 +356,7 @@ function ensureFeedGizmo(gizmo) {
 	);
 	s.backdropDirection = normalizeFeedBackdropDirection(s.backdropDirection || DEFAULT_FEED_BACKDROP_DIRECTION);
 	s.icon = normalizeFeedInventoryIcon(s.icon);
-	gizmo.posAnchor = "tlc";
-	gizmo.type = "cog-feed";
+	gizmo.typeId = "cog-feed";
 	// Missing visibility → type default (cog-feed→ui), not a hard-coded coerce of "hud".
 	gizmo.visibility = coalesceGizmoVisibility(gizmo, "cog-feed");
 	gizmo.settings = s;
@@ -599,7 +607,7 @@ function feedGizmoMaxDuration() {
 	const fallback = DEFAULT_FEED_DURATION_MS + DEFAULT_FEED_FADE_MS * 2;
 	let max = fallback;
 	for (const z of snapshot.gizmos || []) {
-		if (normalizeGizmoType(z.type) !== "cog-feed") {
+		if (normalizeGizmoType(z.typeId) !== "cog-feed") {
 			continue;
 		}
 		// Settings are normalized on load / editor patch — do not ensure on the prune path.
@@ -763,7 +771,7 @@ window.applyFeedEvents = (jsonStr) => {
 					);
 				} else if (channel === "inventory") {
 					enqueueInventoryFeedLine(
-						incoming.name,
+						incoming.varName,
 						incoming.count,
 						incoming.added,
 						incoming.icon,
@@ -824,7 +832,7 @@ window.pushInventory = (jsonStr) => {
 			return;
 		}
 		enqueueInventoryFeedLine(
-			incoming.name,
+			incoming.varName,
 			incoming.count,
 			incoming.added,
 			incoming.icon,
@@ -1325,14 +1333,14 @@ function rebuildLevelProgressLineContent(row, gizmo) {
 function layoutGizmoFeed(el, gizmo) {
 	// Settings/geometry are ensured on load / editor patch — layout trusts them (B2).
 	// Avoid gizmoLayoutBox() here: it calls ensureGizmo and would re-normalize every sync.
-	const w = Math.max(MIN_GIZMO_WIDTH, Number(gizmo.width) || DEFAULT_FEED_WIDTH);
-	const h = Math.max(MIN_GIZMO_HEIGHT, Number(gizmo.height) || DEFAULT_FEED_HEIGHT);
+	const w = Math.max(MIN_GIZMO_WIDTH, Number(gizmo.position.width) || DEFAULT_FEED_WIDTH);
+	const h = Math.max(MIN_GIZMO_HEIGHT, Number(gizmo.position.height) || DEFAULT_FEED_HEIGHT);
 	const css = hudItemLayoutCss(gizmo, w, h);
 	el.style.width = `${w}px`;
 	el.style.height = `${h}px`;
 	el.style.left = `${css.x * 100}%`;
 	el.style.top = `${css.y * 100}%`;
-	el.style.transform = `rotate(${Number(gizmo.rotation) || 0}deg)`;
+	el.style.transform = `rotate(${Number(gizmo.position.rotation) || 0}deg)`;
 	el.style.transformOrigin = "50% 50%";
 	const font = Math.max(8, Math.round((gizmo.settings && gizmo.settings.fontSize) || DEFAULT_GIZMO_FONT_SIZE));
 	el.style.setProperty("--feed-font", `${font}px`);
@@ -1717,7 +1725,7 @@ function paintGizmoFeed(el, gizmo) {
 
 function paintAllFeedsNow() {
 	for (const gizmo of snapshot.gizmos || []) {
-		if (normalizeGizmoType(gizmo.type) !== "cog-feed") {
+		if (normalizeGizmoType(gizmo.typeId) !== "cog-feed") {
 			continue;
 		}
 		const el = findHudGizmoEl(gizmo.id);

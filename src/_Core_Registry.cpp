@@ -150,7 +150,7 @@ namespace
 	std::string FindGroupIdForGear(const std::vector<CogGroup>& groups, const std::string& gearId)
 	{
 		for (const auto& group : groups) {
-			for (const auto& listed : group.gearIds) {
+			for (const auto& listed : group.settings.gearIds) {
 				if (listed == gearId) {
 					return group.id;
 				}
@@ -162,8 +162,9 @@ namespace
 	void RemoveGearIdFromAllGroups(std::vector<CogGroup>& groups, const std::string& gearId)
 	{
 		for (auto& group : groups) {
-			auto& ids = group.gearIds;
+			auto& ids = group.settings.gearIds;
 			ids.erase(std::remove(ids.begin(), ids.end(), gearId), ids.end());
+			group.settings.exemptFromGroupColors.erase(gearId);
 		}
 	}
 
@@ -177,7 +178,7 @@ namespace
 		if (!group) {
 			return false;
 		}
-		group->gearIds.push_back(gearId);
+		group->settings.gearIds.push_back(gearId);
 		return true;
 	}
 }
@@ -226,12 +227,12 @@ CogSource* CogRegistry::FindByReceipt(std::int32_t receipt)
 void CogRegistry::EnsureGearDefinitionUnlocked(const std::string& mod, const std::string& name, const CogGearAppearance& appearance)
 {
 	for (auto& gear : _gears) {
-		if (KeyOf(gear.mod, gear.name) != KeyOf(mod, name)) {
+		if (KeyOf(gear.sourceMod, gear.varName) != KeyOf(mod, name)) {
 			continue;
 		}
 		// Heal case-only drift (e.g. disk "stamina" vs Register "Stamina").
-		gear.mod = mod;
-		gear.name = name;
+		gear.sourceMod = mod;
+		gear.varName = name;
 		const auto previousDefaultIcon = gear.defaults.icon;
 		gear.defaults = appearance;
 		if (AppearanceEmpty(gear.settings)) {
@@ -251,6 +252,11 @@ void CogRegistry::EnsureGearDefinitionUnlocked(const std::string& mod, const std
 				// (covers failed-import cog fallback and superseded library remaps).
 				gear.settings.icon = appearance.icon;
 			}
+			// Fill blank iconColor from Register so the Gears editor shows the on-screen tint
+			// (builtins ship #ffffff rather than an empty inherit).
+			if (gear.settings.iconColor.empty() && !appearance.iconColor.empty()) {
+				gear.settings.iconColor = appearance.iconColor;
+			}
 		}
 		return;
 	}
@@ -259,9 +265,8 @@ void CogRegistry::EnsureGearDefinitionUnlocked(const std::string& mod, const std
 	_seenSources.erase(KeyOf(mod, name));
 	CogGear gear;
 	gear.id = FileStem(mod + "_" + name);
-	gear.mod = mod;
-	gear.name = name;
-	gear.enabled = true;
+	gear.sourceMod = mod;
+	gear.varName = name;
 	gear.defaults = appearance;
 	gear.settings = appearance;
 	_gears.push_back(std::move(gear));
@@ -323,9 +328,9 @@ std::int32_t CogRegistry::Register(
 	} else {
 		CogSource src;
 		src.receipt = _nextReceipt++;
-		src.mod = std::move(mod);
-		src.name = std::move(name);
-		src.displayName = displayName.empty() ? src.name : std::move(displayName);
+		src.sourceMod = std::move(mod);
+		src.varName = std::move(name);
+		src.displayName = displayName.empty() ? src.varName : std::move(displayName);
 		src.category = std::move(category);
 		src.type = ParseType(type);
 		if (icon.empty()) {
@@ -348,8 +353,8 @@ std::int32_t CogRegistry::Register(
 	if (usedFallbackIcon) {
 		logger::info(
 			"COG: gear '{}':'{}' assigned fallback icon {}",
-			src.mod,
-			src.name,
+			src.sourceMod,
+			src.varName,
 			kFallbackIcon);
 	}
 	CogGearAppearance appearance;
@@ -360,15 +365,15 @@ std::int32_t CogRegistry::Register(
 	appearance.hideAt = src.hideAt;
 	appearance.hudLinkedElement = src.hudLinkedElement;
 	appearance.hudHideDuplicate = src.hudHideDuplicate;
-	EnsureGearDefinitionUnlocked(src.mod, src.name, appearance);
+	EnsureGearDefinitionUnlocked(src.sourceMod, src.varName, appearance);
 	// Heal gauges that still point at a case-drifted varName (e.g. "magicka" vs "Magicka").
 	for (auto& gauge : _gauges) {
-		if (KeyOf(gauge.gearMod, gauge.gearName) == KeyOf(src.mod, src.name)) {
-			gauge.gearMod = src.mod;
-			gauge.gearName = src.name;
+		if (KeyOf(gauge.sourceMod, gauge.varName) == KeyOf(src.sourceMod, src.varName)) {
+			gauge.sourceMod = src.sourceMod;
+			gauge.varName = src.varName;
 		}
 	}
-	OfferDefaultGearUnlocked(src.mod, src.name);
+	OfferDefaultGearUnlocked(src.sourceMod, src.varName);
 	SaveConfigUnlocked();
 	return receipt;
 }
@@ -389,8 +394,8 @@ void CogRegistry::UpdatePercent(std::int32_t receipt, float current, float maxim
 		} else {
 			src->value = 0.0;
 		}
-			mod = src->mod;
-			name = src->name;
+			mod = src->sourceMod;
+			name = src->varName;
 			cur = static_cast<float>(src->current);
 			maxv = static_cast<float>(src->maximum);
 		}
@@ -449,8 +454,8 @@ void CogRegistry::Unregister(std::int32_t receipt)
 {
 	std::lock_guard lock(_mutex);
 	if (auto it = _sources.find(receipt); it != _sources.end()) {
-		const auto mod = it->second.mod;
-		const auto name = it->second.name;
+		const auto mod = it->second.sourceMod;
+		const auto name = it->second.varName;
 		_index.erase(KeyOf(mod, name));
 		std::erase(_order, receipt);
 		_sources.erase(it);
@@ -541,13 +546,13 @@ void CogRegistry::EndRegister(std::string mod)
 		std::size_t liveCount = 0;
 		std::size_t typeCount = 0;
 		for (const auto& gear : _gears) {
-			if (gear.mod == mod) {
+			if (gear.sourceMod == mod) {
 				++gearCount;
 			}
 		}
 		for (const auto& [receipt, src] : _sources) {
 			(void)receipt;
-			if (src.mod == mod) {
+			if (src.sourceMod == mod) {
 				++liveCount;
 			}
 		}
@@ -665,7 +670,7 @@ bool CogRegistry::ApplyGizmoTypeDefaultsUnlocked()
 {
 	bool changed = false;
 	for (auto& g : _gizmos) {
-		if (CogRegistryJson::MergeGizmoSettingsFromType(g, FindGizmoTypeUnlocked(g.type))) {
+		if (CogRegistryJson::MergeGizmoSettingsFromType(g, FindGizmoTypeUnlocked(g.typeId))) {
 			changed = true;
 		}
 	}
@@ -700,7 +705,7 @@ void CogRegistry::UpdateGizmoPayload(std::int32_t receipt, std::string payloadJs
 		}
 		typeSlot->livePayloadJson = stored;
 		for (auto& g : _gizmos) {
-			if (NormalizeGizmoType(g.type) == normalized) {
+			if (NormalizeGizmoType(g.typeId) == normalized) {
 				g.livePayloadJson = stored;
 			}
 		}
@@ -828,22 +833,22 @@ void CogRegistry::EnsureBuiltinSources()
 {
 	// Keep in sync with _cog/papyrus/COG_Builtin.psc Setup().
 	BeginRegister("COG.Builtin", kCogPluginFile);
-	Register("COG.Builtin", "Health", "percent", "Health", "Stat", "Survival/health.svg", "", "", "#DF2020", "", "hud.health", true);
-	Register("COG.Builtin", "Stamina", "percent", "Stamina", "Stat", "Camping/hiker.svg", "", "", "#20DF20", "", "hud.stamina", true);
-	Register("COG.Builtin", "MountStamina", "percent", "Mount Stamina", "Mount", "Animals/horse-head.svg", "", "", "#20DF20", "<0.01");
-	Register("COG.Builtin", "Magicka", "percent", "Magicka", "Stat", "Magic/crystal-ball-shiny.svg", "", "", "#2020DF", "", "hud.magicka", true);
-	Register("COG.Builtin", "CarryWeight", "percent", "Carry Weight", "Stat", "Camping/backpack.svg");
-	Register("COG.Builtin", "Arrows", "count", "Arrows (Equipped)", "Equipment", "Weapons/arrows.svg", "", "", "", "<0.01", "hud.ammo", true);
-	Register("COG.Builtin", "Bolts", "count", "Bolts (Equipped)", "Equipment", "Weapons/quiver.svg", "", "", "", "<0.01", "hud.ammo", true);
-	Register("COG.Builtin", "Werewolf", "timer", "Transformation", "Werewolf", "Werewolf/wolf.svg", "", "", "#EEEEFF");
-	Register("COG.Builtin", "Bloodlust", "percent", "Vampiric Hunger", "Vampire", "Vampire/fangs.svg", "", "", "", "<0.01");
-	Register("COG.Builtin", "Oxygen", "timer", "Oxygen", "Survival", "Survival/oxygen.svg", "", "", "#44DDCC", "", "hud.oxygen", true);
-	Register("COG.Builtin", "BowDraw", "percent", "Bow Draw", "Charge", "Weapons/bow.svg", "", "", "#AA6633", "<0.01", "hud.casting", true);
-	Register("COG.Builtin", "SpellCharge", "percent", "Spell Casting", "Charge", "Magic/sparkles.svg", "", "", "#7744DD", "<0.01", "hud.casting", true);
-	Register("COG.Builtin", "WeaponCharge", "percent", "Weapon Charge", "Charge", "Actions/hand-right.svg", "", "", "", "<0.01", "hud.charge", true);
-	Register("COG.Builtin", "SecondaryWeaponCharge", "percent", "Secondary Weapon Charge", "Charge", "Actions/hand-left.svg", "", "", "", "<0.01", "hud.leftcharge", true);
-	Register("COG.Builtin", "Shout", "timer", "Shout Cooldown", "Charge", "Actions/shout.svg", "", "", "#5ba4f9", "", "hud.casting", true);
-	Register("COG.Builtin", "Howl", "timer", "Howl Cooldown", "Charge", "Werewolf/wolf-side.svg");
+	Register("COG.Builtin", "Health", "percent", "Health", "Stat", "Survival/health.svg", "#ffffff", "", "#DF2020", "", "hud.health", true);
+	Register("COG.Builtin", "Stamina", "percent", "Stamina", "Stat", "Camping/hiker.svg", "#ffffff", "", "#20DF20", "", "hud.stamina", true);
+	Register("COG.Builtin", "MountStamina", "percent", "Mount Stamina", "Mount", "Animals/horse-head.svg", "#ffffff", "", "#20DF20", "<0.01");
+	Register("COG.Builtin", "Magicka", "percent", "Magicka", "Stat", "Magic/crystal-ball-shiny.svg", "#ffffff", "", "#2020DF", "", "hud.magicka", true);
+	Register("COG.Builtin", "CarryWeight", "percent", "Carry Weight", "Stat", "Camping/backpack.svg", "#ffffff");
+	Register("COG.Builtin", "Arrows", "count", "Arrows (Equipped)", "Equipment", "Weapons/arrows.svg", "#ffffff", "", "", "<0.01", "hud.ammo", true);
+	Register("COG.Builtin", "Bolts", "count", "Bolts (Equipped)", "Equipment", "Weapons/quiver.svg", "#ffffff", "", "", "<0.01", "hud.ammo", true);
+	Register("COG.Builtin", "Werewolf", "timer", "Transformation", "Werewolf", "Werewolf/wolf.svg", "#ffffff", "", "#EEEEFF");
+	Register("COG.Builtin", "VampiricHunger", "percent", "Vampiric Hunger", "Vampire", "Vampire/fangs.svg", "#ffffff", "", "", "<0.01");
+	Register("COG.Builtin", "Oxygen", "timer", "Oxygen", "Survival", "Survival/oxygen.svg", "#ffffff", "", "#44DDCC", "", "hud.oxygen", true);
+	Register("COG.Builtin", "BowDraw", "percent", "Bow Draw", "Charge", "Weapons/bow.svg", "#ffffff", "", "#AA6633", "<0.01", "hud.casting", true);
+	Register("COG.Builtin", "SpellCharge", "percent", "Spell Casting", "Charge", "Magic/sparkles.svg", "#ffffff", "", "#7744DD", "<0.01", "hud.casting", true);
+	Register("COG.Builtin", "WeaponCharge", "percent", "Weapon Charge", "Charge", "Actions/hand-right.svg", "#ffffff", "", "", "<0.01", "hud.charge", true);
+	Register("COG.Builtin", "SecondaryWeaponCharge", "percent", "Secondary Weapon Charge", "Charge", "Actions/hand-left.svg", "#ffffff", "", "", "<0.01", "hud.leftcharge", true);
+	Register("COG.Builtin", "Shout", "timer", "Shout Cooldown", "Charge", "Actions/shout.svg", "#ffffff", "", "#5ba4f9", "", "hud.casting", true);
+	Register("COG.Builtin", "Howl", "timer", "Howl Cooldown", "Charge", "Werewolf/wolf-side.svg", "#ffffff");
 	Register("COG.Builtin", "FireResist", "percent", "Fire Resistance", "Resistance", "Survival/fire.svg", "#ffffff");
 	Register("COG.Builtin", "FrostResist", "percent", "Frost Resistance", "Resistance", "Weather/snowflake.svg", "#ffffff");
 	Register("COG.Builtin", "ShockResist", "percent", "Shock Resistance", "Resistance", "Weather/lightning.svg", "#ffffff");
@@ -890,7 +895,7 @@ bool CogRegistry::DropAllModGearsUnlocked(const std::string& mod)
 {
 	bool dropped = false;
 	for (auto it = _gears.begin(); it != _gears.end();) {
-		if (it->mod != mod) {
+		if (it->sourceMod != mod) {
 			++it;
 			continue;
 		}
@@ -899,9 +904,9 @@ bool CogRegistry::DropAllModGearsUnlocked(const std::string& mod)
 			continue;
 		}
 		logger::info("Discarded gear '{}' — sender '{}' is absent", it->id, mod);
-		_seenSources.erase(KeyOf(it->mod, it->name));
+		_seenSources.erase(KeyOf(it->sourceMod, it->varName));
 		RemoveGearIdFromAllGroups(_groups, it->id);
-		CullGaugesBoundToSourceUnlocked(it->mod, it->name);
+		CullGaugesBoundToSourceUnlocked(it->sourceMod, it->varName);
 		it = _gears.erase(it);
 		dropped = true;
 	}
@@ -1058,7 +1063,7 @@ bool CogRegistry::EnsureDefaultGroup()
 		return true;
 	}
 	it->locked = true;
-	it->displayName = "Default Group";
+	it->settings.displayName = "Default Group";
 	if (it != _groups.begin()) {
 		std::rotate(_groups.begin(), it, std::next(it));
 	}
@@ -1076,14 +1081,23 @@ void CogRegistry::ReconcileGroupMembership()
 	std::unordered_set<std::string> placed;
 	for (auto& group : _groups) {
 		std::vector<std::string> kept;
-		for (const auto& gearId : group.gearIds) {
+		for (const auto& gearId : group.settings.gearIds) {
 			if (!knownGears.contains(gearId) || placed.contains(gearId)) {
 				continue;
 			}
 			kept.push_back(gearId);
 			placed.insert(gearId);
 		}
-		group.gearIds = std::move(kept);
+		group.settings.gearIds = std::move(kept);
+		std::unordered_set<std::string> memberIds(group.settings.gearIds.begin(), group.settings.gearIds.end());
+		for (auto it = group.settings.exemptFromGroupColors.begin();
+			 it != group.settings.exemptFromGroupColors.end();) {
+			if (!memberIds.contains(it->first) || !it->second) {
+				it = group.settings.exemptFromGroupColors.erase(it);
+			} else {
+				++it;
+			}
+		}
 	}
 	CogInventory::EnsureBuiltinsUnlocked(*this);
 }
@@ -1091,7 +1105,7 @@ void CogRegistry::ReconcileGroupMembership()
 void CogRegistry::RememberGearKeysUnlocked()
 {
 	for (const auto& gear : _gears) {
-		_seenSources.insert(KeyOf(gear.mod, gear.name));
+		_seenSources.insert(KeyOf(gear.sourceMod, gear.varName));
 	}
 }
 
@@ -1109,7 +1123,7 @@ void CogRegistry::OfferDefaultGearUnlocked(const std::string& mod, const std::st
 	EnsureDefaultGroup();
 	CogGear* target = nullptr;
 	for (auto& gear : _gears) {
-		if (KeyOf(gear.mod, gear.name) == key) {
+		if (KeyOf(gear.sourceMod, gear.varName) == key) {
 			target = &gear;
 			break;
 		}
@@ -1125,7 +1139,6 @@ void CogRegistry::OfferDefaultGearUnlocked(const std::string& mod, const std::st
 	}
 	_seenSources.insert(key);
 	AppendGearToGroup(_groups, kDefaultGroupId, target->id);
-	target->enabled = true;
 }
 
 std::string CogRegistry::EditorKey() const
@@ -1225,7 +1238,7 @@ void CogRegistry::SetViewReady(bool ready)
 		{
 			std::lock_guard lock(_mutex);
 			for (const auto& g : _gizmos) {
-				if (NormalizeGizmoType(g.type) != "cog-feed") {
+				if (NormalizeGizmoType(g.typeId) != "cog-feed") {
 					continue;
 				}
 				++feedCount;
@@ -1237,14 +1250,15 @@ void CogRegistry::SetViewReady(bool ready)
 					visibleDetail += "; ";
 				}
 				std::ostringstream one;
-				one << "id=\"" << g.id << "\" displayName=\"" << g.displayName << "\" visibility=" << g.visibility
+				one << "id=\"" << g.id << "\" displayName=\"" << CogRegistryJson::GizmoDisplayName(g)
+					<< "\" visibility=" << g.visibility
 					<< " notif=" << (GizmoSettingsBool(g, "showNotifications", false) ? 1 : 0)
 					<< " inv=" << (GizmoSettingsBool(g, "showInventory", false) ? 1 : 0)
 					<< " loc=" << (GizmoSettingsBool(g, "showLocation", false) ? 1 : 0)
 					<< " discovery=" << (GizmoSettingsBool(g, "showLocationDiscovery", true) ? 1 : 0)
 					<< " current=" << (GizmoSettingsBool(g, "showCurrentLocation", true) ? 1 : 0)
 					<< " icons=" << (GizmoSettingsBool(g, "showLocationIcons", true) ? 1 : 0)
-					<< " x=" << std::fixed << std::setprecision(3) << g.x << " y=" << g.y;
+					<< " x=" << std::fixed << std::setprecision(3) << g.position.x << " y=" << g.position.y;
 				visibleDetail += one.str();
 			}
 		}
@@ -1273,7 +1287,7 @@ bool CogRegistry::HasVisibleFeedShowingNotifications() const
 {
 	std::lock_guard lock(_mutex);
 	for (const auto& g : _gizmos) {
-		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.type) == "cog-feed" && GizmoSettingsBool(g, "showNotifications", false)) {
+		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.typeId) == "cog-feed" && GizmoSettingsBool(g, "showNotifications", false)) {
 	return true;
 }
 	}
@@ -1284,7 +1298,7 @@ bool CogRegistry::HasVisibleFeedShowingInventory() const
 	{
 		std::lock_guard lock(_mutex);
 	for (const auto& g : _gizmos) {
-		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.type) == "cog-feed" && GizmoSettingsBool(g, "showInventory", false)) {
+		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.typeId) == "cog-feed" && GizmoSettingsBool(g, "showInventory", false)) {
 			return true;
 		}
 	}
@@ -1295,7 +1309,7 @@ bool CogRegistry::HasVisibleFeedDivertingLocationDiscovery() const
 {
 	std::lock_guard lock(_mutex);
 	for (const auto& g : _gizmos) {
-		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.type) == "cog-feed" && GizmoSettingsBool(g, "showLocation", false) &&
+		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.typeId) == "cog-feed" && GizmoSettingsBool(g, "showLocation", false) &&
 			GizmoSettingsBool(g, "showLocationDiscovery", true)) {
 			return true;
 		}
@@ -1307,7 +1321,7 @@ bool CogRegistry::HasVisibleFeedDivertingCurrentLocation() const
 {
 	std::lock_guard lock(_mutex);
 	for (const auto& g : _gizmos) {
-		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.type) == "cog-feed" && GizmoSettingsBool(g, "showLocation", false) &&
+		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.typeId) == "cog-feed" && GizmoSettingsBool(g, "showLocation", false) &&
 			GizmoSettingsBool(g, "showCurrentLocation", true)) {
 			return true;
 		}
@@ -1319,7 +1333,7 @@ bool CogRegistry::HasVisibleFeedShowingSkills() const
 		{
 			std::lock_guard lock(_mutex);
 			for (const auto& g : _gizmos) {
-		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.type) == "cog-feed" &&
+		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.typeId) == "cog-feed" &&
 			GizmoSettingsBool(g, "showSkills", false)) {
 			return true;
 		}
@@ -1331,7 +1345,7 @@ bool CogRegistry::HasVisibleFeedShowingLevelProgress() const
 {
 	std::lock_guard lock(_mutex);
 	for (const auto& g : _gizmos) {
-		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.type) == "cog-feed" &&
+		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.typeId) == "cog-feed" &&
 			GizmoSettingsBool(g, "showSkills", false) && GizmoSettingsBool(g, "showLevelProgress", true)) {
 			return true;
 		}
@@ -1343,7 +1357,7 @@ bool CogRegistry::AnyVisibleFeedShowsActiveEffects() const
 {
 	std::lock_guard lock(_mutex);
 	for (const auto& g : _gizmos) {
-		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.type) == "cog-feed" && GizmoSettingsBool(g, "showActiveEffects", false)) {
+		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.typeId) == "cog-feed" && GizmoSettingsBool(g, "showActiveEffects", false)) {
 			return true;
 		}
 	}
@@ -1354,7 +1368,7 @@ bool CogRegistry::ShouldSuppressInventoryNotifications() const
 {
 	std::lock_guard lock(_mutex);
 	for (const auto& g : _gizmos) {
-		if (!GizmoIsPlayActive(g) || NormalizeGizmoType(g.type) != "cog-feed") {
+		if (!GizmoIsPlayActive(g) || NormalizeGizmoType(g.typeId) != "cog-feed") {
 			continue;
 		}
 		if (GizmoSettingsBool(g, "showInventory", false)) {
@@ -1442,7 +1456,7 @@ void CogRegistry::RefreshLiveUnlocked()
 	wasWerewolf = isWerewolf;
 	setTimer(sourceNamed("COG.Builtin", "Shout"), CogLive::PlayerShoutRemaining());
 	setTimer(sourceNamed("COG.Builtin", "Howl"), CogLive::PlayerHowlRemaining());
-	setPercent(sourceNamed("COG.Builtin", "Bloodlust"), static_cast<float>(CogLive::VampireStage()), 4.0f);
+	setPercent(sourceNamed("COG.Builtin", "VampiricHunger"), static_cast<float>(CogLive::VampireStage()), 4.0f);
 
 	if (auto* player = RE::PlayerCharacter::GetSingleton()) {
 		if (auto* values = player->AsActorValueOwner()) {
@@ -1463,7 +1477,7 @@ bool CogRegistry::DropGearUnlocked(const std::string& mod, const std::string& na
 {
 	bool dropped = false;
 	for (auto it = _gears.begin(); it != _gears.end();) {
-		if (it->mod != mod || it->name != name) {
+		if (it->sourceMod != mod || it->varName != name) {
 			++it;
 			continue;
 		}
@@ -1486,18 +1500,18 @@ bool CogRegistry::PruneModGearsUnlocked(const std::string& mod)
 {
 	bool dropped = false;
 	for (auto it = _gears.begin(); it != _gears.end();) {
-		if (it->mod != mod) {
+		if (it->sourceMod != mod) {
 			++it;
 			continue;
 		}
-		if (_index.contains(KeyOf(it->mod, it->name))) {
+		if (_index.contains(KeyOf(it->sourceMod, it->varName))) {
 			++it;
 			continue;
 		}
-		logger::info("Discarded gear '{}' — {} / {} missing after EndRegister", it->id, it->mod, it->name);
-		_seenSources.erase(KeyOf(it->mod, it->name));
+		logger::info("Discarded gear '{}' — {} / {} missing after EndRegister", it->id, it->sourceMod, it->varName);
+		_seenSources.erase(KeyOf(it->sourceMod, it->varName));
 		RemoveGearIdFromAllGroups(_groups, it->id);
-		CullGaugesBoundToSourceUnlocked(it->mod, it->name);
+		CullGaugesBoundToSourceUnlocked(it->sourceMod, it->varName);
 		it = _gears.erase(it);
 		dropped = true;
 	}
@@ -1512,11 +1526,11 @@ bool CogRegistry::CullGaugesBoundToSourceUnlocked(const std::string& mod, const 
 	const auto key = KeyOf(mod, name);
 	bool dropped = false;
 	for (auto it = _gauges.begin(); it != _gauges.end();) {
-		if (it->gearMod.empty() && it->gearName.empty()) {
+		if (it->sourceMod.empty() && it->varName.empty()) {
 			++it;
 			continue;
 		}
-		if (KeyOf(it->gearMod, it->gearName) != key) {
+		if (KeyOf(it->sourceMod, it->varName) != key) {
 			++it;
 			continue;
 		}
@@ -1531,23 +1545,23 @@ bool CogRegistry::ReconcileGaugeBindingsUnlocked()
 {
 	std::unordered_set<std::string> known;
 	for (const auto& gear : _gears) {
-		known.insert(KeyOf(gear.mod, gear.name));
+		known.insert(KeyOf(gear.sourceMod, gear.varName));
 	}
 	bool dropped = false;
 	for (auto it = _gauges.begin(); it != _gauges.end();) {
-		if (it->gearMod.empty() && it->gearName.empty()) {
+		if (it->sourceMod.empty() && it->varName.empty()) {
 			++it;
 			continue;
 		}
-		if (known.contains(KeyOf(it->gearMod, it->gearName))) {
+		if (known.contains(KeyOf(it->sourceMod, it->varName))) {
 			++it;
 			continue;
 		}
 		logger::info(
 			"Discarded gauge '{}' — gear {} / {} is gone",
 			it->id,
-			it->gearMod,
-			it->gearName);
+			it->sourceMod,
+			it->varName);
 		it = _gauges.erase(it);
 		dropped = true;
 	}
@@ -1630,7 +1644,7 @@ bool CogRegistry::CullGizmosOfSourceModUnlocked(const std::string& mod)
 			++it;
 					continue;
 				}
-		if (CogRegistryJson::IsBuiltinGizmoTypeId(it->type)) {
+		if (CogRegistryJson::IsBuiltinGizmoTypeId(it->typeId)) {
 			++it;
 					continue;
 				}
@@ -1648,12 +1662,12 @@ bool CogRegistry::CullGizmosOfTypesUnlocked(const std::unordered_set<std::string
 	}
 	bool dropped = false;
 	for (auto it = _gizmos.begin(); it != _gizmos.end();) {
-		const auto type = NormalizeGizmoType(it->type);
+		const auto type = NormalizeGizmoType(it->typeId);
 		if (!typeIds.contains(type)) {
 			++it;
 					continue;
 				}
-		logger::info("Discarded gizmo '{}' — type '{}' no longer registered", it->id, it->type);
+		logger::info("Discarded gizmo '{}' — type '{}' no longer registered", it->id, it->typeId);
 		it = _gizmos.erase(it);
 		dropped = true;
 	}
@@ -1708,7 +1722,7 @@ void CogRegistry::PushLivePercent(const char* mod, const char* name, float curre
 		return;
 	}
 	std::ostringstream o;
-	o << "{\"mod\":\"" << EscapeJson(mod) << "\",\"name\":\"" << EscapeJson(name)
+	o << "{\"sourceMod\":\"" << EscapeJson(mod) << "\",\"varName\":\"" << EscapeJson(name)
 	  << "\",\"value\":" << value << ",\"current\":" << current << ",\"maximum\":" << maximum << "}";
 	CogUi::Interop("applyLivePercent", o.str());
 

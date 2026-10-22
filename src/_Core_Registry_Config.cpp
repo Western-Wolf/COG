@@ -27,6 +27,8 @@ using CogRegistryJson::OptionalHexColor;
 using CogRegistryJson::NormalizeIcon;
 using CogRegistryJson::NormalizeNeutralIconMode;
 using CogRegistryJson::ParseGauge;
+using CogRegistryJson::MigrateBuiltinBloodlustToVampiricHunger;
+using CogRegistryJson::MigrateLegacyGearExemptOntoGroups;
 using CogRegistryJson::ParseGear;
 using CogRegistryJson::ParseGizmo;
 using CogRegistryJson::ParseGizmoType;
@@ -38,6 +40,7 @@ using CogRegistryJson::GizmoTypeToJson;
 using CogRegistryJson::GroupToJson;
 using CogRegistryJson::IsBuiltinGizmoTypeId;
 using CogRegistryJson::NormalizeGizmoType;
+using CogRegistryJson::ResolveGizmoInstanceTypeId;
 
 namespace
 {
@@ -334,8 +337,13 @@ void CogRegistry::LoadSendersFile(bool& repaired)
 		if (!item.IsObject()) {
 			continue;
 		}
-		const auto mod = ctx.GetString(item, "mod");
-		if (mod.empty()) {
+		auto sourceMod = ctx.GetString(item, "sourceMod");
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy sender ownership key "mod" becomes sourceMod (never written back on save).
+		if (sourceMod.empty()) {
+			sourceMod = ctx.GetString(item, "mod");
+		}
+		if (sourceMod.empty()) {
 			continue;
 		}
 		CogSenderInfo info;
@@ -344,7 +352,7 @@ void CogRegistry::LoadSendersFile(bool& repaired)
 		if (info.strikes < 0) {
 			info.strikes = 0;
 		}
-		_senders[mod] = std::move(info);
+		_senders[sourceMod] = std::move(info);
 	}
 	repaired = repaired || ctx.repaired;
 }
@@ -360,7 +368,7 @@ void CogRegistry::SaveSendersUnlocked() const
 			o << ",\n";
 		}
 		first = false;
-		o << "\t\t{\"mod\":\"" << EscapeJson(mod) << "\",\"plugin\":\"" << EscapeJson(info.plugin)
+		o << "\t\t{\"sourceMod\":\"" << EscapeJson(mod) << "\",\"plugin\":\"" << EscapeJson(info.plugin)
 		  << "\",\"strikes\":" << info.strikes << "}";
 	}
 	o << "\n\t]\n}\n";
@@ -744,13 +752,13 @@ void CogRegistry::LoadGearFiles(bool& repaired)
 		ctx.path = "gears/" + entry.path().filename().string();
 		auto gear = ParseGear(root, ctx);
 		repaired = repaired || ctx.repaired;
-		if (gear.id.empty() || gear.mod.empty() || gear.name.empty()) {
+		if (gear.id.empty() || gear.sourceMod.empty() || gear.varName.empty()) {
 			logger::warn(
-				"COG: skipped gear {} — missing id/mod/name after parse (id='{}' mod='{}' name='{}')",
+				"COG: skipped gear {} — missing id/sourceMod/varName after parse (id='{}' sourceMod='{}' varName='{}')",
 				ctx.path,
 				gear.id,
-				gear.mod,
-				gear.name);
+				gear.sourceMod,
+				gear.varName);
 			continue;
 		}
 		_gears.push_back(std::move(gear));
@@ -905,7 +913,15 @@ void CogRegistry::LoadGizmoFiles(bool& repaired)
 		}
 		CogJson::ParseContext ctx;
 		ctx.path = "gizmos/" + entry.path().filename().string();
-		const auto* type = FindGizmoTypeUnlocked(NormalizeGizmoType(ctx.GetString(root, "type")));
+		const auto typeId = ResolveGizmoInstanceTypeId(root, ctx);
+		if (typeId.empty()) {
+			logger::warn(
+				"COG: discarded gizmo {} — unrecognized type (missing or invalid typeId/type); file will be pruned on save",
+				ctx.path);
+			repaired = true;
+			continue;
+		}
+		const auto* type = FindGizmoTypeUnlocked(typeId);
 		auto gizmo = ParseGizmo(root, ctx, type);
 		repaired = repaired || ctx.repaired;
 		if (gizmo.id.empty()) {
@@ -1020,16 +1036,16 @@ bool CogRegistry::ApplyStateJson(const std::string& json)
 					continue;
 				}
 				auto gear = ParseGear(item, ctx);
-				if (gear.id.empty() || gear.mod.empty() || gear.name.empty()) {
+				if (gear.id.empty() || gear.sourceMod.empty() || gear.varName.empty()) {
 					continue;
 				}
-				keptKeys.insert(KeyOf(gear.mod, gear.name));
+				keptKeys.insert(KeyOf(gear.sourceMod, gear.varName));
 				next.push_back(std::move(gear));
 			}
 			// Mirror Drop*: gears removed from the entity list must clear seen, or a later
 			// Register recreates the JSON while OfferDefaultGear refuses Default Group placement.
 			for (const auto& old : _gears) {
-				const auto key = KeyOf(old.mod, old.name);
+				const auto key = KeyOf(old.sourceMod, old.varName);
 				if (!keptKeys.contains(key)) {
 					_seenSources.erase(key);
 				}
@@ -1058,7 +1074,14 @@ bool CogRegistry::ApplyStateJson(const std::string& json)
 			if (!item.IsObject()) {
 				continue;
 			}
-			const auto typeName = NormalizeGizmoType(ctx.GetString(item, "type"));
+			const auto typeName = ResolveGizmoInstanceTypeId(item, ctx);
+			if (typeName.empty()) {
+				const auto idHint = ctx.GetString(item, "id");
+				logger::warn(
+					"COG: discarded gizmo {} — unrecognized type (missing or invalid typeId/type)",
+					idHint.empty() ? "(no id)" : idHint);
+				continue;
+			}
 			auto gizmo = ParseGizmo(item, ctx, FindGizmoTypeUnlocked(typeName));
 			if (gizmo.id.empty()) {
 				continue;
@@ -1068,13 +1091,19 @@ bool CogRegistry::ApplyStateJson(const std::string& json)
 	}
 
 	ReconcileGroupMembership();
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Builtin Vampiric Hunger Bloodlust → VampiricHunger (gears, groups, gauges, seen).
+	MigrateBuiltinBloodlustToVampiricHunger(_gears, _groups, _gauges, _seenSources);
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Legacy gear-root exemptFromGroupColors → group.settings.exemptFromGroupColors[gearId].
+	MigrateLegacyGearExemptOntoGroups(_groups);
 
 	RememberGearKeysUnlocked();
 	for (auto& group : _groups) {
 		if (group.id == kDefaultGroupId) {
-			group.visible = _general.showDefaultGroup;
+			group.visibility = _general.showDefaultGroup ? "hud" : "none";
 			group.locked = true;
-			group.displayName = "Default Group";
+			group.settings.displayName = "Default Group";
 		}
 	}
 	return true;
@@ -1200,13 +1229,23 @@ void CogRegistry::LoadConfig()
 		LoadGizmoFiles(repaired);
 		LoadTranslationsUnlocked();
 		ReconcileGroupMembership();
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Builtin Vampiric Hunger Bloodlust → VampiricHunger (gears, groups, gauges, seen).
+		if (MigrateBuiltinBloodlustToVampiricHunger(_gears, _groups, _gauges, _seenSources)) {
+			repaired = true;
+		}
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy gear-root exemptFromGroupColors → group.settings.exemptFromGroupColors[gearId].
+		if (MigrateLegacyGearExemptOntoGroups(_groups)) {
+			repaired = true;
+		}
 		ReconcileGaugeBindingsUnlocked();
 		PruneMissingPluginsUnlocked();
 		CogInventory::EnsureBuiltinsUnlocked(*this);
 		RememberGearKeysUnlocked();
 		for (auto& group : _groups) {
 			if (group.id == kDefaultGroupId) {
-				group.visible = _general.showDefaultGroup;
+				group.visibility = _general.showDefaultGroup ? "hud" : "none";
 			}
 		}
 		// First-load Default Group (and any JSON repair) must hit disk so MO2 writes

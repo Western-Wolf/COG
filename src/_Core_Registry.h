@@ -25,8 +25,8 @@ enum class CogVarType : std::uint8_t
 struct CogSource
 {
 	std::int32_t receipt = 0;
-	std::string mod;
-	std::string name;
+	std::string sourceMod;
+	std::string varName;
 	std::string displayName;
 	std::string category;
 	CogVarType type = CogVarType::Percent;
@@ -42,8 +42,9 @@ struct CogSource
 	bool hudHideDuplicate = false;
 };
 
-struct CogGroupStyle
+struct CogGroupSettings
 {
+	std::string displayName;
 	bool showLabel = false;
 	bool showIcon = true;
 	bool showNumber = true;
@@ -56,6 +57,13 @@ struct CogGroupStyle
 	std::string barColor;
 	std::string borderColor;
 	std::string neutralIconMode = "white";
+	float gearSize = 50.0f;
+	float spacing = 25.0f;
+	std::string stack = "below";
+	/** Per-gear exemptions from useGroupColors; only `true` entries are stored. */
+	std::unordered_map<std::string, bool> exemptFromGroupColors;
+	/** Ordered membership; empty = no gears on this line. */
+	std::vector<std::string> gearIds;
 };
 
 struct CogGearAppearance
@@ -72,47 +80,47 @@ struct CogGearAppearance
 struct CogGear
 {
 	std::string id;
-	std::string mod;
-	std::string name;
-	bool enabled = true;
+	std::string sourceMod;
+	std::string varName;
 	bool locked = false;
-	bool exemptFromGroupColors = false;
 	CogGearAppearance defaults;
 	CogGearAppearance settings;
 };
 
-struct CogGroup
+/** Screen placement: AABB top-left (tlc). Groups use x/y/rotation only. */
+struct CogPosition
 {
-	std::string id;
-	std::string displayName;
-	bool locked = false;
-	bool visible = true;
 	float x = 0.1f;
 	float y = 0.10f;
 	float rotation = 0.0f;
-	float gearSize = 50.0f;
-	float spacing = 25.0f;
-	std::string stack = "below";
-	CogGroupStyle style;
-	std::vector<std::string> gearIds;
 };
 
-struct CogGauge
+/** Gauge/gizmo placement box (AABB top-left + size). */
+struct CogBoxPosition
 {
-	std::string id;
-	std::string displayName;
-	std::string type = "meter";
-	std::string shape = "bar";
-	bool locked = false;
-	bool visible = true;
 	float x = 0.1f;
 	float y = 0.10f;
 	float rotation = 0.0f;
 	float width = 240.0f;
 	float height = 24.0f;
-	std::string gearMod;
-	std::string gearName;
-	// Meter appearance (bar-shape fields apply when shape is bar)
+};
+
+struct CogGroup
+{
+	std::string id;
+	bool locked = false;
+	// none | hud | ui — same triad as gizmos (groups default hud; no editor control except Default via General).
+	std::string visibility = "hud";
+	CogPosition position;
+	CogGroupSettings settings;
+};
+
+/** Appearance / options nested under gauge.settings (identity + position stay on CogGauge). */
+struct CogGaugeSettings
+{
+	std::string displayName;
+	std::string type = "meter";
+	std::string shape = "bar";
 	std::string borderColor;
 	float borderThickness = 15.0f;
 	float troughOpacity = 20.0f;
@@ -128,8 +136,6 @@ struct CogGauge
 	std::string numberColorMode = "border";
 	bool numberAsPercent = false;
 	float fontSize = 0.0f;
-	std::string posAnchor = "tlc";
-	// Frame type
 	std::string frameShape = "Frames/circle.svg";
 	std::string frameFillColor;
 	std::string frameBorderColor;
@@ -147,22 +153,28 @@ struct CogGauge
 	std::string pictureFade = "#c4a35a";
 };
 
+struct CogGauge
+{
+	std::string id;
+	bool locked = false;
+	// none | hud | ui — same triad as gizmos (gauges default hud; not exposed in the gauge editor).
+	std::string visibility = "hud";
+	CogBoxPosition position;
+	std::string sourceMod;
+	std::string varName;
+	CogGaugeSettings settings;
+};
+
 struct CogGizmo
 {
 	std::string id;
-	std::string displayName;
-	std::string type = "cog-clock";
+	std::string typeId = "cog-clock";
 	// none | hud (HUD Visible) | ui (UI Visible / menus too)
 	std::string visibility = "hud";
-	float x = 0.1f;
-	float y = 0.1f;
-	float rotation = 0.0f;
-	float width = 275.0f;
-	float height = 40.0f;
+	CogBoxPosition position{ 0.1f, 0.1f, 0.0f, 275.0f, 40.0f };
 	// Owning mod of the gizmo type (empty for builtin types).
 	std::string sourceMod;
-	std::string posAnchor = "tlc";
-	// Opaque JSON object of type settings (builtins + custom schema values).
+	// Opaque JSON object of type settings (includes instance displayName + type options).
 	std::string settingsJson = "{}";
 	// Live payload from UpdateGizmo (not persisted).
 	std::string livePayloadJson;

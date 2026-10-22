@@ -115,20 +115,21 @@ function defaultSuppressorGizmo(n) {
 		alwaysHide: [],
 		neverHide: []
 	};
+	settings.displayName =
+		typeof formatStockName === "function"
+			? formatStockName("Suppressor {num}", { num: n })
+			: `Suppressor ${n}`;
 	return {
 		id: `gizmo_${Date.now().toString(36)}`,
-		displayName:
-			typeof formatStockName === "function"
-				? formatStockName("Suppressor {num}", { num: n })
-				: `Suppressor ${n}`,
-		type: "cog-suppressor",
+		typeId: "cog-suppressor",
 		visibility: "none",
-		x: DEFAULT_HUD_X,
-		y: DEFAULT_HUD_Y,
-		posAnchor: "tlc",
-		rotation: 0,
-		width: DEFAULT_SUPPRESSOR_SIZE,
-		height: DEFAULT_SUPPRESSOR_SIZE,
+		position: {
+			x: DEFAULT_HUD_X,
+			y: DEFAULT_HUD_Y,
+			rotation: 0,
+			width: DEFAULT_SUPPRESSOR_SIZE,
+			height: DEFAULT_SUPPRESSOR_SIZE
+		},
 		settings,
 		settingsJson: JSON.stringify(settings)
 	};
@@ -137,15 +138,22 @@ function defaultSuppressorGizmo(n) {
 function ensureSuppressorGizmo(gizmo) {
 	ensureGizmoDisplayName(gizmo);
 	const s = ensureGizmoSettings(gizmo);
-	gizmo.type = "cog-suppressor";
-	gizmo.x = Number.isFinite(Number(gizmo.x)) ? Number(gizmo.x) : DEFAULT_HUD_X;
-	gizmo.y = Number.isFinite(Number(gizmo.y)) ? Number(gizmo.y) : DEFAULT_HUD_Y;
-	gizmo.rotation = Number(gizmo.rotation) || 0;
-	gizmo.width = Math.max(MIN_GIZMO_WIDTH, Number(gizmo.width) || DEFAULT_SUPPRESSOR_SIZE);
-	gizmo.height = Math.max(MIN_GIZMO_HEIGHT, Number(gizmo.height) || DEFAULT_SUPPRESSOR_SIZE);
+	gizmo.typeId = "cog-suppressor";
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Legacy flat placement keys x/y/rotation/width/height move under nested "position" (never written back flat on save).
+	// Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
+	migrateEntityPosition(gizmo, {
+		sized: true,
+		x: DEFAULT_HUD_X,
+		y: DEFAULT_HUD_Y,
+		rotation: 0,
+		width: DEFAULT_SUPPRESSOR_SIZE,
+		height: DEFAULT_SUPPRESSOR_SIZE,
+		minW: MIN_GIZMO_WIDTH,
+		minH: MIN_GIZMO_HEIGHT
+	});
 	s.alwaysHide = normalizeSuppressorKeyList(s.alwaysHide);
 	s.neverHide = normalizeSuppressorKeyList(s.neverHide);
-	gizmo.posAnchor = "tlc";
 	// Editor marker only — never exposed in HUD / menus.
 	gizmo.visibility = "none";
 	gizmo.settings = s;
@@ -178,12 +186,12 @@ function buildGizmoSuppressorEl(gizmo, preview) {
 
 function layoutHudGizmoSuppressor(el, gizmo) {
 	ensureSuppressorGizmo(gizmo);
-	const css = hudItemLayoutCss(gizmo, gizmo.width, gizmo.height);
+	const css = hudItemLayoutCss(gizmo, gizmo.position.width, gizmo.position.height);
 	el.style.left = css.x * 100 + "%";
 	el.style.top = css.y * 100 + "%";
-	el.style.width = gizmo.width + "px";
-	el.style.height = gizmo.height + "px";
-	el.style.setProperty("--gizmo-rot", (gizmo.rotation || 0) + "deg");
+	el.style.width = gizmo.position.width + "px";
+	el.style.height = gizmo.position.height + "px";
+	el.style.setProperty("--gizmo-rot", (gizmo.position.rotation || 0) + "deg");
 }
 
 function paintGizmoSuppressor(el, gizmo) {

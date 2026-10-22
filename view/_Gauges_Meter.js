@@ -107,7 +107,7 @@ function ensureGaugeChrome(host, parts = {}) {
 }
 
 function gaugeLabelPaint(gauge, src, gear) {
-	const mode = normalizeLabelColorMode(gauge.labelColorMode);
+	const mode = normalizeLabelColorMode(gaugeSettings(gauge).labelColorMode);
 	if (mode === "border") {
 		return gaugeBorderColor(gauge);
 	}
@@ -122,7 +122,7 @@ function gaugeLabelPaint(gauge, src, gear) {
 }
 
 function gaugeIconPaint(gauge, src, gear) {
-	const mode = normalizeIconColorMode(gauge.iconColorMode);
+	const mode = normalizeIconColorMode(gaugeSettings(gauge).iconColorMode);
 	if (mode === "border") {
 		return gaugeBorderColor(gauge);
 	}
@@ -137,8 +137,8 @@ function gaugeIconPaint(gauge, src, gear) {
 }
 
 function gaugeOverlayStacked(gauge) {
-	const icon = normalizeGaugePlacement(gauge.showIcon);
-	const title = normalizeGaugePlacement(gauge.showLabel);
+	const icon = normalizeGaugePlacement(gaugeSettings(gauge).showIcon);
+	const title = normalizeGaugePlacement(gaugeSettings(gauge).showLabel);
 	return icon !== "none" && title !== "none" && icon === title;
 }
 
@@ -146,9 +146,9 @@ function gaugeOverlayStacked(gauge) {
 
 function gaugeFontSizePx(gauge, iconSize) {
 	ensureGauge(gauge);
-	const autoBase = Math.max(1, Number(iconSize) || Number(gauge && gauge.height) || DEFAULT_GAUGE_HEIGHT);
-	if (Number(gauge.fontSize) > 0) {
-		return Math.max(6, Math.round(Number(gauge.fontSize)));
+	const autoBase = Math.max(1, Number(iconSize) || Number(gauge && gauge.position.height) || DEFAULT_GAUGE_HEIGHT);
+	if (Number(gaugeSettings(gauge).fontSize) > 0) {
+		return Math.max(6, Math.round(Number(gaugeSettings(gauge).fontSize)));
 	}
 	return Math.max(9, Math.round(autoBase * 0.5 * AUTO_FONT_SIZE_SCALE));
 }
@@ -162,7 +162,7 @@ function gaugeLabelLineBoxPx(fontPx) {
 }
 
 function gaugeCountVisible(gauge) {
-	return normalizeGaugePlacement(gauge.showNumber) !== "none";
+	return normalizeGaugePlacement(gaugeSettings(gauge).showNumber) !== "none";
 }
 
 /** Number placement from showNumber only (independent of title). */
@@ -172,7 +172,7 @@ function gaugeCountPlacement(gauge) {
 	if (!gaugeCountVisible(gauge)) {
 		return "none";
 	}
-	return normalizeGaugePlacement(gauge.showNumber);
+	return normalizeGaugePlacement(gaugeSettings(gauge).showNumber);
 }
 
 /** Left/right on arcs share one hollow between endcaps. */
@@ -182,14 +182,14 @@ function gaugeTitleCountShareSpace(gauge, arcLayout = null) {
 	if (!gaugeCountVisible(gauge)) {
 		return false;
 	}
-	const title = normalizeGaugePlacement(gauge.showLabel);
+	const title = normalizeGaugePlacement(gaugeSettings(gauge).showLabel);
 	if (title === "none") {
 		return false;
 	}
 	if (arcLayout && gaugeTitleCountShareArcHollow(gauge)) {
 		return true;
 	}
-	return normalizeGaugePlacement(gauge.showNumber) === title;
+	return normalizeGaugePlacement(gaugeSettings(gauge).showNumber) === title;
 }
 
 function gaugeOverlayCountStack(gauge, iconSize, iconGap, labelSize, arcLayout = null) {
@@ -197,8 +197,8 @@ function gaugeOverlayCountStack(gauge, iconSize, iconGap, labelSize, arcLayout =
 		return 0;
 	}
 	const placement = gaugeCountPlacement(gauge);
-	const icon = normalizeGaugePlacement(gauge.showIcon);
-	const title = normalizeGaugePlacement(gauge.showLabel);
+	const icon = normalizeGaugePlacement(gaugeSettings(gauge).showIcon);
+	const title = normalizeGaugePlacement(gaugeSettings(gauge).showLabel);
 	let offset = 0;
 	if (icon !== "none" && icon === placement) {
 		offset += iconSize + iconGap;
@@ -216,7 +216,7 @@ function formatGaugeCountValue(gauge, src) {
 	if (!src) {
 		return "";
 	}
-	const asPercent = !!gauge.numberAsPercent;
+	const asPercent = !!gaugeSettings(gauge).numberAsPercent;
 	if (asPercent && (src.type === "percent" || src.type === "timer")) {
 		return formatValue(src, false);
 	}
@@ -224,7 +224,7 @@ function formatGaugeCountValue(gauge, src) {
 }
 
 function gaugeCountPaint(gauge, src, gear) {
-	const mode = normalizeLabelColorMode(gauge.numberColorMode);
+	const mode = normalizeLabelColorMode(gaugeSettings(gauge).numberColorMode);
 	if (mode === "border") {
 		return gaugeBorderColor(gauge);
 	}
@@ -316,13 +316,13 @@ function releaseOverlayToGaugeRoot(el, node) {
 
 function gaugeOverlayRegion(gauge, role) {
 	if (role === "icon") {
-		return normalizeGaugePlacement(gauge.showIcon);
+		return normalizeGaugePlacement(gaugeSettings(gauge).showIcon);
 	}
 	if (role === "label") {
-		return normalizeGaugePlacement(gauge.showLabel);
+		return normalizeGaugePlacement(gaugeSettings(gauge).showLabel);
 	}
 	if (role === "count") {
-		return gaugeCountVisible(gauge) ? normalizeGaugePlacement(gauge.showNumber) : "none";
+		return gaugeCountVisible(gauge) ? normalizeGaugePlacement(gaugeSettings(gauge).showNumber) : "none";
 	}
 	return "none";
 }
@@ -684,8 +684,8 @@ function paintGaugeGearIcon(el, gauge, { iconSize, iconOffset = 0, arcLayout = n
 	ensureGauge(gauge);
 	const { src, gear } = gaugeLinked(gauge);
 	const iconEl = el.querySelector(".gauge-gear-icon");
-	const show = normalizeGaugePlacement(gauge.showIcon);
-	const rot = Number(gauge.rotation) || 0;
+	const show = normalizeGaugePlacement(gaugeSettings(gauge).showIcon);
+	const rot = Number(gauge.position.rotation) || 0;
 	if (!iconEl) {
 		return;
 	}
@@ -767,8 +767,8 @@ function paintGaugeLabel(el, gauge, { iconSize, iconOffset = 0, arcLayout = null
 	ensureGauge(gauge);
 	const { src, gear } = gaugeLinked(gauge);
 	const labelEl = el.querySelector(".gauge-gear-label");
-	const show = normalizeGaugePlacement(gauge.showLabel);
-	const rot = Number(gauge.rotation) || 0;
+	const show = normalizeGaugePlacement(gaugeSettings(gauge).showLabel);
+	const rot = Number(gauge.position.rotation) || 0;
 	if (!labelEl) {
 		return;
 	}
@@ -776,7 +776,7 @@ function paintGaugeLabel(el, gauge, { iconSize, iconOffset = 0, arcLayout = null
 		labelEl.hidden = true;
 		return;
 	}
-	const text = sourceTitle(src, gear && gear.name, gear);
+	const text = sourceTitle(src, gear && gear.varName, gear);
 	if (!text) {
 		labelEl.hidden = true;
 		return;
@@ -791,7 +791,7 @@ function paintGaugeLabel(el, gauge, { iconSize, iconOffset = 0, arcLayout = null
 	labelEl.style.wordBreak = "normal";
 	const iconGap = Math.max(2, Math.round(iconSize * 0.1));
 	const stacked = gaugeOverlayStacked(gauge);
-	const iconPlacement = normalizeGaugePlacement(gauge.showIcon);
+	const iconPlacement = normalizeGaugePlacement(gaugeSettings(gauge).showIcon);
 	const useArcHollow = !!(
 		arcLayout && (show === "left" || show === "right" || show === "centered")
 	);
@@ -823,8 +823,8 @@ function paintGaugeLabel(el, gauge, { iconSize, iconOffset = 0, arcLayout = null
 		iconOffset,
 		stacked,
 		arcLayout,
-		barWidth: barWidth || Number(gauge.width) || 0,
-		barHeight: barHeight || Number(gauge.height) || 0,
+		barWidth: barWidth || Number(gauge.position.width) || 0,
+		barHeight: barHeight || Number(gauge.position.height) || 0,
 		iconPlacement,
 		gauge,
 		src,
@@ -874,7 +874,7 @@ function paintGaugeCount(el, gauge, { iconSize, iconOffset = 0, arcLayout = null
 	const { src, gear } = gaugeLinked(gauge);
 	const countEl = ensureGaugeCountEl(el);
 	const show = gaugeCountPlacement(gauge);
-	const rot = Number(gauge.rotation) || 0;
+	const rot = Number(gauge.position.rotation) || 0;
 	if (!gaugeCountVisible(gauge) || show === "none") {
 		countEl.hidden = true;
 		return;
@@ -898,7 +898,7 @@ function paintGaugeCount(el, gauge, { iconSize, iconOffset = 0, arcLayout = null
 	countEl.style.wordBreak = "normal";
 	const iconGap = Math.max(2, Math.round(iconSize * 0.1));
 	const stacked = gaugeOverlayStacked(gauge);
-	const iconPlacement = normalizeGaugePlacement(gauge.showIcon);
+	const iconPlacement = normalizeGaugePlacement(gaugeSettings(gauge).showIcon);
 	const sharesTitleSpace = gaugeTitleCountShareSpace(gauge, arcLayout);
 	const useArcHollow = !!(
 		arcLayout && (show === "left" || show === "right" || show === "centered")
@@ -932,8 +932,8 @@ function paintGaugeCount(el, gauge, { iconSize, iconOffset = 0, arcLayout = null
 		iconOffset,
 		stacked,
 		arcLayout,
-		barWidth: barWidth || Number(gauge.width) || 0,
-		barHeight: barHeight || Number(gauge.height) || 0,
+		barWidth: barWidth || Number(gauge.position.width) || 0,
+		barHeight: barHeight || Number(gauge.position.height) || 0,
 		iconPlacement,
 		gauge,
 		src,
@@ -1014,30 +1014,33 @@ function fillGaugeEditor(panel, gauge) {
 		meter: ["cog-meter", "Meter"],
 		frame: ["cog-frame", "Frame"]
 	});
-	typeSel.value = normalizeGaugeType(gauge.type);
+	typeSel.value = normalizeGaugeType(gaugeSettings(gauge).type);
 	typeSel.addEventListener("change", () => {
 		const nextType = normalizeGaugeType(typeSel.value);
 		const patch = { type: nextType };
 		if (nextType === "frame") {
 			const cur = live();
-			if (Math.round(cur.width) === DEFAULT_GAUGE_WIDTH && Math.round(cur.height) === DEFAULT_GAUGE_HEIGHT) {
-				patch.width = 120;
-				patch.height = 120;
+			const cs = gaugeSettings(cur);
+			if (
+				Math.round(cur.position.width) === DEFAULT_GAUGE_WIDTH &&
+				Math.round(cur.position.height) === DEFAULT_GAUGE_HEIGHT
+			) {
+				patch.position = { width: 120, height: 120 };
 			}
-			if (!cur.pictureIcon) {
+			if (!cs.pictureIcon) {
 				patch.pictureIcon = defaultPictureIconPath();
 			}
-			if (!cur.frameShape) {
+			if (!cs.frameShape) {
 				patch.frameShape = defaultFrameShapePath();
 			}
 			// Seed stock backup defaults (copied hex, not live-linked to General).
-			if (!optionalHex(cur.frameFillColor)) {
+			if (!optionalHex(cs.frameFillColor)) {
 				patch.frameFillColor = frameDefaultFillColor();
 			}
-			if (!optionalHex(cur.frameBorderColor)) {
+			if (!optionalHex(cs.frameBorderColor)) {
 				patch.frameBorderColor = frameDefaultBorderColor();
 			}
-			if (!optionalHex(cur.pictureFade)) {
+			if (!optionalHex(cs.pictureFade)) {
 				patch.pictureFade = frameDefaultPictureFade();
 			}
 			// Frames default to always-visible; meter gauges seed false in defaultGauge.
@@ -1054,7 +1057,7 @@ function fillGaugeEditor(panel, gauge) {
 	});
 	topRow.appendChild(typeField);
 
-	const isFrame = normalizeGaugeType(gauge.type) === "frame";
+	const isFrame = normalizeGaugeType(gaugeSettings(gauge).type) === "frame";
 
 	const gearField = document.createElement("label");
 	gearField.className = "pos-field compact wide";
@@ -1069,8 +1072,8 @@ function fillGaugeEditor(panel, gauge) {
 	}
 	gearSel.appendChild(none);
 	const sources = (snapshot.sources || []).slice().sort((a, b) => {
-		const at = sourceTitle(a, a.name);
-		const bt = sourceTitle(b, b.name);
+		const at = sourceTitle(a, a.varName);
+		const bt = sourceTitle(b, b.varName);
 		return at.localeCompare(bt);
 	});
 	for (const src of sources) {
@@ -1078,14 +1081,14 @@ function fillGaugeEditor(panel, gauge) {
 			continue;
 		}
 		const o = document.createElement("option");
-		o.value = `${src.mod}\t${src.name}`;
-		o.textContent = `${sourceTitle(src, src.name)} (${src.mod})`;
+		o.value = `${src.sourceMod}\t${src.varName}`;
+		o.textContent = `${sourceTitle(src, src.varName)} (${src.sourceMod})`;
 		gearSel.appendChild(o);
 	}
-	gearSel.value = gauge.gearMod && gauge.gearName ? `${gauge.gearMod}\t${gauge.gearName}` : "";
+	gearSel.value = gauge.sourceMod && gauge.varName ? `${gauge.sourceMod}\t${gauge.varName}` : "";
 	gearSel.addEventListener("change", () => {
 		const parts = String(gearSel.value || "").split("\t");
-		patchGauge(gid, { gearMod: parts[0] || "", gearName: parts[1] || "" });
+		patchGauge(gid, { sourceMod: parts[0] || "", varName: parts[1] || "" });
 	});
 	topRow.appendChild(gearField);
 
@@ -1094,7 +1097,7 @@ function fillGaugeEditor(panel, gauge) {
 	alwaysVis.innerHTML = `<span>Always Visible</span><input type="checkbox" data-role="alwaysVisible">`;
 	tagFieldLabel(alwaysVis, "cog-always-visible", "Always Visible");
 	const alwaysBox = alwaysVis.querySelector("input");
-	alwaysBox.checked = !!gauge.alwaysVisible;
+	alwaysBox.checked = !!gaugeSettings(gauge).alwaysVisible;
 	alwaysBox.addEventListener("change", () => {
 		patchGauge(gid, { alwaysVisible: alwaysBox.checked });
 	});
@@ -1126,17 +1129,17 @@ function fillGaugeEditor(panel, gauge) {
 	const gaugeEditorBox = () => {
 		const g = live();
 		const iconSize =
-			normalizeGaugeShape(g.shape) === "arc"
-				? Math.max(MIN_GAUGE_HEIGHT, Math.round(g.height))
-				: Math.round(g.height);
+			normalizeGaugeShape(gaugeSettings(g).shape) === "arc"
+				? Math.max(MIN_GAUGE_HEIGHT, Math.round(g.position.height))
+				: Math.round(g.position.height);
 		return gaugeLayoutBox(g, iconSize);
 	};
 	const editorPos = hudItemEditorPosPct(gauge, gaugeEditorBox().w, gaugeEditorBox().h);
 	xInput.value = fmtPct(editorPos.x);
 	yInput.value = fmtPct(editorPos.y);
-	rotInput.value = (Number(gauge.rotation) || 0).toFixed(1);
-	wInput.value = String(Math.round(gauge.width));
-	hInput.value = String(Math.round(gauge.height));
+	rotInput.value = (Number(gauge.position.rotation) || 0).toFixed(1);
+	wInput.value = String(Math.round(gauge.position.width));
+	hInput.value = String(Math.round(gauge.position.height));
 	bindNumberField(xInput, {
 		suffix: "%",
 		parse: (raw) => {
@@ -1192,27 +1195,27 @@ function fillGaugeEditor(panel, gauge) {
 		},
 		apply: (v) => {
 			const g = live();
-			patchGauge(gid, { rotation: v });
+			patchGauge(gid, { position: { rotation: v } });
 			const box = gaugeEditorBox();
 			clampHudItemToScreen(g, box.w, box.h);
-			patchGauge(gid, { x: g.x, y: g.y });
+			patchGauge(gid, { position: { x: entityPosition(g).x, y: entityPosition(g).y } });
 		},
 		format: (v) => (Number(v) || 0).toFixed(1),
-		current: () => live().rotation || 0
+		current: () => live().position.rotation || 0
 	});
 	bindNumberField(wInput, {
 		suffix: "px",
 		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(MIN_GAUGE_WIDTH, Math.min(2000, Number(raw) || 0))),
-		apply: (v) => patchGauge(gid, { width: v }),
+		apply: (v) => patchGauge(gid, { position: { width: v } }),
 		format: (v) => String(Math.round(v)),
-		current: () => live().width
+		current: () => live().position.width
 	});
 	bindNumberField(hInput, {
 		suffix: "px",
 		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(MIN_GAUGE_HEIGHT, Math.min(512, Number(raw) || 0))),
-		apply: (v) => patchGauge(gid, { height: v }),
+		apply: (v) => patchGauge(gid, { position: { height: v } }),
 		format: (v) => String(Math.round(v)),
-		current: () => live().height
+		current: () => live().position.height
 	});
 
 	if (isFrame) {
@@ -1246,7 +1249,7 @@ function fillGaugeEditor(panel, gauge) {
 		bar: ["cog-bar", "Bar"],
 		arc: ["cog-arc", "Arc"]
 	});
-	shapeSel.value = normalizeGaugeShape(gauge.shape);
+	shapeSel.value = normalizeGaugeShape(gaugeSettings(gauge).shape);
 	shapeSel.addEventListener("change", () => {
 		patchGauge(gid, { shape: normalizeGaugeShape(shapeSel.value) });
 		renderEditor(true);
@@ -1258,7 +1261,7 @@ function fillGaugeEditor(panel, gauge) {
 	iconRow.className = "style-row gauge-overlay-row";
 	const iconPos = document.createElement("label");
 	iconPos.className = "pos-field compact mid";
-	iconPos.innerHTML = `<span>Show Icon</span><select data-role="showIcon">${gaugePlacementSelectHtml(gauge.showIcon)}</select>`;
+	iconPos.innerHTML = `<span>Show Icon</span><select data-role="showIcon">${gaugePlacementSelectHtml(gaugeSettings(gauge).showIcon)}</select>`;
 	tagFieldLabel(iconPos, "cog-show-icon", "Show Icon");
 	const iconPosSel = iconPos.querySelector("select");
 	tagGaugePlacementOptions(iconPosSel);
@@ -1282,7 +1285,7 @@ function fillGaugeEditor(panel, gauge) {
 		bar: ["cog-use-bar-colour", "Use Bar Colour"],
 		label: ["cog-use-title-colour", "Use Title Colour"]
 	});
-	iconColorSel.value = normalizeIconColorMode(gauge.iconColorMode);
+	iconColorSel.value = normalizeIconColorMode(gaugeSettings(gauge).iconColorMode);
 	iconColorSel.addEventListener("change", (ev) => {
 		patchGauge(gid, { iconColorMode: normalizeIconColorMode(ev.target.value) });
 	});
@@ -1293,7 +1296,7 @@ function fillGaugeEditor(panel, gauge) {
 	titleRow.className = "style-row gauge-overlay-row";
 	const titlePos = document.createElement("label");
 	titlePos.className = "pos-field compact mid";
-	titlePos.innerHTML = `<span>Show Title</span><select data-role="showLabel">${gaugePlacementSelectHtml(gauge.showLabel)}</select>`;
+	titlePos.innerHTML = `<span>Show Title</span><select data-role="showLabel">${gaugePlacementSelectHtml(gaugeSettings(gauge).showLabel)}</select>`;
 	tagFieldLabel(titlePos, "cog-show-title", "Show Title");
 	const titlePosSel = titlePos.querySelector("select");
 	tagGaugePlacementOptions(titlePosSel);
@@ -1317,7 +1320,7 @@ function fillGaugeEditor(panel, gauge) {
 		bar: ["cog-use-bar-colour", "Use Bar Colour"],
 		icon: ["cog-use-icon-colours", "Use Icon Colours"]
 	});
-	titleColorSel.value = normalizeLabelColorMode(gauge.labelColorMode);
+	titleColorSel.value = normalizeLabelColorMode(gaugeSettings(gauge).labelColorMode);
 	titleColorSel.addEventListener("change", (ev) => {
 		patchGauge(gid, { labelColorMode: normalizeLabelColorMode(ev.target.value) });
 	});
@@ -1328,7 +1331,7 @@ function fillGaugeEditor(panel, gauge) {
 	countRow.className = "style-row gauge-overlay-row";
 	const countPos = document.createElement("label");
 	countPos.className = "pos-field compact mid";
-	countPos.innerHTML = `<span>Show Number</span><select data-role="showNumber">${gaugePlacementSelectHtml(gauge.showNumber)}</select>`;
+	countPos.innerHTML = `<span>Show Number</span><select data-role="showNumber">${gaugePlacementSelectHtml(gaugeSettings(gauge).showNumber)}</select>`;
 	tagFieldLabel(countPos, "cog-show-number", "Show Number");
 	const countPosSel = countPos.querySelector("select");
 	tagGaugePlacementOptions(countPosSel);
@@ -1352,7 +1355,7 @@ function fillGaugeEditor(panel, gauge) {
 		bar: ["cog-use-bar-colour", "Use Bar Colour"],
 		icon: ["cog-use-icon-colours", "Use Icon Colours"]
 	});
-	countColorSel.value = normalizeLabelColorMode(gauge.numberColorMode);
+	countColorSel.value = normalizeLabelColorMode(gaugeSettings(gauge).numberColorMode);
 	countColorSel.addEventListener("change", (ev) => {
 		patchGauge(gid, { numberColorMode: normalizeLabelColorMode(ev.target.value) });
 	});
@@ -1362,15 +1365,15 @@ function fillGaugeEditor(panel, gauge) {
 	countPct.innerHTML = `<span>Show Number as Percentage</span><input type="checkbox" data-role="numberAsPercent">`;
 	tagFieldLabel(countPct, "cog-show-number-as-percentage", "Show Number as Percentage");
 	const countPctInput = countPct.querySelector("input");
-	countPctInput.checked = gauge.numberAsPercent === true;
+	countPctInput.checked = gaugeSettings(gauge).numberAsPercent === true;
 	countPctInput.addEventListener("change", () => {
 		patchGauge(gid, { numberAsPercent: countPctInput.checked });
 	});
 	countRow.appendChild(countPct);
 	panel.appendChild(countRow);
 
-	const meterShape = normalizeGaugeShape(gauge.shape);
-	if (normalizeGaugeType(gauge.type) === "meter" && (meterShape === "bar" || meterShape === "arc")) {
+	const meterShape = normalizeGaugeShape(gaugeSettings(gauge).shape);
+	if (normalizeGaugeType(gaugeSettings(gauge).type) === "meter" && (meterShape === "bar" || meterShape === "arc")) {
 		appendEditorRule(panel);
 		const shapeLede = document.createElement("p");
 		shapeLede.className = "lede";
@@ -1406,7 +1409,7 @@ function fillGaugeEditor(panel, gauge) {
 		rowA.className = "style-row";
 		const borderColor = makeOptionalColorField(
 			"Border Colour",
-			gauge.borderColor,
+			gaugeSettings(gauge).borderColor,
 			themeBorder(),
 			(hex, live) => patchGauge(gid, { borderColor: hex }, false, live)
 		);
@@ -1419,13 +1422,13 @@ function fillGaugeEditor(panel, gauge) {
 		thick.innerHTML = `<span>Border Thickness</span><input type="number" min="0" max="50" step="0.5" data-role="borderThickness">`;
 		tagFieldLabel(thick, "cog-border-thickness", "Border Thickness");
 		const thickInput = thick.querySelector("input");
-		thickInput.value = fmtDec(gauge.borderThickness, 1);
+		thickInput.value = fmtDec(gaugeSettings(gauge).borderThickness, 1);
 		bindNumberField(thickInput, {
 			suffix: "%",
 			parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(50, Number(raw) || 0))),
 			apply: (v) => patchGauge(gid, { borderThickness: v }),
 			decimals: 1,
-			current: () => live().borderThickness
+			current: () => gaugeSettings(live()).borderThickness
 		});
 		rowA.appendChild(thick);
 
@@ -1441,12 +1444,12 @@ function fillGaugeEditor(panel, gauge) {
 			border: ["cog-extend-border", "Extend Border"],
 			endcap: ["cog-use-endcap", "Use Endcap"]
 		});
-		endModeSel.value = normalizeEndCapMode(gauge.endCapMode, gauge.endCap);
+		endModeSel.value = normalizeEndCapMode(gaugeSettings(gauge).endCapMode, gaugeSettings(gauge).endCap);
 		rowA.appendChild(endMode);
 		endModeSel.addEventListener("change", () => {
-			const mode = normalizeEndCapMode(endModeSel.value, gauge.endCap) || "border";
+			const mode = normalizeEndCapMode(endModeSel.value, gaugeSettings(gauge).endCap) || "border";
 			const patch = { endCapMode: mode };
-			if (mode === "endcap" && !migrateEndCapPath(live().endCap)) {
+			if (mode === "endcap" && !migrateEndCapPath(gaugeSettings(live()).endCap)) {
 				patch.endCap = defaultEndCapArtPath();
 			}
 			patchGauge(gid, patch);
@@ -1462,7 +1465,7 @@ function fillGaugeEditor(panel, gauge) {
 			endArtRow.className = "style-row endcap-row";
 			const endCaps = makeIconControl({
 				label: "Endcap",
-				value: gauge.endCap,
+				value: gaugeSettings(gauge).endCap,
 				folder: "Endcaps",
 				endArtPicker: true,
 				clearLabel:
@@ -1481,13 +1484,13 @@ function fillGaugeEditor(panel, gauge) {
 			overlap.innerHTML = `<span>Overlap</span><input type="number" min="0" max="45" step="0.5" data-role="endCapOverlap">`;
 			tagFieldLabel(overlap, "cog-overlap", "Overlap");
 			const overlapInput = overlap.querySelector("input");
-			overlapInput.value = fmtDec(gauge.endCapOverlap, 1);
+			overlapInput.value = fmtDec(gaugeSettings(gauge).endCapOverlap, 1);
 			bindNumberField(overlapInput, {
 				suffix: "%",
 				parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(45, Number(raw) || 0))),
 				apply: (v) => patchGauge(gid, { endCapOverlap: v }),
 				decimals: 1,
-				current: () => live().endCapOverlap
+				current: () => gaugeSettings(live()).endCapOverlap
 			});
 			endArtRow.appendChild(overlap);
 			panel.appendChild(endArtRow);
@@ -1500,13 +1503,13 @@ function fillGaugeEditor(panel, gauge) {
 		trough.innerHTML = `<span>Trough Opacity</span><input type="number" min="0" max="100" step="1" data-role="troughOpacity">`;
 		tagFieldLabel(trough, "cog-trough-opacity", "Trough Opacity");
 		const troughInput = trough.querySelector("input");
-		troughInput.value = fmtDec(gauge.troughOpacity, 0);
+		troughInput.value = fmtDec(gaugeSettings(gauge).troughOpacity, 0);
 		bindNumberField(troughInput, {
 			suffix: "%",
 			parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(100, Number(raw) || 0))),
 			apply: (v) => patchGauge(gid, { troughOpacity: v }),
 			decimals: 0,
-			current: () => live().troughOpacity
+			current: () => gaugeSettings(live()).troughOpacity
 		});
 		rowC.appendChild(trough);
 
@@ -1524,7 +1527,7 @@ function fillGaugeEditor(panel, gauge) {
 			right: ["cog-from-right", "From Right"],
 			center: ["cog-from-center", "From Center"]
 		});
-		fillDirSel.value = normalizeFillDirection(gauge.fillDirection);
+		fillDirSel.value = normalizeFillDirection(gaugeSettings(gauge).fillDirection);
 		fillDirSel.addEventListener("change", (ev) => {
 			patchGauge(gid, { fillDirection: normalizeFillDirection(ev.target.value) });
 		});
@@ -1595,8 +1598,9 @@ function renderGauges(body) {
 			<div class="accordion-body" data-role="gaugeBody"></div>`;
 		const title = details.querySelector(".group-title");
 		const nameInput = details.querySelector('[data-role="displayName"]');
-		title.textContent = gauge.displayName || "Gauge";
-		nameInput.value = gauge.displayName || "Gauge";
+		const gaugeTitle = () => gaugeSettings(gauge).displayName || "Gauge";
+		title.textContent = gaugeTitle();
+		nameInput.value = gaugeTitle();
 		const end = details.querySelector(".end");
 		const edit = document.createElement("button");
 		edit.type = "button";
@@ -1616,11 +1620,12 @@ function renderGauges(body) {
 			nameInput.hidden = true;
 			title.hidden = false;
 			if (save) {
-				const next = nameInput.value.trim() || gauge.displayName || "Gauge";
+				const next = nameInput.value.trim() || gaugeTitle();
 				patchGauge(gauge.id, { displayName: next });
-				title.textContent = gaugeFor(gauge.id)?.displayName || next;
+				const refreshed = gaugeFor(gauge.id);
+				title.textContent = refreshed ? gaugeSettings(refreshed).displayName || next : next;
 			} else {
-				nameInput.value = gauge.displayName || "Gauge";
+				nameInput.value = gaugeTitle();
 			}
 		};
 		edit.addEventListener("click", () => {
@@ -1628,7 +1633,7 @@ function renderGauges(body) {
 			details.classList.add("is-renaming");
 			title.hidden = true;
 			nameInput.hidden = false;
-			nameInput.value = gauge.displayName || "Gauge";
+			nameInput.value = gaugeTitle();
 			parkRenameFieldForEdit(details, nameInput);
 			nameInput.focus();
 			nameInput.select();

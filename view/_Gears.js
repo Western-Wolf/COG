@@ -21,14 +21,14 @@ function sourceTitle(src, fallback, gear) {
 	const look = appearanceOf(gear, src);
 	// Prefer a candidate that exists in the name: catalog (case-insensitive). Live
 	// registration displayName is first; defaults/settings may be case-drifted
-	// ("stamina") or already localized; gear.name covers Health/Stamina/Magicka when
+	// ("stamina") or already localized; gear.varName covers Health/Stamina/Magicka when
 	// displayName is missing (not CarryWeight — that needs "Carry Weight").
 	const candidates = [
 		src && (src.displayName || src.display),
 		gear && gear.defaults && gear.defaults.displayName,
 		look && look.displayName,
-		src && src.name,
-		gear && gear.name,
+		src && src.varName,
+		gear && gear.varName,
 		fallback
 	];
 	let englishKey = "";
@@ -60,8 +60,8 @@ function sourceTitle(src, fallback, gear) {
 	if (display) {
 		return titleCaseLabel(display);
 	}
-	if (src && src.name) {
-		return titleCaseLabel(src.name);
+	if (src && src.varName) {
+		return titleCaseLabel(src.varName);
 	}
 	return titleCaseLabel(fallback || "—");
 }
@@ -70,7 +70,7 @@ function sourceTitle(src, fallback, gear) {
 function gearTitleSig(src, gear) {
 	const lang =
 		(typeof snapshot !== "undefined" && snapshot.general && snapshot.general.language) || "";
-	return `${lang}|${sourceTitle(src, gear && gear.name, gear)}`;
+	return `${lang}|${sourceTitle(src, gear && gear.varName, gear)}`;
 }
 
 function typeLabel(type) {
@@ -150,9 +150,9 @@ function sourceMatchesFilters(src) {
 	if (!q) {
 		return true;
 	}
-	const gear = gearBySource(src.mod, src.name);
+	const gear = gearBySource(src.sourceMod, src.varName);
 	const display = appearanceOf(gear, src).displayName || src.displayName || "";
-	const hay = `${display} ${src.name || ""} ${src.mod || ""} ${src.category || ""} ${src.type || ""} ${typeLabel(src.type)}`.toLowerCase();
+	const hay = `${display} ${src.varName || ""} ${src.sourceMod || ""} ${src.category || ""} ${src.type || ""} ${typeLabel(src.type)}`.toLowerCase();
 	return hay.includes(q);
 }
 
@@ -168,12 +168,29 @@ function emptyAppearance() {
 	};
 }
 
-function normalizeAppearance(raw) {
+function normalizeAppearance(raw, label) {
 	const a = raw && typeof raw === "object" ? raw : {};
+	const tag = label || "appearance";
+	stripUnknownKeys(
+		a,
+		["displayName", "icon", "iconColor", "barColor", "hideAt", "hudLinkedElement", "hudHideDuplicate"],
+		tag,
+		{ legacySet: ["display", "startColor", "endColor"], deleteUnknown: false }
+	);
+	noteMigrationIf(
+		!String(a.displayName || "").trim() && String(a.display || "").trim(),
+		`${tag} display → displayName`
+	);
+	noteMigrationIf(
+		(Object.prototype.hasOwnProperty.call(a, "startColor") ||
+			Object.prototype.hasOwnProperty.call(a, "endColor")) &&
+			!String(a.iconColor || "").trim(),
+		`${tag} startColor/endColor → iconColor`
+	);
 	return {
 		// Migration Code for Transition from v1.01 or earlier to v1.1: legacy appearance title `display` -> `displayName`.
 		displayName: String(a.displayName || a.display || ""),
-		icon: normalizeIconRelPath(String(a.icon || "")),
+		icon: normalizeIconRampValue(a.icon),
 		iconColor: normalizeColorRampValue(a.iconColor, a.startColor, a.endColor),
 		barColor: normalizeColorRampValue(a.barColor, "", ""),
 		hideAt: String(a.hideAt || ""),
@@ -186,9 +203,10 @@ function ensureGearAppearance(gear) {
 	if (!gear) {
 		return;
 	}
+	const gid = gear.id || gear.varName || "?";
 	// Migration Code for Transition from v1.01 or earlier to v1.1: normalizeAppearance copies legacy `display` into `displayName`.
-	gear.defaults = normalizeAppearance(gear.defaults);
-	gear.settings = normalizeAppearance(gear.settings);
+	gear.defaults = normalizeAppearance(gear.defaults, `gear ${gid} defaults`);
+	gear.settings = normalizeAppearance(gear.settings, `gear ${gid} settings`);
 	gear.locked = !!gear.locked;
 }
 
@@ -203,8 +221,8 @@ function appearanceOf(gear, src) {
 		return {
 			displayName:
 				s.displayName ||
-				(src && (src.displayName || src.display || src.name)) ||
-				(gear && gear.name) ||
+				(src && (src.displayName || src.display || src.varName)) ||
+				(gear && gear.varName) ||
 				"",
 			icon: s.icon || "",
 			iconColor: s.iconColor || "",
@@ -220,7 +238,7 @@ function appearanceOf(gear, src) {
 	const srcBar = src ? normalizeColorRampValue(src.barColor, "", "") : "";
 	return {
 		// Migration Code for Transition from v1.01 or earlier to v1.1: accept legacy live `display`.
-		displayName: (src && (src.displayName || src.display || src.name)) || (gear && gear.name) || "",
+		displayName: (src && (src.displayName || src.display || src.varName)) || (gear && gear.varName) || "",
 		icon: (src && src.icon) || "",
 		iconColor: srcIcon,
 		barColor: srcBar,
@@ -234,8 +252,8 @@ function usesGroupColors(gear, group) {
 	if (!gear || !group) {
 		return false;
 	}
-	const style = ensureGroupStyle(group);
-	return !!(style.useGroupColors && !gear.exemptFromGroupColors);
+	const style = ensureGroupSettings(group);
+	return !!(style.useGroupColors && !gearExemptFromGroupColors(group, gear.id));
 }
 
 function meterPercent(src) {
@@ -245,7 +263,7 @@ function meterPercent(src) {
 function resolvedPalette(src, gear, group) {
 	const pct = meterPercent(src);
 	if (usesGroupColors(gear, group)) {
-		const style = ensureGroupStyle(group);
+		const style = ensureGroupSettings(group);
 		const iconRamp = normalizeColorRampValue(style.iconColor, style.startColor, style.endColor);
 		const barRamp = normalizeColorRampValue(style.barColor, "", "");
 		return {
@@ -293,7 +311,7 @@ function iconRatio(src) {
 
 function neutralIconModeFor(gear, group) {
 	return usesGroupColors(gear, group)
-		? normalizeNeutralIconMode(ensureGroupStyle(group).neutralIconMode)
+		? normalizeNeutralIconMode(ensureGroupSettings(group).neutralIconMode)
 		: normalizeNeutralIconMode(snapshot.general && snapshot.general.neutralIconMode);
 }
 
@@ -338,7 +356,7 @@ function sourceIconPaint(src, gear, group) {
 /** User iconColor ramp only — no General theme fallback (blank = native for GIF/WebP). */
 function iconTintRamp(src, gear, group) {
 	if (usesGroupColors(gear, group)) {
-		const style = ensureGroupStyle(group);
+		const style = ensureGroupSettings(group);
 		return normalizeColorRampValue(style.iconColor, style.startColor, style.endColor);
 	}
 	return appearanceOf(gear, src).iconColor || "";
@@ -519,12 +537,12 @@ function applyIconPaint(el, src, gear, group) {
 }
 
 function iconPaintSig(src, gear, group) {
-	const style = group ? ensureGroupStyle(group) : null;
+	const style = group ? ensureGroupSettings(group) : null;
 	const look = appearanceOf(gear, src);
 	const mode = neutralIconModeFor(gear, group);
 	const palette = resolvedPalette(src, gear, group);
 	return [
-		gear && gear.exemptFromGroupColors ? "1" : "0",
+		gear && group && gearExemptFromGroupColors(group, gear.id) ? "1" : "0",
 		style && style.useGroupColors ? "1" : "0",
 		src && src.type === "count" ? mode : "ratio",
 		look.icon,
@@ -662,7 +680,7 @@ function hideAtRevealProgress(rule, amount, opts) {
 }
 
 function groupFillFromHidden(group) {
-	return ensureGroupStyle(group).fillFromHidden || "";
+	return ensureGroupSettings(group).fillFromHidden || "";
 }
 
 /** Directional fill modes for hideAt reveal (percent/timer). */
@@ -1022,17 +1040,53 @@ function normalizeGearsSnapshot() {
 		snapshot.gears = [];
 	}
 	for (const gear of snapshot.gears) {
+		const gid = (gear && (gear.id || gear.varName)) || "?";
 		delete gear.style;
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy gear identity keys "mod"/"name" become sourceMod/varName.
+		if (!String(gear.sourceMod || "").trim() && String(gear.mod || "").trim()) {
+			gear.sourceMod = String(gear.mod).trim();
+			noteMigration(`gear ${gid} mod → sourceMod`);
+		}
+		if (!String(gear.varName || "").trim() && String(gear.name || "").trim()) {
+			gear.varName = String(gear.name).trim();
+			noteMigration(`gear ${gid} name → varName`);
+		}
+		delete gear.mod;
+		delete gear.name;
+		gear.sourceMod = String(gear.sourceMod || "");
+		gear.varName = String(gear.varName || "");
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Builtin Vampiric Hunger varName Bloodlust → VampiricHunger (id COG_Builtin_Bloodlust → COG_Builtin_VampiricHunger).
+		if (
+			String(gear.sourceMod).toLowerCase() === "cog.builtin" &&
+			String(gear.varName).toLowerCase() === "bloodlust"
+		) {
+			noteMigration(`gear ${gid} COG.Builtin Bloodlust → VampiricHunger`);
+			gear.varName = "VampiricHunger";
+			gear.sourceMod = "COG.Builtin";
+			const oldId = gearIdFor("COG.Builtin", "Bloodlust");
+			if (!gear.id || String(gear.id).toLowerCase() === oldId.toLowerCase()) {
+				gear.id = gearIdFor("COG.Builtin", "VampiricHunger");
+			}
+		}
 		ensureGearAppearance(gear);
 	}
 }
 
 /** Live AV/percent push from SKSE — update matching HUD gear nodes without a full rebuild. */
 function applyLivePercentToHud(incoming) {
-	if (!incoming || !incoming.mod || !incoming.name) {
+	if (!incoming) {
 		return;
 	}
-	const src = sourceFor(incoming.mod, incoming.name);
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Prefer sourceMod/varName; accept legacy live keys mod/name.
+	const sourceMod = String(incoming.sourceMod || incoming.mod || "");
+	const varName = String(incoming.varName || incoming.name || "");
+	if (!sourceMod || !varName) {
+		return;
+	}
+	const src = sourceFor(sourceMod, varName);
 	if (!src) {
 		return;
 	}
@@ -1046,9 +1100,9 @@ function applyLivePercentToHud(incoming) {
 	if (drag) {
 		return;
 	}
-	const gear = gearBySource(incoming.mod, incoming.name);
+	const gear = gearBySource(sourceMod, varName);
 	const preview = document.body.classList.contains("is-focused");
-	const needle = `\t${incoming.mod}\t${incoming.name}`;
+	const needle = `\t${sourceMod}\t${varName}`;
 	let saw = false;
 	let needsRebuild = false;
 	for (const el of document.querySelectorAll(".gear[data-gear-key]")) {
@@ -1077,7 +1131,7 @@ function applyLivePercentToHud(incoming) {
 					trough.style.borderColor = sourceBorderColor(src, gear, group);
 				}
 			}
-			const style = ensureGroupStyle(group || {});
+			const style = ensureGroupSettings(group || {});
 			const showTotal =
 				style.showNumber !== false && usesRatio(src) && numberFormatShowsTotal(style.numberFormat);
 			for (const value of el.querySelectorAll(".gear-value")) {
@@ -1089,7 +1143,8 @@ function applyLivePercentToHud(incoming) {
 	}
 	if (!saw && gear) {
 		const wouldShow = (snapshot.groups || []).some((g) => {
-			if (!(g.gearIds || []).includes(gear.id)) {
+			const ids = (g.settings && g.settings.gearIds) || g.gearIds || [];
+			if (!ids.includes(gear.id)) {
 				return false;
 			}
 			return preview || gearHudAlpha(src, gear, g) > 0;
@@ -1153,7 +1208,7 @@ function applyLivePatchToHud() {
 					trough.style.borderColor = sourceBorderColor(src, gear, group);
 				}
 			}
-			const style = ensureGroupStyle(group || {});
+			const style = ensureGroupSettings(group || {});
 			const showTotal =
 				style.showNumber !== false && usesRatio(src) && numberFormatShowsTotal(style.numberFormat);
 			for (const value of el.querySelectorAll(".gear-value")) {
@@ -1167,11 +1222,15 @@ function applyLivePatchToHud() {
 	// hideAt can remove gears from the DOM; when they should reappear there is no node to patch.
 	if (!needsRebuild) {
 		for (const group of snapshot.groups || []) {
-			if (typeof isGroupVisible === "function" && !isGroupVisible(group) && !preview) {
+			const vis = typeof groupVisibility === "function" ? groupVisibility(group) : "hud";
+			if (vis === "none" && !preview) {
+				continue;
+			}
+			if (vis === "hud" && !hudVisible && !preview) {
 				continue;
 			}
 			for (const gear of gearsInGroup(group.id)) {
-				const src = sourceFor(gear.mod, gear.name);
+				const src = sourceFor(gear.sourceMod, gear.varName);
 				if (!src) {
 					continue;
 				}
@@ -1195,7 +1254,7 @@ function applyLivePatchToHud() {
 			safeCall(`applyLivePatch:gauge:${gauge.id != null ? gauge.id : "?"}`, () => {
 				const el = findHudGaugeEl(gauge.id);
 				const { src, gear } = typeof gaugeLinked === "function" ? gaugeLinked(gauge) : { src: null, gear: null };
-				const stayVisible = !!gauge.alwaysVisible;
+				const stayVisible = !!gaugeSettings(gauge).alwaysVisible;
 				const hidden = !stayVisible && !!(src && typeof isHudHidden === "function" && isHudHidden(src, gear));
 				if (!el) {
 					if (preview || stayVisible || !hidden) {
@@ -1225,17 +1284,24 @@ function applyLivePercentToBoundGauges(incoming, preview) {
 	if (!incoming || typeof patchHudGaugeLive !== "function" || typeof findHudGaugeEl !== "function") {
 		return false;
 	}
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Prefer sourceMod/varName; accept legacy live keys mod/name.
+	const sourceMod = String(incoming.sourceMod || incoming.mod || "");
+	const varName = String(incoming.varName || incoming.name || "");
+	if (!sourceMod || !varName) {
+		return false;
+	}
 	let needsRebuild = false;
 	let saw = false;
 	for (const gauge of snapshot.gauges || []) {
-		if (gauge.gearMod !== incoming.mod || gauge.gearName !== incoming.name) {
+		if (gauge.sourceMod !== sourceMod || gauge.varName !== varName) {
 			continue;
 		}
 		saw = true;
 		safeCall(`patchHudGaugeLive:${gauge.id != null ? gauge.id : "?"}`, () => {
 			const el = findHudGaugeEl(gauge.id);
 			const { src, gear } = typeof gaugeLinked === "function" ? gaugeLinked(gauge) : { src: null, gear: null };
-			const stayVisible = !!gauge.alwaysVisible;
+			const stayVisible = !!gaugeSettings(gauge).alwaysVisible;
 			const hidden = !stayVisible && !!(src && typeof isHudHidden === "function" && isHudHidden(src, gear));
 			if (!el) {
 				if (preview || stayVisible || !hidden) {
@@ -1251,7 +1317,7 @@ function applyLivePercentToBoundGauges(incoming, preview) {
 }
 
 function isInventoryGear(gear) {
-	return gear && gear.mod === INVENTORY_GEAR_MOD;
+	return gear && gear.sourceMod === INVENTORY_GEAR_MOD;
 }
 
 function isProtectedInventoryGear(gear) {
@@ -1265,8 +1331,8 @@ function inventoryGears() {
 			if (a.locked !== b.locked) {
 				return a.locked ? -1 : 1;
 			}
-			const an = appearanceOf(a, sourceFor(a.mod, a.name)).displayName || a.name || "";
-			const bn = appearanceOf(b, sourceFor(b.mod, b.name)).displayName || b.name || "";
+			const an = appearanceOf(a, sourceFor(a.sourceMod, a.varName)).displayName || a.varName || "";
+			const bn = appearanceOf(b, sourceFor(b.sourceMod, b.varName)).displayName || b.varName || "";
 			return an.localeCompare(bn) || String(a.id).localeCompare(String(b.id));
 		});
 }
@@ -1279,15 +1345,17 @@ function gearFor(id) {
 	return snapshot.gears.find((g) => g.id === id);
 }
 
-function gearIdFor(mod, name) {
-	return `${mod}_${name}`.replace(/[^A-Za-z0-9_-]+/g, "_");
+function gearIdFor(sourceMod, varName) {
+	return `${sourceMod}_${varName}`.replace(/[^A-Za-z0-9_-]+/g, "_");
 }
 
-function gearBySource(mod, name) {
-	const m = String(mod || "").toLowerCase();
-	const n = String(name || "").toLowerCase();
+function gearBySource(sourceMod, varName) {
+	const m = String(sourceMod || "").toLowerCase();
+	const n = String(varName || "").toLowerCase();
 	return snapshot.gears.find(
-		(g) => String(g.mod || "").toLowerCase() === m && String(g.name || "").toLowerCase() === n
+		(g) =>
+			String(g.sourceMod || g.mod || "").toLowerCase() === m &&
+			String(g.varName || g.name || "").toLowerCase() === n
 	);
 }
 
@@ -1338,7 +1406,7 @@ function fitGearLabels() {
 }
 
 function hudGearKey(groupId, gear) {
-	return `${groupId}\t${gear.mod}\t${gear.name}`;
+	return `${groupId}\t${gear.sourceMod}\t${gear.varName}`;
 }
 
 function barPercent(src) {
@@ -1457,7 +1525,7 @@ function buildGearEl(groupId, gear, src, style, stack, preview, group) {
 		if (style.showLabel) {
 			const label = document.createElement("div");
 			label.className = "gear-label";
-			label.textContent = sourceTitle(src, gear.name, gear);
+			label.textContent = sourceTitle(src, gear.varName, gear);
 			copy.appendChild(label);
 		}
 		el.appendChild(copy);
@@ -1491,6 +1559,8 @@ function renderGears() {
 	if (!hudVisible && !preview) {
 		// Keep HUD DOM mounted; body.hud-hidden hides it via CSS. Destroying here made
 		// quicksave/Loading Menu flash every element as it was rebuilt on show.
+		// Still sync gauges/gizmos so visibility "ui" (and alwaysVisible gauges) can mount.
+		syncHudGauges(root, frontRoot, false);
 		syncHudGizmos(root, frontRoot, false);
 		syncHudFrontLayer();
 		return;
@@ -1499,19 +1569,20 @@ function renderGears() {
 	const keepGroups = new Set();
 	for (const group of snapshot.groups) {
 		const isFront = preview && activeTab === "groups" && openGroupId === group.id;
-		if (!isGroupVisible(group) && !preview) {
+		const visibility = typeof groupVisibility === "function" ? groupVisibility(group) : "hud";
+		// none: editor preview only; hud: with vanilla HUD; ui: also while soft-hidden (menus).
+		if (visibility === "none" && !preview) {
 			continue;
 		}
-		// Soft-hide normally drops non-front HUD; editor preview keeps everything mounted.
-		if (!hudVisible && !preview) {
+		if (visibility === "hud" && !hudVisible && !preview) {
 			continue;
 		}
 		const dest = isFront && frontRoot ? frontRoot : root;
-		const style = ensureGroupStyle(group);
-		const stack = normalizeStack(group.stack);
+		const style = ensureGroupSettings(group);
+		const stack = normalizeStack(ensureGroupSettings(group).stack);
 		const wanted = [];
 		for (const gear of gearsInGroup(group.id)) {
-			const src = sourceFor(gear.mod, gear.name);
+			const src = sourceFor(gear.sourceMod, gear.varName);
 			if (!src) {
 				continue;
 			}
@@ -1562,8 +1633,9 @@ function renderGears() {
 			dest.appendChild(groupEl);
 			created = true;
 		}
-		groupEl.classList.toggle("is-preview", !isGroupVisible(group));
+		groupEl.classList.toggle("is-preview", visibility === "none");
 		groupEl.classList.toggle("is-front", isFront);
+		groupEl.dataset.visibility = visibility;
 		let slots = groupEl.querySelector(".hud-slots");
 		if (!slots) {
 			slots = document.createElement("div");
@@ -1707,14 +1779,14 @@ function filteredPickerSources() {
 }
 
 function gearMatchesFilters(gear) {
-	const src = sourceFor(gear.mod, gear.name);
+	const src = sourceFor(gear.sourceMod, gear.varName);
 	const look = appearanceOf(gear, src);
 	const probe = src
 		? { ...src, displayName: look.displayName || src.displayName }
 		: {
-				mod: gear.mod,
-				name: gear.name,
-				displayName: look.displayName || gear.name,
+				sourceMod: gear.sourceMod,
+				varName: gear.varName,
+				displayName: look.displayName || gear.varName,
 				category: "",
 				type: ""
 			};
@@ -1725,8 +1797,8 @@ function filteredEditGears() {
 	return [...(snapshot.gears || [])]
 		.filter((gear) => !isInventoryGear(gear) && gearMatchesFilters(gear))
 		.sort((a, b) => {
-			const an = appearanceOf(a, sourceFor(a.mod, a.name)).displayName || a.name || "";
-			const bn = appearanceOf(b, sourceFor(b.mod, b.name)).displayName || b.name || "";
+			const an = appearanceOf(a, sourceFor(a.sourceMod, a.varName)).displayName || a.varName || "";
+			const bn = appearanceOf(b, sourceFor(b.sourceMod, b.varName)).displayName || b.varName || "";
 			return an.localeCompare(bn) || String(a.id).localeCompare(String(b.id));
 		});
 }
@@ -1770,13 +1842,13 @@ function fillEditGearPicker() {
 		pickerIndex = Math.max(0, Math.min(pickerIndex, options.length - 1));
 	}
 	options.forEach((gear, i) => {
-		const src = sourceFor(gear.mod, gear.name);
+		const src = sourceFor(gear.sourceMod, gear.varName);
 		const li = document.createElement("li");
 		if (i === pickerIndex || gear.id === editGearId) {
 			li.className = "is-active";
 		}
 		li.innerHTML = `<span class="opt-title"></span><span class="opt-meta"></span>`;
-		li.querySelector(".opt-title").textContent = sourceTitle(src, gear.name, gear);
+		li.querySelector(".opt-title").textContent = sourceTitle(src, gear.varName, gear);
 		const placed = effectiveGroupId(gear);
 		const bits = [translateCategoryLabel((src && src.category) || "—"), typeLabel(src && src.type)];
 		if (placed) {
@@ -1864,7 +1936,7 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 		return;
 	}
 	ensureGearAppearance(gear);
-	const src = sourceFor(gear.mod, gear.name);
+	const src = sourceFor(gear.sourceMod, gear.varName);
 	const look = gear.settings;
 	const placed = effectiveGroupId(gear);
 	const form = document.createElement("div");
@@ -1909,17 +1981,17 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 		: typeof t === "function"
 			? t("cog-unplaced", "Unplaced")
 			: "Unplaced";
-	form.querySelector('[data-role="heading"]').textContent = `${sourceTitle(src, gear.name, gear)} · ${placeLabel}`;
+	form.querySelector('[data-role="heading"]').textContent = `${sourceTitle(src, gear.varName, gear)} · ${placeLabel}`;
 	const metaEl = form.querySelector('[data-role="meta"]');
 	if (src) {
-		const metaVars = { mod: gear.mod, name: gear.name, meta: sourceMeta(src) };
+		const metaVars = { mod: gear.sourceMod, name: gear.varName, meta: sourceMeta(src) };
 		if (typeof setTranslatedText === "function") {
 			setTranslatedText(metaEl, "cog-gear-meta-mod", "Mod {mod} · {name} · {meta}", metaVars);
 		} else {
-			metaEl.textContent = `Mod ${gear.mod} · ${gear.name} · ${sourceMeta(src)}`;
+			metaEl.textContent = `Mod ${gear.sourceMod} · ${gear.varName} · ${sourceMeta(src)}`;
 		}
 	} else {
-		const metaVars = { mod: gear.mod, name: gear.name };
+		const metaVars = { mod: gear.sourceMod, name: gear.varName };
 		if (typeof setTranslatedText === "function") {
 			setTranslatedText(
 				metaEl,
@@ -1928,7 +2000,7 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 				metaVars
 			);
 		} else {
-			metaEl.textContent = `Mod ${gear.mod} · ${gear.name} · (source not registered this session)`;
+			metaEl.textContent = `Mod ${gear.sourceMod} · ${gear.varName} · (source not registered this session)`;
 		}
 	}
 	const displayInput = form.querySelector('[data-role="displayName"]');
@@ -2017,7 +2089,7 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 	if (hudRow) {
 		hudRow.appendChild(
 			makeInfoTip(
-				"While this gear is exposed (enabled in a visible group, or a visible gauge bound to it), soft-hide the HUD target. Use an alias (e.g. hud.casting) or a raw menu/path (e.g. HUD Menu|HUDMovieBaseInstance.Health).",
+				"While this gear is exposed (shown on a visible group or bound to a visible gauge), soft-hide the HUD target. Use an alias (e.g. hud.casting) or a raw menu/path (e.g. HUD Menu|HUDMovieBaseInstance.Health).",
 				"cog-gear-hud-suppress-tip"
 			)
 		);
@@ -2095,7 +2167,7 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 			: typeof t === "function"
 				? t("cog-unplaced", "Unplaced")
 				: "Unplaced";
-		form.querySelector('[data-role="heading"]').textContent = `${sourceTitle(sourceFor(gear.mod, gear.name), gear.name, gear)} · ${nextPlaceLabel}`;
+		form.querySelector('[data-role="heading"]').textContent = `${sourceTitle(sourceFor(gear.sourceMod, gear.varName), gear.varName, gear)} · ${nextPlaceLabel}`;
 		if (key === "displayName") {
 			refreshInventoryGearChrome(gear.id);
 		}
@@ -2225,8 +2297,8 @@ function fillPicker() {
 			li.className = "is-active";
 		}
 		li.innerHTML = `<span class="opt-title"></span><span class="opt-meta"></span>`;
-		li.querySelector(".opt-title").textContent = sourceTitle(src, src.name, gearBySource(src.mod, src.name));
-		const placed = gearBySource(src.mod, src.name);
+		li.querySelector(".opt-title").textContent = sourceTitle(src, src.varName, gearBySource(src.sourceMod, src.varName));
+		const placed = gearBySource(src.sourceMod, src.varName);
 		const bits = [translateCategoryLabel(src.category || "—"), typeLabel(src.type)];
 		if (placed) {
 			const groupName = groupDisplayName(effectiveGroupId(placed));
@@ -2254,12 +2326,12 @@ function addGear(src, groupId) {
 		}
 		return;
 	}
-	const existing = gearBySource(src.mod, src.name);
-	const gearId = gearIdFor(src.mod, src.name);
+	const existing = gearBySource(src.sourceMod, src.varName);
+	const gearId = gearIdFor(src.sourceMod, src.varName);
 	if (!existing) {
 		const look = {
-			displayName: src.displayName || src.name || "",
-			icon: src.icon || "",
+			displayName: src.displayName || src.varName || "",
+			icon: normalizeIconRampValue(src.icon),
 			iconColor: normalizeColorRampValue(src.iconColor, src.startColor, src.endColor),
 			barColor: normalizeColorRampValue(src.barColor, "", ""),
 			hideAt: src.hideAt || "",
@@ -2268,9 +2340,8 @@ function addGear(src, groupId) {
 		};
 		snapshot.gears.push({
 			id: gearId,
-			mod: src.mod,
-			name: src.name,
-			enabled: true,
+			sourceMod: src.sourceMod,
+			varName: src.varName,
 			defaults: { ...look },
 			settings: { ...look }
 		});
@@ -2353,13 +2424,13 @@ function resetGearSettings(id) {
 		return;
 	}
 	ensureGearAppearance(gear);
-	const src = sourceFor(gear.mod, gear.name);
+	const src = sourceFor(gear.sourceMod, gear.varName);
 	if (src) {
 		// Live registration is the source of truth for defaults (disk may be stale
 		// until the next Register after a Papyrus display/mapping fix).
 		gear.defaults = {
-			displayName: src.displayName || src.name || "",
-			icon: src.icon || "",
+			displayName: src.displayName || src.varName || "",
+			icon: normalizeIconRampValue(src.icon),
 			iconColor: normalizeColorRampValue(src.iconColor, src.startColor, src.endColor),
 			barColor: normalizeColorRampValue(src.barColor, "", ""),
 			hideAt: src.hideAt || "",
@@ -2503,7 +2574,7 @@ function removeInventoryGear(gear) {
 		return;
 	}
 	if (typeof window.cogToSKSE === "function") {
-		window.cogToSKSE("inventoryGear:remove:" + gear.name);
+		window.cogToSKSE("inventoryGear:remove:" + gear.varName);
 	}
 	if (openInventoryGearId === gear.id) {
 		openInventoryGearId = "";
@@ -2516,11 +2587,11 @@ function refreshInventoryGearChrome(gearId) {
 	if (!gear || !isInventoryGear(gear)) {
 		return;
 	}
-	const src = sourceFor(gear.mod, gear.name);
+	const src = sourceFor(gear.sourceMod, gear.varName);
 	const look = appearanceOf(gear, src);
 	const fallbackLabel =
 		typeof t === "function" ? t("cog-inventory-gear", "Inventory gear") : "Inventory gear";
-	const label = look.displayName || gear.name || fallbackLabel;
+	const label = look.displayName || gear.varName || fallbackLabel;
 	const acc = document.querySelector(`.inventory-gear-acc[data-gear-id="${CSS.escape(gear.id)}"]`);
 	if (!acc) {
 		return;
@@ -2536,13 +2607,13 @@ function refreshInventoryGearChrome(gearId) {
 }
 
 function renderInventoryGearEditor(host, gear) {
-	const src = sourceFor(gear.mod, gear.name);
+	const src = sourceFor(gear.sourceMod, gear.varName);
 	const look = appearanceOf(gear, src);
 	const title = document.createElement("p");
 	title.className = "lede";
 	const invFallback =
 		typeof t === "function" ? t("cog-inventory-gear", "Inventory gear") : "Inventory gear";
-	title.textContent = `${look.displayName || gear.name || invFallback}${src ? ` · ${sourceMeta(src)}` : ""}`;
+	title.textContent = `${look.displayName || gear.varName || invFallback}${src ? ` · ${sourceMeta(src)}` : ""}`;
 	host.appendChild(title);
 	const formHost = document.createElement("div");
 	formHost.className = "gear-edit-host";
@@ -2703,7 +2774,7 @@ function renderGearsTab(body) {
 	} else {
 		for (const gear of gears) {
 			ensureGearAppearance(gear);
-			const src = sourceFor(gear.mod, gear.name);
+			const src = sourceFor(gear.sourceMod, gear.varName);
 			const look = appearanceOf(gear, src);
 			const details = document.createElement("details");
 			details.className = "accordion inventory-gear-acc";
@@ -2719,7 +2790,7 @@ function renderGearsTab(body) {
 			const title = details.querySelector(".group-title");
 			const invFallback =
 				typeof t === "function" ? t("cog-inventory-gear", "Inventory gear") : "Inventory gear";
-			title.textContent = look.displayName || gear.name || invFallback;
+			title.textContent = look.displayName || gear.varName || invFallback;
 			const end = details.querySelector(".end");
 			if (isProtectedInventoryGear(gear)) {
 				const note = document.createElement("span");

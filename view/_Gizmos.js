@@ -84,7 +84,7 @@ function gizmoRendererApi(typeId) {
 /** Next 1-based index for a new gizmo of this type (count of existing + 1). */
 function nextGizmoTypeIndex(typeId) {
 	const t = normalizeGizmoType(typeId);
-	return (snapshot.gizmos || []).filter((z) => normalizeGizmoType(z.type) === t).length + 1;
+	return (snapshot.gizmos || []).filter((z) => normalizeGizmoType(z.typeId) === t).length + 1;
 }
 
 /** Push a newly created gizmo instance and open its editor. */
@@ -154,6 +154,7 @@ function ensureGizmoViewScripts() {
 
 /** Type-specific keys nested under gizmo.settings (used by patchGizmo / save). */
 const GIZMO_SETTINGS_KEYS = new Set([
+	"displayName",
 	"displayMode",
 	"displayLines",
 	"fontSize",
@@ -225,14 +226,8 @@ const GIZMO_SETTINGS_KEYS = new Set([
 ]);
 
 function normalizeGizmoVisibility(value) {
-	const v = String(value || "")
-		.trim()
-		.toLowerCase();
-	if (v === "none" || v === "ui") {
-		return v;
-	}
-	// Default / "hud": HUD Visible — only while the vanilla HUD is shown.
-	return "hud";
+	// Shared triad lives on normalizeVisibility (_Gauges.js loads first).
+	return typeof normalizeVisibility === "function" ? normalizeVisibility(value) : "hud";
 }
 
 /** Type record defaultVisibility, else universal builtin defaults. */
@@ -257,7 +252,7 @@ function coalesceGizmoVisibility(gizmo, typeId) {
 	if (raw != null && String(raw).trim() !== "") {
 		return normalizeGizmoVisibility(raw);
 	}
-	return defaultVisibilityForType(typeId || (gizmo && gizmo.type));
+	return defaultVisibilityForType(typeId || (gizmo && gizmo.typeId));
 }
 
 function parseGizmoSettingsObject(gizmo) {
@@ -281,7 +276,7 @@ function parseGizmoSettingsObject(gizmo) {
 /** Fill missing settings keys from the registered type schema, then leave the rest to ensure/create. */
 function mergeSettingsFromTypeSchema(gizmo) {
 	const settings = parseGizmoSettingsObject(gizmo);
-	const schema = parseGizmoSettingsSchema(gizmoTypeDef(gizmo && gizmo.type));
+	const schema = parseGizmoSettingsSchema(gizmoTypeDef(gizmo && gizmo.typeId));
 	for (const field of schema || []) {
 		if (!field || !field.key) {
 			continue;
@@ -304,41 +299,70 @@ function syncGizmoSettingsJson(gizmo) {
 	return settings;
 }
 
-/** Gizmo instance title lives in `displayName` (`name` was the title key before v1.1). */
+/**
+ * Gizmo instance title lives in settings.displayName.
+ * Migration Code for Transition from v1.01 or earlier to v1.1:
+ * Legacy root displayName (and older title key name) move under nested settings.displayName (never written on root again).
+ */
 function ensureGizmoDisplayName(gizmo) {
 	if (!gizmo || typeof gizmo !== "object") {
 		return;
 	}
-	// Migration Code for Transition from v1.01 or earlier to v1.1: copy legacy title `name` into `displayName` when empty.
-	if (!String(gizmo.displayName || "").trim() && String(gizmo.name || "").trim()) {
-		gizmo.displayName = String(gizmo.name).trim();
+	const settings = parseGizmoSettingsObject(gizmo);
+	let title = "";
+	if (String(settings.displayName || "").trim()) {
+		title = String(settings.displayName).trim();
+	} else if (String(gizmo.displayName || "").trim()) {
+		title = String(gizmo.displayName).trim();
+	} else if (String(gizmo.name || "").trim()) {
+		title = String(gizmo.name).trim();
 	}
-	if (typeof gizmo.displayName !== "string") {
-		gizmo.displayName = "";
+	settings.displayName = title;
+	gizmo.settings = settings;
+	delete gizmo.displayName;
+	delete gizmo.name;
+}
+
+function gizmoDisplayName(gizmo) {
+	if (!gizmo) {
+		return "";
 	}
+	ensureGizmoDisplayName(gizmo);
+	const settings = gizmo.settings || parseGizmoSettingsObject(gizmo);
+	return String(settings.displayName || "");
 }
 
 function ensureGizmoSettings(gizmo) {
+	ensureGizmoDisplayName(gizmo);
 	return syncGizmoSettingsJson(gizmo);
 }
 
 function ensureCustomGizmo(gizmo) {
 	ensureGizmoDisplayName(gizmo);
-	gizmo.type = normalizeGizmoType(gizmo.type);
-	const typeDef = gizmoTypeDef(gizmo.type);
-	if (typeof gizmo.width !== "number" || !(gizmo.width > 0)) {
-		gizmo.width = Math.max(MIN_GIZMO_WIDTH, Number(typeDef && typeDef.defaultWidth) || 240);
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Legacy gizmo instance product key "type" becomes typeId (never kept as "type").
+	if (!String(gizmo.typeId || "").trim() && String(gizmo.type || "").trim()) {
+		gizmo.typeId = String(gizmo.type).trim();
 	}
-	if (typeof gizmo.height !== "number" || !(gizmo.height > 0)) {
-		gizmo.height = Math.max(MIN_GIZMO_HEIGHT, Number(typeDef && typeDef.defaultHeight) || 48);
-	}
-	if (gizmo.width < MIN_GIZMO_WIDTH) {
-		gizmo.width = MIN_GIZMO_WIDTH;
-	}
-	if (gizmo.height < MIN_GIZMO_HEIGHT) {
-		gizmo.height = MIN_GIZMO_HEIGHT;
-	}
-	gizmo.visibility = coalesceGizmoVisibility(gizmo, gizmo.type);
+	delete gizmo.type;
+	gizmo.typeId = normalizeGizmoType(gizmo.typeId);
+	const typeDef = gizmoTypeDef(gizmo.typeId);
+	const defW = Math.max(MIN_GIZMO_WIDTH, Number(typeDef && typeDef.defaultWidth) || 240);
+	const defH = Math.max(MIN_GIZMO_HEIGHT, Number(typeDef && typeDef.defaultHeight) || 48);
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Legacy flat placement keys x/y/rotation/width/height move under nested "position" (never written back flat on save).
+	// Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
+	migrateEntityPosition(gizmo, {
+		sized: true,
+		x: DEFAULT_HUD_X,
+		y: DEFAULT_HUD_Y,
+		rotation: 0,
+		width: defW,
+		height: defH,
+		minW: MIN_GIZMO_WIDTH,
+		minH: MIN_GIZMO_HEIGHT
+	});
+	gizmo.visibility = coalesceGizmoVisibility(gizmo, gizmo.typeId);
 	ensureGizmoSettings(gizmo);
 	if (gizmo.livePayload == null && typeof gizmo.livePayloadJson === "string" && gizmo.livePayloadJson.trim()) {
 		try {
@@ -378,37 +402,38 @@ function addGizmoFromType(typeDef) {
 	const baseName = typeDef.displayName || typeId;
 	const n = nextGizmoTypeIndex(typeId);
 	const stockKey = `${baseName} {num}`;
+	settings.displayName =
+		typeof formatStockName === "function"
+			? formatStockName(stockKey, { num: n })
+			: `${baseName} ${n}`;
 	placeNewGizmo(
 		ensureCustomGizmo({
 			id: "gizmo_" + Date.now().toString(36),
-			displayName:
-				typeof formatStockName === "function"
-					? formatStockName(stockKey, { num: n })
-					: `${baseName} ${n}`,
-			type: typeId,
+			typeId,
 			sourceMod: typeDef.sourceMod || "",
 			visibility: normalizeGizmoVisibility(typeDef.defaultVisibility || "hud"),
-			x: DEFAULT_HUD_X,
-			y: DEFAULT_HUD_Y,
-			rotation: 0,
-			width: Math.max(MIN_GIZMO_WIDTH, Number(typeDef.defaultWidth) || 240),
-			height: Math.max(MIN_GIZMO_HEIGHT, Number(typeDef.defaultHeight) || 48),
+			position: {
+				x: DEFAULT_HUD_X,
+				y: DEFAULT_HUD_Y,
+				rotation: 0,
+				width: Math.max(MIN_GIZMO_WIDTH, Number(typeDef.defaultWidth) || 240),
+				height: Math.max(MIN_GIZMO_HEIGHT, Number(typeDef.defaultHeight) || 48)
+			},
 			settings,
-			settingsJson: JSON.stringify(settings),
-			posAnchor: "tlc"
+			settingsJson: JSON.stringify(settings)
 		})
 	);
 }
 
 function layoutHudGizmoCustom(el, gizmo) {
 	ensureCustomGizmo(gizmo);
-	const box = { w: gizmo.width, h: gizmo.height };
+	const box = { w: gizmo.position.width, h: gizmo.position.height };
 	const css = hudItemLayoutCss(gizmo, box.w, box.h);
 	el.style.left = css.x * 100 + "%";
 	el.style.top = css.y * 100 + "%";
-	el.style.width = gizmo.width + "px";
-	el.style.height = gizmo.height + "px";
-	el.style.setProperty("--gizmo-rot", (gizmo.rotation || 0) + "deg");
+	el.style.width = gizmo.position.width + "px";
+	el.style.height = gizmo.position.height + "px";
+	el.style.setProperty("--gizmo-rot", (gizmo.position.rotation || 0) + "deg");
 }
 
 function paintGizmoCustom(el, gizmo) {
@@ -417,23 +442,23 @@ function paintGizmoCustom(el, gizmo) {
 	if (!host) {
 		return;
 	}
-	const renderer = gizmoRenderers.get(gizmo.type);
+	const renderer = gizmoRenderers.get(gizmo.typeId);
 	if (renderer && typeof renderer.update === "function") {
 		try {
 			renderer.update(host, gizmo);
 			return;
 		} catch (e) {
 			if (typeof window.cogReportError === "function") {
-				window.cogReportError("gizmo renderer update:" + gizmo.type, e);
+				window.cogReportError("gizmo renderer update:" + gizmo.typeId, e);
 			} else {
-				console.error("gizmo renderer update", gizmo.type, e);
+				console.error("gizmo renderer update", gizmo.typeId, e);
 			}
 		}
 	}
 	if (!host.dataset.placeholder) {
 		host.dataset.placeholder = "1";
 		host.classList.add("is-placeholder");
-		host.textContent = gizmo.displayName || gizmo.type;
+		host.textContent = gizmoDisplayName(gizmo) || gizmo.typeId;
 	}
 }
 
@@ -459,29 +484,29 @@ function buildGizmoCustomEl(gizmo, preview) {
 	const el = document.createElement("div");
 	el.className = "hud-gizmo hud-gizmo-custom";
 	el.dataset.id = gizmo.id;
-	el.dataset.gizmoType = gizmo.type;
+	el.dataset.gizmoType = gizmo.typeId;
 	const host = document.createElement("div");
 	host.className = "gizmo-custom-host";
 	el.appendChild(host);
 	layoutHudGizmoCustom(el, gizmo);
-	const renderer = gizmoRenderers.get(gizmo.type);
+	const renderer = gizmoRenderers.get(gizmo.typeId);
 	if (renderer && typeof renderer.mount === "function") {
 		try {
 			renderer.mount(host, gizmo);
 		} catch (e) {
 			if (typeof window.cogReportError === "function") {
-				window.cogReportError("gizmo renderer mount:" + gizmo.type, e);
+				window.cogReportError("gizmo renderer mount:" + gizmo.typeId, e);
 			} else {
-				console.error("gizmo renderer mount", gizmo.type, e);
+				console.error("gizmo renderer mount", gizmo.typeId, e);
 			}
 			host.classList.add("is-placeholder");
 			host.dataset.placeholder = "1";
-			host.textContent = gizmo.displayName || gizmo.type;
+			host.textContent = gizmoDisplayName(gizmo) || gizmo.typeId;
 		}
 	} else {
 		host.classList.add("is-placeholder");
 		host.dataset.placeholder = "1";
-		host.textContent = gizmo.displayName || gizmo.type;
+		host.textContent = gizmoDisplayName(gizmo) || gizmo.typeId;
 	}
 	if (preview) {
 		attachGizmoHandles(el, gizmo);
@@ -556,7 +581,7 @@ function appendGizmoVisibilityEditor(panel, gizmo) {
 function fillSchemaGizmoEditor(panel, gizmo) {
 	const gid = gizmo.id;
 	const live = () => gizmoFor(gid) || gizmo;
-	const typeDef = gizmoTypeDef(gizmo.type);
+	const typeDef = gizmoTypeDef(gizmo.typeId);
 	const schema = parseGizmoSettingsSchema(typeDef);
 	const intro = document.createElement("p");
 	intro.className = "hint";
@@ -736,9 +761,9 @@ function appendGizmoPositionSizeEditor(panel, gizmo) {
 	const editorPos = hudItemEditorPosPct(gizmo, box.w, box.h);
 	xInput.value = fmtPct(editorPos.x);
 	yInput.value = fmtPct(editorPos.y);
-	rotInput.value = (Number(gizmo.rotation) || 0).toFixed(1);
-	wInput.value = String(Math.round(gizmo.width));
-	hInput.value = String(Math.round(gizmo.height));
+	rotInput.value = (Number(gizmo.position.rotation) || 0).toFixed(1);
+	wInput.value = String(Math.round(gizmo.position.width));
+	hInput.value = String(Math.round(gizmo.position.height));
 	bindNumberField(xInput, {
 		suffix: "%",
 		parse: (raw) => {
@@ -794,27 +819,28 @@ function appendGizmoPositionSizeEditor(panel, gizmo) {
 		},
 		apply: (v) => {
 			const g = live();
-			patchGizmo(gid, { rotation: v });
+			patchGizmo(gid, { position: { rotation: v } });
 			const box = gizmoLayoutBox(g);
 			clampHudItemToScreen(g, box.w, box.h);
-			patchGizmo(gid, { x: g.x, y: g.y });
+			const pos = entityPosition(g);
+			patchGizmo(gid, { position: { x: pos.x, y: pos.y } });
 		},
 		format: (v) => (Number(v) || 0).toFixed(1),
-		current: () => live().rotation || 0
+		current: () => live().position.rotation || 0
 	});
 	bindNumberField(wInput, {
 		suffix: "px",
 		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(MIN_GIZMO_WIDTH, Math.min(2000, Number(raw) || 0))),
-		apply: (v) => patchGizmo(gid, { width: v }),
+		apply: (v) => patchGizmo(gid, { position: { width: v } }),
 		format: (v) => String(Math.round(v)),
-		current: () => live().width
+		current: () => live().position.width
 	});
 	bindNumberField(hInput, {
 		suffix: "px",
 		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(MIN_GIZMO_HEIGHT, Math.min(512, Number(raw) || 0))),
-		apply: (v) => patchGizmo(gid, { height: v }),
+		apply: (v) => patchGizmo(gid, { position: { height: v } }),
 		format: (v) => String(Math.round(v)),
-		current: () => live().height
+		current: () => live().position.height
 	});
 }
 
@@ -834,8 +860,14 @@ function ensureGizmo(gizmo) {
 		return gizmo;
 	}
 	ensureGizmoDisplayName(gizmo);
-	gizmo.type = normalizeGizmoType(gizmo.type);
-	const api = gizmoRendererApi(gizmo.type);
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Legacy gizmo instance product key "type" becomes typeId.
+	if (!String(gizmo.typeId || "").trim() && String(gizmo.type || "").trim()) {
+		gizmo.typeId = String(gizmo.type).trim();
+	}
+	delete gizmo.type;
+	gizmo.typeId = normalizeGizmoType(gizmo.typeId);
+	const api = gizmoRendererApi(gizmo.typeId);
 	if (api && typeof api.ensure === "function") {
 		return api.ensure(gizmo);
 	}
@@ -844,7 +876,7 @@ function ensureGizmo(gizmo) {
 
 function gizmoFontSizePx(gizmo) {
 	ensureGizmo(gizmo);
-	const api = gizmoRendererApi(gizmo.type);
+	const api = gizmoRendererApi(gizmo.typeId);
 	if (api && typeof api.fontSizePx === "function") {
 		return api.fontSizePx(gizmo);
 	}
@@ -857,11 +889,11 @@ function gizmoFontSizePx(gizmo) {
 
 function gizmoLayoutBox(gizmo) {
 	ensureGizmo(gizmo);
-	const api = gizmoRendererApi(gizmo.type);
+	const api = gizmoRendererApi(gizmo.typeId);
 	if (api && typeof api.layoutBox === "function") {
 		return api.layoutBox(gizmo);
 	}
-	return { w: gizmo.width, h: gizmo.height };
+	return { w: gizmo.position.width, h: gizmo.position.height };
 }
 
 function gizmoFor(id) {
@@ -869,7 +901,7 @@ function gizmoFor(id) {
 }
 
 function buildGizmoEl(gizmo, preview) {
-	const type = normalizeGizmoType(gizmo.type);
+	const type = normalizeGizmoType(gizmo.typeId);
 	const api = gizmoRendererApi(type);
 	const el =
 		api && typeof api.build === "function" ? api.build(gizmo, preview) : buildGizmoCustomEl(gizmo, preview);
@@ -908,6 +940,16 @@ function patchGizmo(id, patch, skipHud, live) {
 				if (settings[sk] !== sv) {
 					changed = true;
 					settings[sk] = sv;
+				}
+			}
+			continue;
+		}
+		if (key === "position" && value && typeof value === "object" && !Array.isArray(value)) {
+			const pos = entityPosition(gizmo);
+			for (const [pk, pv] of Object.entries(value)) {
+				if (pos[pk] !== pv) {
+					changed = true;
+					pos[pk] = pv;
 				}
 			}
 			continue;
@@ -975,7 +1017,7 @@ function findHudGizmoEl(id, preferredHost) {
 }
 
 function layoutHudGizmo(el, gizmo) {
-	const api = gizmoRendererApi(gizmo.type);
+	const api = gizmoRendererApi(gizmo.typeId);
 	if (api && typeof api.layout === "function") {
 		api.layout(el, gizmo);
 		return;
@@ -989,7 +1031,7 @@ function syncHudGizmo(gizmo) {
 		return;
 	}
 	el.dataset.visibility = normalizeGizmoVisibility(gizmo.visibility);
-	const api = gizmoRendererApi(gizmo.type);
+	const api = gizmoRendererApi(gizmo.typeId);
 	if (api && typeof api.layout === "function") {
 		api.layout(el, gizmo);
 	} else {
@@ -1009,7 +1051,7 @@ function paintHudGizmoLive(gizmo) {
 	if (!el) {
 		return;
 	}
-	const api = gizmoRendererApi(gizmo.type);
+	const api = gizmoRendererApi(gizmo.typeId);
 	if (api && typeof api.paint === "function") {
 		api.paint(el, gizmo);
 		return;
@@ -1150,7 +1192,7 @@ function syncHudGizmos(root, frontRoot, preview) {
 			if (visibility === "hud" && !hudVisible && !preview) {
 				return;
 			}
-			const gizmoType = normalizeGizmoType(gizmo.type);
+			const gizmoType = normalizeGizmoType(gizmo.typeId);
 			keep.add(gizmo.id);
 			const dest = isFront && frontRoot ? frontRoot : root;
 			let el = findHudGizmoEl(gizmo.id, dest);
@@ -1202,6 +1244,7 @@ function syncHudGizmos(root, frontRoot, preview) {
 			}
 			el.dataset.visibility = visibility;
 			el.classList.toggle("is-front", isFront);
+			el.classList.toggle("is-preview", visibility === "none");
 		});
 	}
 	syncGizmoHandleVisibility();
@@ -1334,14 +1377,14 @@ function beginGizmoDrag(ev, gizmoId, mode) {
 		mode,
 		grabAabbX: ev.clientX - aabb.left,
 		grabAabbY: ev.clientY - aabb.top,
-		grabX: ev.clientX / w - (gizmo.x ?? DEFAULT_HUD_X),
-		grabY: ev.clientY / h - (gizmo.y ?? DEFAULT_HUD_Y),
-		startWidth: gizmo.width,
-		startHeight: gizmo.height,
+		grabX: ev.clientX / w - (gizmo.position.x ?? DEFAULT_HUD_X),
+		grabY: ev.clientY / h - (gizmo.position.y ?? DEFAULT_HUD_Y),
+		startWidth: gizmo.position.width,
+		startHeight: gizmo.position.height,
 		startLayoutW: box.w,
 		startLayoutH: box.h,
-		startX: gizmo.x,
-		startY: gizmo.y,
+		startX: gizmo.position.x,
+		startY: gizmo.position.y,
 		pointerLocal: screenToGizmoLocal(ev.clientX, ev.clientY, gizmo)
 	};
 	if (ev.currentTarget && ev.pointerId != null && ev.currentTarget.setPointerCapture) {
@@ -1363,7 +1406,7 @@ function screenToGizmoLocal(clientX, clientY, gizmo) {
 	}
 	const dx = clientX - cx;
 	const dy = clientY - cy;
-	const rad = -((Number(gizmo.rotation) || 0) * Math.PI) / 180;
+	const rad = -((Number(gizmo.position.rotation) || 0) * Math.PI) / 180;
 	return {
 		x: dx * Math.cos(rad) - dy * Math.sin(rad),
 		y: dx * Math.sin(rad) + dy * Math.cos(rad)
@@ -1399,17 +1442,17 @@ function resizeGizmoFromPointer(gizmo, ev) {
 	const newLayoutH = isCelestial ? newW / 2 : bottom - top;
 	const midLocalX = (left + right) / 2;
 	const midLocalY = (top + bottom) / 2;
-	const rad = ((Number(gizmo.rotation) || 0) * Math.PI) / 180;
+	const rad = ((Number(gizmo.position.rotation) || 0) * Math.PI) / 180;
 	const startAabb = rotatedAabbSize(
 		drag.startLayoutW || drag.startWidth,
 		drag.startLayoutH || startLayoutH,
-		gizmo.rotation || 0
+		gizmo.position.rotation || 0
 	);
 	const startCx = drag.startX * (window.innerWidth || 1) + startAabb.w / 2;
 	const startCy = drag.startY * (window.innerHeight || 1) + startAabb.h / 2;
 	const worldDx = midLocalX * Math.cos(rad) - midLocalY * Math.sin(rad);
 	const worldDy = midLocalX * Math.sin(rad) + midLocalY * Math.cos(rad);
-	gizmo.width = Math.max(MIN_GIZMO_WIDTH, newW);
+	gizmo.position.width = Math.max(MIN_GIZMO_WIDTH, newW);
 	if (isCelestial) {
 		let thickness = drag.startHeight;
 		if (axis.includes("n") || axis.includes("s")) {
@@ -1419,16 +1462,16 @@ function resizeGizmoFromPointer(gizmo, ev) {
 				Math.min(newW / 2 - 1, (boxH / Math.max(newLayoutH, 1)) * drag.startHeight)
 			);
 		}
-		gizmo.height = thickness;
+		gizmo.position.height = thickness;
 	} else {
-		gizmo.height = Math.max(MIN_GIZMO_HEIGHT, newLayoutH);
+		gizmo.position.height = Math.max(MIN_GIZMO_HEIGHT, newLayoutH);
 	}
 	const newCx = startCx + worldDx;
 	const newCy = startCy + worldDy;
 	const outBox = gizmoLayoutBox(gizmo);
-	const outAabb = rotatedAabbSize(outBox.w, outBox.h, gizmo.rotation || 0);
-	gizmo.x = (newCx - outAabb.w / 2) / (window.innerWidth || 1);
-	gizmo.y = (newCy - outAabb.h / 2) / (window.innerHeight || 1);
+	const outAabb = rotatedAabbSize(outBox.w, outBox.h, gizmo.position.rotation || 0);
+	gizmo.position.x = (newCx - outAabb.w / 2) / (window.innerWidth || 1);
+	gizmo.position.y = (newCy - outAabb.h / 2) / (window.innerHeight || 1);
 	clampHudItemToScreen(gizmo, outBox.w, outBox.h);
 }
 
@@ -1442,13 +1485,13 @@ function onGizmoPointerMove(ev) {
 	const h = window.innerHeight || 1;
 	if (drag.mode === "move") {
 		const box = gizmoLayoutBox(gizmo);
-		const aabbSize = rotatedAabbSize(box.w, box.h, gizmo.rotation || 0);
+		const aabbSize = rotatedAabbSize(box.w, box.h, gizmo.position.rotation || 0);
 		let left = ev.clientX - (drag.grabAabbX || 0);
 		let top = ev.clientY - (drag.grabAabbY || 0);
 		left = Math.min(Math.max(0, left), Math.max(0, w - aabbSize.w));
 		top = Math.min(Math.max(0, top), Math.max(0, h - aabbSize.h));
-		gizmo.x = left / w;
-		gizmo.y = top / h;
+		gizmo.position.x = left / w;
+		gizmo.position.y = top / h;
 	} else if (drag.mode === "rotate") {
 		const el = findHudGizmoEl(gizmo.id);
 		let sx;
@@ -1461,7 +1504,7 @@ function onGizmoPointerMove(ev) {
 			const box = gizmoLayoutBox(gizmo);
 			({ cx: sx, cy: sy } = hudItemCenterPx(gizmo, box.w, box.h));
 		}
-		gizmo.rotation = Math.atan2(ev.clientY - sy, ev.clientX - sx) * (180 / Math.PI);
+		gizmo.position.rotation = Math.atan2(ev.clientY - sy, ev.clientX - sx) * (180 / Math.PI);
 		const box = gizmoLayoutBox(gizmo);
 		clampHudItemToScreen(gizmo, box.w, box.h);
 	} else if (String(drag.mode).startsWith("resize-")) {
@@ -1604,8 +1647,9 @@ function renderGizmosList(host) {
 			<div class="accordion-body" data-role="gizmoBody"></div>`;
 		const title = details.querySelector(".group-title");
 		const nameInput = details.querySelector('[data-role="displayName"]');
-		title.textContent = gizmo.displayName || "Clock";
-		nameInput.value = gizmo.displayName || "Clock";
+		const gizmoTitle = () => gizmoDisplayName(gizmo) || "Clock";
+		title.textContent = gizmoTitle();
+		nameInput.value = gizmoTitle();
 		const end = details.querySelector(".end");
 		const edit = document.createElement("button");
 		edit.type = "button";
@@ -1625,11 +1669,12 @@ function renderGizmosList(host) {
 			nameInput.hidden = true;
 			title.hidden = false;
 			if (save) {
-				const next = nameInput.value.trim() || gizmo.displayName || "Clock";
+				const next = nameInput.value.trim() || gizmoTitle();
 				patchGizmo(gizmo.id, { displayName: next });
-				title.textContent = gizmoFor(gizmo.id)?.displayName || next;
+				const refreshed = gizmoFor(gizmo.id);
+				title.textContent = refreshed ? gizmoDisplayName(refreshed) || next : next;
 			} else {
-				nameInput.value = gizmo.displayName || "Clock";
+				nameInput.value = gizmoTitle();
 			}
 		};
 		edit.addEventListener("click", () => {
@@ -1637,7 +1682,7 @@ function renderGizmosList(host) {
 			details.classList.add("is-renaming");
 			title.hidden = true;
 			nameInput.hidden = false;
-			nameInput.value = gizmo.displayName || "Clock";
+			nameInput.value = gizmoTitle();
 			parkRenameFieldForEdit(details, nameInput);
 			nameInput.focus();
 			nameInput.select();
@@ -1695,7 +1740,7 @@ function bindExclusiveGizmo(details) {
 
 function fillGizmoEditor(panel, gizmo) {
 	ensureGizmo(gizmo);
-	const api = gizmoRendererApi(gizmo.type);
+	const api = gizmoRendererApi(gizmo.typeId);
 	if (api && typeof api.fillEditor === "function") {
 		api.fillEditor(panel, gizmo);
 	} else {

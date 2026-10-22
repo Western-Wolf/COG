@@ -16,6 +16,16 @@
 	opacity: 1;
 }
 
+/* visibility "none" in editor — same translucency as hidden Default Group. */
+.hud-gauge.is-preview > :not(.hud-handle):not(.gauge-frame-handle-layer) {
+	opacity: 0.55;
+}
+
+.hud-gauge.is-preview .gauge-frame-handle-layer,
+.hud-gauge.is-preview > .hud-handle {
+	opacity: 1;
+}
+
 .hud-gauge.is-fading-in {
 	animation: cog-fade-in 0.25s ease-out both;
 }

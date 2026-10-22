@@ -548,7 +548,7 @@
     "fr-CA": "Masquer cet engrenage lorsque le temps restant (secondes) est sous ou au-dessus du seuil. Remplir depuis le masqué du groupe peut adoucir l'apparition."
   },
   "cog-gear-hud-suppress-tip": {
-    "en-CA": "While this gear is exposed (enabled in a visible group, or a visible gauge bound to it), soft-hide the HUD target. Use an alias (e.g. hud.casting) or a raw menu/path (e.g. HUD Menu|HUDMovieBaseInstance.Health).",
+    "en-CA": "While this gear is exposed (shown on a visible group or bound to a visible gauge), soft-hide the HUD target. Use an alias (e.g. hud.casting) or a raw menu/path (e.g. HUD Menu|HUDMovieBaseInstance.Health).",
     "fr-CA": "Tant que cet engrenage est exposé (activé dans un groupe visible, ou une jauge visible qui y est liée), masquer doucement la cible HUD. Utilisez un alias (p. ex. hud.casting) ou un chemin menu/path brut (p. ex. HUD Menu|HUDMovieBaseInstance.Health)."
   },
   "cog-gear-meta-mod": {

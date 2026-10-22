@@ -5,6 +5,7 @@
 
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <vector>
 
 // Entity normalize / parse / serialize shared by Registry core, Config, and UiPush.
@@ -37,9 +38,21 @@ namespace CogRegistryJson
 	void WriteColorRampField(CogJson::Writer& w, std::string_view key, const std::string& ramp);
 	/** Append `"key":<hex|array>` into a snapshot stream (empty → `""`). */
 	void AppendColorRampJson(std::ostringstream& o, std::string_view key, const std::string& ramp);
+	/** Read appearance `icon` (plain path string or JSON stop array). */
+	std::string ReadIconField(const CogJson::Value& obj, CogJson::ParseContext& ctx, std::string_view key = "icon");
+	/** Write `icon` as a string path or raw JSON array (same shape as colour ramps). */
+	void WriteIconField(CogJson::Writer& w, std::string_view key, const std::string& icon);
+	/** Append `"icon":<path|array>` into a snapshot stream. */
+	void AppendIconJson(std::ostringstream& o, std::string_view key, const std::string& icon);
 	std::string NormalizeEditorKey(const std::string& raw);
 	std::string NormalizeNeutralIconMode(std::string raw);
 	std::string NormalizeGizmoType(std::string raw);
+	/**
+	 * Resolve instance product id: prefer typeId, else legacy root "type".
+	 * Returns empty when missing/invalid — callers must discard the instance (do not invent cog-clock).
+	 * Migration Code for Transition from v1.01 or earlier to v1.1: legacy root "type" → typeId.
+	 */
+	std::string ResolveGizmoInstanceTypeId(const CogJson::Value& obj, CogJson::ParseContext& ctx);
 	/** hud = HUD Visible, ui = UI Visible (menus too). Unknown/empty → hud. */
 	std::string NormalizeGizmoVisibility(std::string raw);
 	/** Universal/builtin visibility when no type record exists (feed→ui, suppressor→none, else hud). */
@@ -51,7 +64,10 @@ namespace CogRegistryJson
 	// visibility != "none" — instance participates in play (divert / HUD mount rules).
 	bool GizmoIsPlayActive(const CogGizmo& g);
 	bool GizmoSettingsBool(const CogGizmo& g, std::string_view key, bool fallback);
+	std::string GizmoSettingsString(const CogGizmo& g, std::string_view key, std::string_view fallback = "");
 	std::string GizmoSettingsRawJson(const CogGizmo& g, std::string_view key, std::string_view fallback);
+	/** Instance title from settings.displayName (empty if unset). */
+	std::string GizmoDisplayName(const CogGizmo& g);
 	std::string NormalizeStack(std::string raw);
 	std::string NormalizeFillFromHidden(std::string raw);
 	std::string NormalizeEndCapMode(std::string raw);
@@ -74,6 +90,18 @@ namespace CogRegistryJson
 
 	CogGroup ParseGroup(const CogJson::Value& obj, CogJson::ParseContext& ctx);
 	CogGear ParseGear(const CogJson::Value& obj, CogJson::ParseContext& ctx);
+	/** Migration Code for Transition from v1.01 or earlier to v1.1: fold legacy gear-root exemptFromGroupColors into group settings maps. Returns true if any flag was folded. */
+	bool MigrateLegacyGearExemptOntoGroups(std::vector<CogGroup>& groups);
+	/**
+	 * Migration Code for Transition from v1.01 or earlier to v1.1:
+	 * Builtin Vampiric Hunger `Bloodlust` → `VampiricHunger` (gear id, group gearIds/exempt, gauges, seen keys).
+	 * Returns true if anything changed.
+	 */
+	bool MigrateBuiltinBloodlustToVampiricHunger(
+		std::vector<CogGear>& gears,
+		std::vector<CogGroup>& groups,
+		std::vector<CogGauge>& gauges,
+		std::unordered_set<std::string>& seenSources);
 	CogGauge ParseGauge(const CogJson::Value& obj, CogJson::ParseContext& ctx);
 	CogGizmo ParseGizmo(const CogJson::Value& obj, CogJson::ParseContext& ctx, const CogGizmoType* type = nullptr);
 	CogGizmoType ParseGizmoType(const CogJson::Value& obj, CogJson::ParseContext& ctx);

@@ -445,11 +445,11 @@ void CogInventory::RemoveGear(std::string_view varName)
 			return;
 		}
 		const auto* src = reg.FindByReceipt(it->second);
-		if (!src || src->mod != kInventoryGearMod) {
+		if (!src || src->sourceMod != kInventoryGearMod) {
 			return;
 		}
 		for (const auto& gear : reg._gears) {
-			if (gear.mod == kInventoryGearMod && gear.name == name && gear.locked) {
+			if (gear.sourceMod == kInventoryGearMod && gear.varName == name && gear.locked) {
 				return;
 			}
 		}
@@ -467,7 +467,7 @@ void CogInventory::RegisterFromSaved()
 		auto& reg = CogRegistry::Get();
 		std::lock_guard lock(reg._mutex);
 		for (const auto& gear : reg._gears) {
-			if (gear.mod == kInventoryGearMod) {
+			if (gear.sourceMod == kInventoryGearMod) {
 				inventoryGears.push_back(gear);
 			}
 		}
@@ -486,7 +486,7 @@ void CogInventory::RegisterFromSaved()
 			icon = "Treasure/bag.svg";
 		}
 		if (display.empty() && data) {
-			const auto formId = ParseFormVarName(gear.name);
+			const auto formId = ParseFormVarName(gear.varName);
 			if (formId != 0) {
 				if (auto* item = data->LookupForm<RE::TESBoundObject>(formId, "")) {
 					const char* itemName = item->GetName();
@@ -497,11 +497,11 @@ void CogInventory::RegisterFromSaved()
 			}
 		}
 		if (display.empty()) {
-			display = gear.name;
+			display = gear.varName;
 		}
 		reg.Register(
 			kInventoryGearMod,
-			gear.name,
+			gear.varName,
 			"count",
 			display,
 			"Inventory",
@@ -540,7 +540,7 @@ void CogInventory::EnsureBuiltinsUnlocked(CogRegistry& reg)
 
 		CogGear* target = nullptr;
 		for (auto& gear : reg._gears) {
-			if (gear.mod == kInventoryGearMod && gear.name == varName) {
+			if (gear.sourceMod == kInventoryGearMod && gear.varName == varName) {
 				target = &gear;
 				break;
 			}
@@ -549,9 +549,8 @@ void CogInventory::EnsureBuiltinsUnlocked(CogRegistry& reg)
 		if (!target) {
 			CogGear gear;
 			gear.id = FileStem(std::string(kInventoryGearMod) + "_" + varName);
-			gear.mod = kInventoryGearMod;
-			gear.name = varName;
-			gear.enabled = true;
+			gear.sourceMod = kInventoryGearMod;
+			gear.varName = varName;
 			gear.locked = true;
 			gear.defaults = appearance;
 			gear.settings = appearance;
@@ -569,7 +568,7 @@ void CogInventory::EnsureBuiltinsUnlocked(CogRegistry& reg)
 	builtins.reserve(builtinVarNames.size());
 	for (const auto& varName : builtinVarNames) {
 		const auto it = std::find_if(reg._gears.begin(), reg._gears.end(), [&](const CogGear& g) {
-			return g.mod == kInventoryGearMod && g.name == varName;
+			return g.sourceMod == kInventoryGearMod && g.varName == varName;
 		});
 		if (it != reg._gears.end()) {
 			builtins.push_back(*it);
@@ -577,7 +576,7 @@ void CogInventory::EnsureBuiltinsUnlocked(CogRegistry& reg)
 		}
 	}
 	const auto firstInv = std::find_if(reg._gears.begin(), reg._gears.end(), [](const CogGear& g) {
-		return g.mod == kInventoryGearMod;
+		return g.sourceMod == kInventoryGearMod;
 	});
 	reg._gears.insert(firstInv, builtins.begin(), builtins.end());
 }
@@ -589,14 +588,14 @@ void CogInventory::RefreshCountsUnlocked(CogRegistry& reg)
 		return;
 	}
 	for (const auto& gear : reg._gears) {
-		if (gear.mod != kInventoryGearMod) {
+		if (gear.sourceMod != kInventoryGearMod) {
 			continue;
 		}
-		const auto formId = ParseFormVarName(gear.name);
+		const auto formId = ParseFormVarName(gear.varName);
 		if (formId == 0) {
 			continue;
 		}
-		const auto idxIt = reg._index.find(KeyOf(kInventoryGearMod, gear.name));
+		const auto idxIt = reg._index.find(KeyOf(kInventoryGearMod, gear.varName));
 		if (idxIt == reg._index.end()) {
 			continue;
 		}

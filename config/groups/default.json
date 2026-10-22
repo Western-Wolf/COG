@@ -1,19 +1,21 @@
 {
 	"id": "default",
-	"displayName": "Default Group",
 	"locked": true,
-	"visible": true,
-	"x": 0.1,
-	"y": 0.1,
-	"rotation": 0,
-	"gearSize": 50,
-	"spacing": 25,
-	"stack": "below",
-	"style": {
+	"visibility": "hud",
+	"settings": {
+		"displayName": "Default Group",
 		"showLabel": false,
 		"showIcon": true,
 		"barTrough": true,
-		"numberFormat": "barPercent"
+		"numberFormat": "barPercent",
+		"gearSize": 50,
+		"spacing": 25,
+		"stack": "below",
+		"gearIds": []
 	},
-	"gearIds": []
+	"position": {
+		"x": 0.1,
+		"y": 0.1,
+		"rotation": 0
+	}
 }

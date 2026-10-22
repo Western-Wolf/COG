@@ -27,14 +27,14 @@ function pushStockEntityTitles(fromLang, toLang) {
 			ensureGearAppearance(gear);
 		}
 		const src =
-			typeof sourceFor === "function" ? sourceFor(gear.mod, gear.name) : null;
+			typeof sourceFor === "function" ? sourceFor(gear.sourceMod, gear.varName) : null;
 		// Prefer a name: catalog key (case-insensitive) so drifted "stamina" still pushes.
 		const keyCandidates = [
 			src && (src.displayName || src.display),
 			gear.defaults && gear.defaults.displayName,
 			gear.settings && gear.settings.displayName,
-			src && src.name,
-			gear.name
+			src && src.varName,
+			gear.varName
 		];
 		let key = "";
 		if (typeof hasStockNameKey === "function") {
@@ -71,11 +71,21 @@ function pushStockEntityTitles(fromLang, toLang) {
 		}
 	}
 
-	const rewriteInstance = (entity) => {
+	const rewriteInstanceSettingsTitle = (entity, ensureFn) => {
 		if (!entity || entity.id === "default") {
 			return;
 		}
-		const cur = entity.displayName;
+		if (typeof ensureFn === "function") {
+			ensureFn(entity);
+		}
+		const settings =
+			entity.settings && typeof entity.settings === "object" && !Array.isArray(entity.settings)
+				? entity.settings
+				: null;
+		if (!settings) {
+			return;
+		}
+		const cur = settings.displayName;
 		const matched =
 			typeof matchStockInstanceTitle === "function"
 				? matchStockInstanceTitle(cur, from)
@@ -85,19 +95,22 @@ function pushStockEntityTitles(fromLang, toLang) {
 		}
 		const next = localizeStockName(cur, matched.key, to, from, { vars: matched.vars });
 		if (next !== cur) {
-			entity.displayName = next;
+			settings.displayName = next;
+			if (Object.prototype.hasOwnProperty.call(entity, "settingsJson")) {
+				entity.settingsJson = JSON.stringify(settings);
+			}
 			changed = true;
 		}
 	};
 
 	for (const group of snapshot.groups || []) {
-		rewriteInstance(group);
+		rewriteInstanceSettingsTitle(group, typeof ensureGroupSettings === "function" ? ensureGroupSettings : null);
 	}
 	for (const gauge of snapshot.gauges || []) {
-		rewriteInstance(gauge);
+		rewriteInstanceSettingsTitle(gauge, typeof ensureGauge === "function" ? ensureGauge : null);
 	}
 	for (const gizmo of snapshot.gizmos || []) {
-		rewriteInstance(gizmo);
+		rewriteInstanceSettingsTitle(gizmo, typeof ensureGizmo === "function" ? ensureGizmo : null);
 	}
 
 	if (changed) {
@@ -651,15 +664,24 @@ function normalizeEndCapMode(raw, endCapPath) {
 	return migrateEndCapPath(endCapPath) ? "endcap" : "border";
 }
 
+/** End-cap fields live under settings for gauges/gizmos; flat bags (layout helpers) keep them on root. */
+function endCapBag(item) {
+	if (item && item.settings && typeof item.settings === "object" && !Array.isArray(item.settings)) {
+		return item.settings;
+	}
+	return item || {};
+}
+
 function gaugeUsesEndArt(gaugeOrGizmo) {
-	return normalizeEndCapMode(gaugeOrGizmo && gaugeOrGizmo.endCapMode, gaugeOrGizmo && gaugeOrGizmo.endCap) === "endcap";
+	const bag = endCapBag(gaugeOrGizmo);
+	return normalizeEndCapMode(bag.endCapMode, bag.endCap) === "endcap";
 }
 
 function resolveGaugeEndArtHref(gaugeOrGizmo) {
 	if (!gaugeUsesEndArt(gaugeOrGizmo)) {
 		return "";
 	}
-	return resolveIconHref(migrateEndCapPath(gaugeOrGizmo.endCap));
+	return resolveIconHref(migrateEndCapPath(endCapBag(gaugeOrGizmo).endCap));
 }
 
 function resolveEndcapHref(raw) {
@@ -2864,9 +2886,12 @@ function isEditingField() {
 function currentEditorKey() {
 	const groups = snapshot.groups.map((g) => `${g.id}:${g.displayName || ""}`).join("|");
 	const gears = snapshot.gears.map((g) => g.id).join("|");
-	const gauges = (snapshot.gauges || []).map((g) => `${g.id}:${g.displayName || ""}:${g.type || ""}:${g.shape || ""}`).join("|");
+	const gauges = (snapshot.gauges || []).map((g) => {
+		const s = g.settings || {};
+		return `${g.id}:${s.displayName || ""}:${s.type || ""}:${s.shape || ""}`;
+	}).join("|");
 	const gizmos = (snapshot.gizmos || []).map((z) =>
-		`${z.id}:${z.displayName || ""}:${z.type || ""}:${z.visibility || ""}:${z.width || ""}:${z.height || ""}:${typeof z.settingsJson === "string" ? z.settingsJson : JSON.stringify(z.settings || {})}`
+		`${z.id}:${z.displayName || ""}:${z.typeId || ""}:${z.visibility || ""}:${(z.position && z.position.width) || ""}:${(z.position && z.position.height) || ""}:${typeof z.settingsJson === "string" ? z.settingsJson : JSON.stringify(z.settings || {})}`
 	).join("|");
 	return `${activeTab}|${helpMode ? "help" : "main"}|${helpSubTab}|${snapshot.general.showDefaultGroup}|${snapshot.general.editorKey}|${snapshot.general.hideToggleKey || ""}|${snapshot.general.hideIncludesFlash !== false}|${!!window.__cogHideKeyListening}|${snapshot.general.fillColor}|${snapshot.general.borderColor}|${snapshot.general.iconColor || themeIconColor()}|${snapshot.general.neutralIconMode}|${snapshot.general.gadgetFont}|${snapshot.general.language || ""}|${!!snapshot.general.highlightMissingTranslations}|${!!snapshot.general.updateStockTitlesOnTranslation}|${groups}|${gears}|${gauges}|${gizmos}|${typeof suppressionsFingerprint === "function" ? suppressionsFingerprint() : ""}`;
 }
@@ -3300,7 +3325,8 @@ function renderGeneral(body) {
 		snapshot.general.showDefaultGroup = box.checked;
 		const group = groupFor(DEFAULT_GROUP_ID);
 		if (group) {
-			group.visible = box.checked;
+			group.visibility = box.checked ? "hud" : "none";
+			delete group.visible;
 		}
 		scheduleSave(true);
 		renderGears();

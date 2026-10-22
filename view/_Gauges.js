@@ -1,10 +1,94 @@
 // COG overlay - Gauges (type-level: all gauge instances)
 // Classic script; shares globals with _Core.js (this file loads before _Core.js).
 
+/** Stub until _Core.js replaces with SKSE-backed cogConfigNote. */
+function cogConfigNote(message) {
+	console.info("COG config:", message);
+}
+
+/** Prefixed migration log (v1.01 → v1.1). */
+function noteMigration(detail) {
+	const text = String(detail || "").trim();
+	if (!text) {
+		return;
+	}
+	cogConfigNote(`Migration Code for Transition from v1.01 or earlier to v1.1: ${text}`);
+}
+
+function noteMigrationIf(condition, detail) {
+	if (condition) {
+		noteMigration(detail);
+	}
+}
+
+/**
+ * Log + optionally delete keys not in allowSet (and not in legacySet).
+ * @param {object} obj
+ * @param {Set<string>|string[]} allowSet
+ * @param {string} bagLabel e.g. "group.settings"
+ * @param {{ legacySet?: Set<string>|string[], deleteUnknown?: boolean, id?: string }} [opts]
+ */
+function stripUnknownKeys(obj, allowSet, bagLabel, opts) {
+	if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
+		return [];
+	}
+	const allow = allowSet instanceof Set ? allowSet : new Set(allowSet || []);
+	const legacyRaw = opts && opts.legacySet;
+	const legacy = legacyRaw instanceof Set ? legacyRaw : new Set(legacyRaw || []);
+	const doDelete = !opts || opts.deleteUnknown !== false;
+	const id = (opts && opts.id) || "";
+	const stripped = [];
+	for (const key of Object.keys(obj)) {
+		if (allow.has(key) || legacy.has(key)) {
+			continue;
+		}
+		stripped.push(key);
+		const where = id ? `${bagLabel} '${key}' from ${id}` : `${bagLabel} key '${key}'`;
+		cogConfigNote(`stripped unknown ${where}`);
+		if (doDelete) {
+			delete obj[key];
+		}
+	}
+	return stripped;
+}
+
 const DEFAULT_GAUGE_WIDTH = 240;
 const DEFAULT_GAUGE_HEIGHT = 24;
 const MIN_GAUGE_WIDTH = 32;
 const MIN_GAUGE_HEIGHT = 6;
+
+/** Shared none|hud|ui triad for groups, gauges, and gizmos. Unknown/empty → hud. */
+function normalizeVisibility(value) {
+	const v = String(value || "")
+		.trim()
+		.toLowerCase();
+	if (v === "none" || v === "ui") {
+		return v;
+	}
+	return "hud";
+}
+
+/**
+ * Migration Code for Transition from v1.01 or earlier to v1.1:
+ * Legacy root bool "visible" → visibility none|hud (never kept as bool).
+ */
+function ensureEntityVisibility(entity) {
+	if (!entity || typeof entity !== "object") {
+		return "hud";
+	}
+	const label = entity.id || entity.typeId || "?";
+	if (entity.visibility == null || String(entity.visibility).trim() === "") {
+		if (Object.prototype.hasOwnProperty.call(entity, "visible")) {
+			entity.visibility = entity.visible === false ? "none" : "hud";
+			noteMigration(`${label} visible → visibility`);
+		} else {
+			entity.visibility = "hud";
+		}
+	}
+	entity.visibility = normalizeVisibility(entity.visibility);
+	delete entity.visible;
+	return entity.visibility;
+}
 
 let openGaugeId = "";
 let activeGaugeId = "";
@@ -127,9 +211,9 @@ function beginGaugeDrag(ev, gaugeId, mode) {
 	const w = window.innerWidth || 1;
 	const h = window.innerHeight || 1;
 	const iconSize =
-		normalizeGaugeShape(gauge.shape) === "arc"
-			? Math.max(MIN_GAUGE_HEIGHT, Math.round(gauge.height))
-			: Math.round(gauge.height);
+		normalizeGaugeShape(gaugeSettings(gauge).shape) === "arc"
+			? Math.max(MIN_GAUGE_HEIGHT, Math.round(gauge.position.height))
+			: Math.round(gauge.position.height);
 	const box = gaugeLayoutBox(gauge, iconSize);
 	const aabb = hudItemAabbPx(gauge, box.w, box.h, w, h);
 	drag = {
@@ -138,14 +222,14 @@ function beginGaugeDrag(ev, gaugeId, mode) {
 		mode,
 		grabAabbX: ev.clientX - aabb.left,
 		grabAabbY: ev.clientY - aabb.top,
-		grabX: ev.clientX / w - (gauge.x ?? DEFAULT_HUD_X),
-		grabY: ev.clientY / h - (gauge.y ?? DEFAULT_HUD_Y),
-		startWidth: gauge.width,
-		startHeight: gauge.height,
+		grabX: ev.clientX / w - (gauge.position.x ?? DEFAULT_HUD_X),
+		grabY: ev.clientY / h - (gauge.position.y ?? DEFAULT_HUD_Y),
+		startWidth: gauge.position.width,
+		startHeight: gauge.position.height,
 		startLayoutW: box.w,
 		startLayoutH: box.h,
-		startX: gauge.x,
-		startY: gauge.y,
+		startX: gauge.position.x,
+		startY: gauge.position.y,
 		pointerLocal: screenToGaugeLocal(ev.clientX, ev.clientY, gauge)
 	};
 	if (ev.currentTarget && ev.pointerId != null && ev.currentTarget.setPointerCapture) {
@@ -167,7 +251,7 @@ function screenToGaugeLocal(clientX, clientY, gauge) {
 	}
 	const dx = clientX - cx;
 	const dy = clientY - cy;
-	const rad = -((Number(gauge.rotation) || 0) * Math.PI) / 180;
+	const rad = -((Number(gauge.position.rotation) || 0) * Math.PI) / 180;
 	return {
 		x: dx * Math.cos(rad) - dy * Math.sin(rad),
 		y: dx * Math.sin(rad) + dy * Math.cos(rad)
@@ -184,17 +268,17 @@ function onGaugePointerMove(ev) {
 	const h = window.innerHeight || 1;
 	if (drag.mode === "move") {
 		const iconSize =
-			normalizeGaugeShape(gauge.shape) === "arc"
-				? Math.max(MIN_GAUGE_HEIGHT, Math.round(gauge.height))
-				: Math.round(gauge.height);
+			normalizeGaugeShape(gaugeSettings(gauge).shape) === "arc"
+				? Math.max(MIN_GAUGE_HEIGHT, Math.round(gauge.position.height))
+				: Math.round(gauge.position.height);
 		const box = gaugeLayoutBox(gauge, iconSize);
-		const aabbSize = rotatedAabbSize(box.w, box.h, gauge.rotation || 0);
+		const aabbSize = rotatedAabbSize(box.w, box.h, gauge.position.rotation || 0);
 		let left = ev.clientX - (drag.grabAabbX || 0);
 		let top = ev.clientY - (drag.grabAabbY || 0);
 		left = Math.min(Math.max(0, left), Math.max(0, w - aabbSize.w));
 		top = Math.min(Math.max(0, top), Math.max(0, h - aabbSize.h));
-		gauge.x = left / w;
-		gauge.y = top / h;
+		gauge.position.x = left / w;
+		gauge.position.y = top / h;
 	} else if (drag.mode === "rotate") {
 		const el = findHudGaugeEl(gauge.id);
 		let sx;
@@ -207,7 +291,7 @@ function onGaugePointerMove(ev) {
 			const box = gaugeLayoutBox(gauge);
 			({ cx: sx, cy: sy } = hudItemCenterPx(gauge, box.w, box.h));
 		}
-		gauge.rotation = Math.atan2(ev.clientY - sy, ev.clientX - sx) * (180 / Math.PI);
+		gauge.position.rotation = Math.atan2(ev.clientY - sy, ev.clientX - sx) * (180 / Math.PI);
 		const box = gaugeLayoutBox(gauge);
 		clampHudItemToScreen(gauge, box.w, box.h);
 	} else if (String(drag.mode).startsWith("resize-")) {
@@ -223,7 +307,7 @@ function resizeGaugeFromPointer(gauge, ev) {
 		y: drag.startY
 	});
 	const axis = String(drag.mode).replace(/^resize-/, "");
-	const isArc = normalizeGaugeShape(gauge.shape) === "arc";
+	const isArc = normalizeGaugeShape(gaugeSettings(gauge).shape) === "arc";
 	const startLayoutH = isArc ? drag.startWidth / 2 : drag.startHeight;
 	let left = -drag.startWidth / 2;
 	let right = drag.startWidth / 2;
@@ -245,17 +329,17 @@ function resizeGaugeFromPointer(gauge, ev) {
 	const newLayoutH = isArc ? newW / 2 : bottom - top;
 	const midLocalX = (left + right) / 2;
 	const midLocalY = (top + bottom) / 2;
-	const rad = ((Number(gauge.rotation) || 0) * Math.PI) / 180;
+	const rad = ((Number(gauge.position.rotation) || 0) * Math.PI) / 180;
 	const startAabb = rotatedAabbSize(
 		drag.startLayoutW || drag.startWidth,
 		drag.startLayoutH || startLayoutH,
-		gauge.rotation || 0
+		gauge.position.rotation || 0
 	);
 	const startCx = drag.startX * (window.innerWidth || 1) + startAabb.w / 2;
 	const startCy = drag.startY * (window.innerHeight || 1) + startAabb.h / 2;
 	const worldDx = midLocalX * Math.cos(rad) - midLocalY * Math.sin(rad);
 	const worldDy = midLocalX * Math.sin(rad) + midLocalY * Math.cos(rad);
-	gauge.width = Math.max(MIN_GAUGE_WIDTH, newW);
+	gauge.position.width = Math.max(MIN_GAUGE_WIDTH, newW);
 	if (isArc) {
 		let thickness = drag.startHeight;
 		if (axis.includes("n") || axis.includes("s")) {
@@ -265,16 +349,16 @@ function resizeGaugeFromPointer(gauge, ev) {
 				Math.min(newW / 2 - 1, (boxH / Math.max(newLayoutH, 1)) * drag.startHeight)
 			);
 		}
-		gauge.height = thickness;
+		gauge.position.height = thickness;
 	} else {
-		gauge.height = Math.max(MIN_GAUGE_HEIGHT, newLayoutH);
+		gauge.position.height = Math.max(MIN_GAUGE_HEIGHT, newLayoutH);
 	}
 	const newCx = startCx + worldDx;
 	const newCy = startCy + worldDy;
 	const outBox = gaugeLayoutBox(gauge);
-	const outAabb = rotatedAabbSize(outBox.w, outBox.h, gauge.rotation || 0);
-	gauge.x = (newCx - outAabb.w / 2) / (window.innerWidth || 1);
-	gauge.y = (newCy - outAabb.h / 2) / (window.innerHeight || 1);
+	const outAabb = rotatedAabbSize(outBox.w, outBox.h, gauge.position.rotation || 0);
+	gauge.position.x = (newCx - outAabb.w / 2) / (window.innerWidth || 1);
+	gauge.position.y = (newCy - outAabb.h / 2) / (window.innerHeight || 1);
 	clampHudItemToScreen(gauge, outBox.w, outBox.h);
 }
 
@@ -346,24 +430,105 @@ function normalizeFrameSlot(value) {
 
 /** Resolve duplicate frame slots: keep Icon → Number → Title; clear losers to none. */
 function repairFrameSlots(gauge) {
+	const s = gauge.settings || gauge;
 	const order = [
-		["showIcon", normalizeFrameSlot(gauge.showIcon)],
-		["showNumber", normalizeFrameSlot(gauge.showNumber)],
-		["showLabel", normalizeFrameSlot(gauge.showLabel)]
+		["showIcon", normalizeFrameSlot(s.showIcon)],
+		["showNumber", normalizeFrameSlot(s.showNumber)],
+		["showLabel", normalizeFrameSlot(s.showLabel)]
 	];
 	const claimed = new Set();
 	for (const [key, slot] of order) {
 		if (slot === "none") {
-			gauge[key] = "none";
+			s[key] = "none";
 			continue;
 		}
 		if (claimed.has(slot)) {
-			gauge[key] = "none";
+			s[key] = "none";
 		} else {
 			claimed.add(slot);
-			gauge[key] = slot;
+			s[key] = slot;
 		}
 	}
+}
+
+/** Gauge appearance/options bag (nested under settings). */
+const GAUGE_SETTINGS_KEYS = new Set([
+	"displayName",
+	"type",
+	"shape",
+	"borderColor",
+	"borderThickness",
+	"troughOpacity",
+	"endCapMode",
+	"endCap",
+	"endCapOverlap",
+	"showIcon",
+	"showLabel",
+	"showNumber",
+	"fillDirection",
+	"iconColorMode",
+	"labelColorMode",
+	"numberColorMode",
+	"numberAsPercent",
+	"fontSize",
+	"frameShape",
+	"frameFillColor",
+	"frameBorderColor",
+	"frameBorderThickness",
+	"insideSize",
+	"displayMode",
+	"alwaysVisible",
+	"barTrough",
+	"numberFormat",
+	"pictureIcon",
+	"pictureDirection",
+	"pictureRotation",
+	"pictureEmpty",
+	"pictureFull",
+	"pictureFade"
+]);
+
+function defaultGaugeSettings() {
+	return {
+		displayName: "",
+		type: "meter",
+		shape: "bar",
+		borderColor: "",
+		borderThickness: DEFAULT_BORDER_THICKNESS_PCT,
+		troughOpacity: DEFAULT_TROUGH_OPACITY,
+		endCapMode: "border",
+		endCap: defaultEndCapArtPath(),
+		endCapOverlap: 0,
+		showIcon: "none",
+		showLabel: "none",
+		showNumber: "none",
+		fillDirection: "left",
+		iconColorMode: "border",
+		labelColorMode: "border",
+		numberColorMode: "border",
+		numberAsPercent: false,
+		fontSize: 0,
+		frameShape: "Frames/circle.svg",
+		frameFillColor: "",
+		frameBorderColor: "",
+		frameBorderThickness: 5,
+		insideSize: 65,
+		displayMode: "gear",
+		alwaysVisible: false,
+		barTrough: false,
+		numberFormat: "barPercent",
+		pictureIcon: "",
+		pictureDirection: "out",
+		pictureRotation: 0,
+		pictureEmpty: "#000000",
+		pictureFull: "#ffffff",
+		pictureFade: "#c4a35a"
+	};
+}
+
+function gaugeSettings(gauge) {
+	ensureGauge(gauge);
+	return gauge.settings;
 }
 
 function frameSlotSelectHtml(current, claimedByOthers) {
@@ -476,54 +641,25 @@ function normalizeFillDirection(value) {
 }
 
 function defaultGauge(n) {
+	const settings = defaultGaugeSettings();
+	settings.displayName =
+		typeof formatStockName === "function"
+			? formatStockName("Gauge {num}", { num: n })
+			: `Gauge ${n}`;
 	return {
 		id: `gauge_${Date.now().toString(36)}`,
-		displayName:
-			typeof formatStockName === "function"
-				? formatStockName("Gauge {num}", { num: n })
-				: `Gauge ${n}`,
-		type: "meter",
-		shape: "bar",
 		locked: false,
-		visible: true,
-		x: DEFAULT_HUD_X,
-		y: DEFAULT_HUD_Y,
-		rotation: 0,
-		width: DEFAULT_GAUGE_WIDTH,
-		height: DEFAULT_GAUGE_HEIGHT,
-		gearMod: "",
-		gearName: "",
-		borderColor: "",
-		borderThickness: DEFAULT_BORDER_THICKNESS_PCT,
-		troughOpacity: DEFAULT_TROUGH_OPACITY,
-		endCapMode: "border",
-		endCap: defaultEndCapArtPath(),
-		endCapOverlap: 0,
-		showIcon: "none",
-		showLabel: "none",
-		showNumber: "none",
-		fillDirection: "left",
-		iconColorMode: "border",
-		labelColorMode: "border",
-		numberColorMode: "border",
-		numberAsPercent: false,
-		fontSize: 0,
-		posAnchor: "tlc",
-		frameShape: "Frames/circle.svg",
-		frameFillColor: "",
-		frameBorderColor: "",
-		frameBorderThickness: 5,
-		insideSize: 65,
-		displayMode: "gear",
-		alwaysVisible: false,
-		barTrough: false,
-		numberFormat: "barPercent",
-		pictureIcon: "",
-		pictureDirection: "out",
-		pictureRotation: 0,
-		pictureEmpty: "#000000",
-		pictureFull: "#ffffff",
-		pictureFade: "#c4a35a"
+		visibility: "hud",
+		position: {
+			x: DEFAULT_HUD_X,
+			y: DEFAULT_HUD_Y,
+			rotation: 0,
+			width: DEFAULT_GAUGE_WIDTH,
+			height: DEFAULT_GAUGE_HEIGHT
+		},
+		sourceMod: "",
+		varName: "",
+		settings
 	};
 }
 
@@ -531,81 +667,158 @@ function ensureGauge(gauge) {
 	if (!gauge || typeof gauge !== "object") {
 		return gauge;
 	}
-	// Migration Code for Transition from v1.01 or earlier to v1.1: copy legacy title `name` into `displayName` when empty.
-	if (!String(gauge.displayName || "").trim() && String(gauge.name || "").trim()) {
-		gauge.displayName = String(gauge.name).trim();
-	}
-	if (typeof gauge.displayName !== "string") {
-		gauge.displayName = "";
-	}
-	gauge.type = normalizeGaugeType(gauge.type);
-	gauge.shape = normalizeGaugeShape(gauge.shape);
 	gauge.locked = !!gauge.locked;
-	gauge.visible = gauge.visible !== false;
-	gauge.x = Number.isFinite(Number(gauge.x)) ? Number(gauge.x) : DEFAULT_HUD_X;
-	gauge.y = Number.isFinite(Number(gauge.y)) ? Number(gauge.y) : DEFAULT_HUD_Y;
-	gauge.rotation = Number(gauge.rotation) || 0;
-	gauge.width = Math.max(MIN_GAUGE_WIDTH, Number(gauge.width) || DEFAULT_GAUGE_WIDTH);
-	gauge.height = Math.max(MIN_GAUGE_HEIGHT, Number(gauge.height) || DEFAULT_GAUGE_HEIGHT);
-	gauge.gearMod = String(gauge.gearMod || "");
-	gauge.gearName = String(gauge.gearName || "");
-	gauge.borderColor = String(gauge.borderColor || "");
-	gauge.borderThickness = quantizeDec(Math.max(0, Math.min(50, Number(gauge.borderThickness) || 0)), 1);
-	gauge.troughOpacity = quantizeDec(
-		Math.max(0, Math.min(100, Number(gauge.troughOpacity) || DEFAULT_TROUGH_OPACITY)),
+	ensureEntityVisibility(gauge);
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Legacy flat placement keys x/y/rotation/width/height move under nested "position" (never written back flat on save).
+	// Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
+	migrateEntityPosition(gauge, {
+		sized: true,
+		x: DEFAULT_HUD_X,
+		y: DEFAULT_HUD_Y,
+		rotation: 0,
+		width: DEFAULT_GAUGE_WIDTH,
+		height: DEFAULT_GAUGE_HEIGHT,
+		minW: MIN_GAUGE_WIDTH,
+		minH: MIN_GAUGE_HEIGHT
+	});
+	const gid = gauge.id || "?";
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Legacy gauge binding keys "gearMod"/"gearName" become sourceMod/varName.
+	if (!String(gauge.sourceMod || "").trim() && String(gauge.gearMod || "").trim()) {
+		gauge.sourceMod = String(gauge.gearMod).trim();
+		noteMigration(`gauge ${gid} gearMod → sourceMod`);
+	}
+	if (!String(gauge.varName || "").trim() && String(gauge.gearName || "").trim()) {
+		gauge.varName = String(gauge.gearName).trim();
+		noteMigration(`gauge ${gid} gearName → varName`);
+	}
+	delete gauge.gearMod;
+	delete gauge.gearName;
+	gauge.sourceMod = String(gauge.sourceMod || "");
+	gauge.varName = String(gauge.varName || "");
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Builtin Vampiric Hunger varName Bloodlust → VampiricHunger on gauge bindings.
+	if (
+		String(gauge.sourceMod).toLowerCase() === "cog.builtin" &&
+		String(gauge.varName).toLowerCase() === "bloodlust"
+	) {
+		noteMigration(`gauge ${gid} COG.Builtin Bloodlust → VampiricHunger`);
+		gauge.sourceMod = "COG.Builtin";
+		gauge.varName = "VampiricHunger";
+	}
+
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Legacy flat gauge chrome keys move under nested "settings" (never written back flat on save).
+	const bag =
+		gauge.settings && typeof gauge.settings === "object" && !Array.isArray(gauge.settings)
+			? { ...gauge.settings }
+			: {};
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Legacy root displayName (and older title key name) move under nested settings.displayName (never written on root again).
+	// Prefer settings.displayName; else root displayName; else legacy root name.
+	if (!String(bag.displayName || "").trim()) {
+		if (String(gauge.displayName || "").trim()) {
+			bag.displayName = String(gauge.displayName).trim();
+			noteMigration(`gauge ${gid} root displayName → settings.displayName`);
+		} else if (String(gauge.name || "").trim()) {
+			bag.displayName = String(gauge.name).trim();
+			noteMigration(`gauge ${gid} root name → settings.displayName`);
+		} else {
+			bag.displayName = "";
+		}
+	} else {
+		bag.displayName = String(bag.displayName).trim();
+	}
+	delete gauge.displayName;
+	delete gauge.name;
+	let foldedFlatChrome = false;
+	for (const key of GAUGE_SETTINGS_KEYS) {
+		if (key === "displayName") {
+			continue;
+		}
+		if (!Object.prototype.hasOwnProperty.call(bag, key) && Object.prototype.hasOwnProperty.call(gauge, key)) {
+			bag[key] = gauge[key];
+			foldedFlatChrome = true;
+		}
+		delete gauge[key];
+	}
+	noteMigrationIf(foldedFlatChrome, `gauge ${gid} flat chrome → settings`);
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Legacy root type moves under nested settings.type (never written on root again).
+	// Prefer settings.type; else root type (folded into bag above).
+	noteMigrationIf(
+		Object.prototype.hasOwnProperty.call(gauge, "type") && !Object.prototype.hasOwnProperty.call(bag, "type"),
+		`gauge ${gid} root type → settings.type`
+	);
+	delete gauge.type;
+	bag.type = normalizeGaugeType(bag.type);
+
+	bag.shape = normalizeGaugeShape(bag.shape);
+	bag.borderColor = String(bag.borderColor || "");
+	bag.borderThickness = quantizeDec(Math.max(0, Math.min(50, Number(bag.borderThickness) || 0)), 1);
+	bag.troughOpacity = quantizeDec(
+		Math.max(0, Math.min(100, Number(bag.troughOpacity) || DEFAULT_TROUGH_OPACITY)),
 		0
 	);
-	const migratedCap = migrateEndCapPath(String(gauge.endCap || ""));
-	gauge.endCapMode = normalizeEndCapMode(gauge.endCapMode, migratedCap);
-	gauge.endCap = migratedCap || defaultEndCapArtPath();
-	gauge.endCapOverlap = quantizeDec(Math.max(0, Math.min(45, Number(gauge.endCapOverlap) || 0)), 1);
-	if (gauge.type === "frame") {
-		gauge.showIcon = normalizeFrameSlot(gauge.showIcon);
-		gauge.showLabel = normalizeFrameSlot(gauge.showLabel);
-		gauge.showNumber = normalizeFrameSlot(gauge.showNumber);
+	const migratedCap = migrateEndCapPath(String(bag.endCap || ""));
+	bag.endCapMode = normalizeEndCapMode(bag.endCapMode, migratedCap);
+	bag.endCap = migratedCap || defaultEndCapArtPath();
+	bag.endCapOverlap = quantizeDec(Math.max(0, Math.min(45, Number(bag.endCapOverlap) || 0)), 1);
+	if (bag.type === "frame") {
+		bag.showIcon = normalizeFrameSlot(bag.showIcon);
+		bag.showLabel = normalizeFrameSlot(bag.showLabel);
+		bag.showNumber = normalizeFrameSlot(bag.showNumber);
 	} else {
-	gauge.showIcon = normalizeGaugePlacement(gauge.showIcon);
-	gauge.showLabel = normalizeGaugePlacement(gauge.showLabel);
-		gauge.showNumber = normalizeGaugePlacement(gauge.showNumber);
+		bag.showIcon = normalizeGaugePlacement(bag.showIcon);
+		bag.showLabel = normalizeGaugePlacement(bag.showLabel);
+		bag.showNumber = normalizeGaugePlacement(bag.showNumber);
 	}
-	gauge.fillDirection = normalizeFillDirection(gauge.fillDirection);
-	gauge.iconColorMode = normalizeIconColorMode(gauge.iconColorMode || "border");
-	gauge.labelColorMode = normalizeLabelColorMode(gauge.labelColorMode || "border");
-	gauge.numberColorMode = normalizeLabelColorMode(gauge.numberColorMode || "border");
-	gauge.numberAsPercent = gauge.numberAsPercent === true;
-	gauge.fontSize = Math.max(0, Number(gauge.fontSize) || 0);
-	gauge.posAnchor = "tlc";
-	gauge.frameShape = String(gauge.frameShape || "").trim() || defaultFrameShapePath();
-	gauge.frameFillColor = String(gauge.frameFillColor || "");
-	gauge.frameBorderColor = String(gauge.frameBorderColor || "");
-	gauge.frameBorderThickness = quantizeDec(
+	bag.fillDirection = normalizeFillDirection(bag.fillDirection);
+	bag.iconColorMode = normalizeIconColorMode(bag.iconColorMode || "border");
+	bag.labelColorMode = normalizeLabelColorMode(bag.labelColorMode || "border");
+	bag.numberColorMode = normalizeLabelColorMode(bag.numberColorMode || "border");
+	bag.numberAsPercent = bag.numberAsPercent === true;
+	bag.fontSize = Math.max(0, Number(bag.fontSize) || 0);
+	bag.frameShape = String(bag.frameShape || "").trim() || defaultFrameShapePath();
+	bag.frameFillColor = String(bag.frameFillColor || "");
+	bag.frameBorderColor = String(bag.frameBorderColor || "");
+	bag.frameBorderThickness = quantizeDec(
 		Math.max(
 			0,
-			Math.min(50, Number.isFinite(Number(gauge.frameBorderThickness)) ? Number(gauge.frameBorderThickness) : 5)
+			Math.min(50, Number.isFinite(Number(bag.frameBorderThickness)) ? Number(bag.frameBorderThickness) : 5)
 		),
 		1
 	);
-	gauge.insideSize = quantizeDec(
-		Math.max(5, Math.min(100, Number.isFinite(Number(gauge.insideSize)) ? Number(gauge.insideSize) : 65)),
+	bag.insideSize = quantizeDec(
+		Math.max(5, Math.min(100, Number.isFinite(Number(bag.insideSize)) ? Number(bag.insideSize) : 65)),
 		0
 	);
-	gauge.displayMode = normalizeGaugeDisplayMode(gauge.displayMode);
-	if (gauge.alwaysVisible === undefined || gauge.alwaysVisible === null) {
-		gauge.alwaysVisible = gauge.type === "frame";
+	bag.displayMode = normalizeGaugeDisplayMode(bag.displayMode);
+	if (bag.alwaysVisible === undefined || bag.alwaysVisible === null) {
+		bag.alwaysVisible = bag.type === "frame";
 	} else {
-		gauge.alwaysVisible = !!gauge.alwaysVisible;
+		bag.alwaysVisible = !!bag.alwaysVisible;
 	}
-	gauge.barTrough = gauge.barTrough === true;
-	gauge.numberFormat = normalizeNumberFormatGauge(gauge.numberFormat);
-	if (gauge.type === "frame") {
+	bag.barTrough = bag.barTrough === true;
+	bag.numberFormat = normalizeNumberFormatGauge(bag.numberFormat);
+	bag.pictureIcon = String(bag.pictureIcon || "").trim() || defaultPictureIconPath();
+	bag.pictureDirection = normalizePictureDirection(bag.pictureDirection);
+	bag.pictureRotation = Number(bag.pictureRotation) || 0;
+	bag.pictureEmpty = optionalHex(bag.pictureEmpty) || "#000000";
+	bag.pictureFull = optionalHex(bag.pictureFull) || "#ffffff";
+	bag.pictureFade = optionalHex(bag.pictureFade) || frameDefaultPictureFade();
+	stripUnknownKeys(bag, GAUGE_SETTINGS_KEYS, "gauge.settings", { id: gid });
+	const cleaned = {};
+	for (const key of GAUGE_SETTINGS_KEYS) {
+		if (Object.prototype.hasOwnProperty.call(bag, key)) {
+			cleaned[key] = bag[key];
+		}
+	}
+	gauge.settings = cleaned;
+	if (cleaned.type === "frame") {
 		repairFrameSlots(gauge);
 	}
-	gauge.pictureIcon = String(gauge.pictureIcon || "").trim() || defaultPictureIconPath();
-	gauge.pictureDirection = normalizePictureDirection(gauge.pictureDirection);
-	gauge.pictureRotation = Number(gauge.pictureRotation) || 0;
-	gauge.pictureEmpty = optionalHex(gauge.pictureEmpty) || "#000000";
-	gauge.pictureFull = optionalHex(gauge.pictureFull) || "#ffffff";
-	gauge.pictureFade = optionalHex(gauge.pictureFade) || frameDefaultPictureFade();
 	return gauge;
 }
 
@@ -644,11 +857,38 @@ function patchGauge(id, patch, skipHud, live) {
 	if (!gauge) {
 		return;
 	}
+	const settings = gaugeSettings(gauge);
 	let changed = false;
 	for (const [key, value] of Object.entries(patch)) {
+		if (key === "settings" && value && typeof value === "object" && !Array.isArray(value)) {
+			for (const [sk, sv] of Object.entries(value)) {
+				if (settings[sk] !== sv) {
+					changed = true;
+					settings[sk] = sv;
+				}
+			}
+			continue;
+		}
+		if (key === "position" && value && typeof value === "object" && !Array.isArray(value)) {
+			const pos = entityPosition(gauge);
+			for (const [pk, pv] of Object.entries(value)) {
+				if (pos[pk] !== pv) {
+					changed = true;
+					pos[pk] = pv;
+				}
+			}
+			continue;
+		}
+		if (GAUGE_SETTINGS_KEYS.has(key)) {
+			if (settings[key] !== value) {
+				changed = true;
+				settings[key] = value;
+			}
+			continue;
+		}
 		if (gauge[key] !== value) {
 			changed = true;
-			break;
+			gauge[key] = value;
 		}
 	}
 	if (!changed) {
@@ -657,7 +897,7 @@ function patchGauge(id, patch, skipHud, live) {
 		}
 		return;
 	}
-	Object.assign(gauge, patch);
+	gauge.settings = settings;
 	ensureGauge(gauge);
 	if (live === true) {
 		if (!skipHud) {
@@ -670,8 +910,8 @@ function patchGauge(id, patch, skipHud, live) {
 		syncHudGauge(gauge);
 		// live === false: colour commit — this gauge only (already synced).
 		if (live !== false && !drag) {
-		renderGears();
-	}
+			renderGears();
+		}
 	}
 	if (Object.prototype.hasOwnProperty.call(patch, "displayName")) {
 		renderEditor(true);
@@ -700,24 +940,24 @@ function findHudGaugeEl(id, preferredHost) {
 
 function gaugeLayoutBox(gauge, iconSize = 0) {
 	ensureGauge(gauge);
-	if (normalizeGaugeType(gauge.type) === "frame") {
-		return { w: Math.round(gauge.width), h: Math.round(gauge.height) };
+	if (normalizeGaugeType(gaugeSettings(gauge).type) === "frame") {
+		return { w: Math.round(gauge.position.width), h: Math.round(gauge.position.height) };
 	}
-	if (normalizeGaugeShape(gauge.shape) === "arc") {
-		const band = Math.max(MIN_GAUGE_HEIGHT, Math.round(gauge.height));
+	if (normalizeGaugeShape(gaugeSettings(gauge).shape) === "arc") {
+		const band = Math.max(MIN_GAUGE_HEIGHT, Math.round(gauge.position.height));
 		const arcCore = gaugeArcMetrics(gauge);
 		const capLayout = gaugeArcCapLayout(gauge, band);
 		const arcGeom = gaugeArcCapGeometry(gauge, capLayout, arcCore);
 		const metrics = gaugeArcLayoutMetrics(gauge, band, arcGeom, arcCore);
 		return { w: metrics.layoutW, h: metrics.layoutH };
 	}
-	const metrics = gaugeBarLayoutMetrics(gauge, iconSize || gauge.height);
+	const metrics = gaugeBarLayoutMetrics(gauge, iconSize || gauge.position.height);
 	return { w: metrics.layoutW, h: metrics.layoutH };
 }
 
 function layoutHudGauge(el, gauge) {
 	ensureGauge(gauge);
-	if (normalizeGaugeType(gauge.type) === "frame") {
+	if (normalizeGaugeType(gaugeSettings(gauge).type) === "frame") {
 		const { w, h } = gaugeLayoutBox(gauge);
 		const css = hudItemLayoutCss(gauge, w, h);
 		el.style.left = `${css.x * 100}%`;
@@ -725,18 +965,18 @@ function layoutHudGauge(el, gauge) {
 		el.style.width = `${w}px`;
 		el.style.height = `${h}px`;
 		el.style.setProperty("--gauge-rot", "0deg");
-		el.style.setProperty("--gauge-frame-rot", `${gauge.rotation || 0}deg`);
+		el.style.setProperty("--gauge-frame-rot", `${gauge.position.rotation || 0}deg`);
 		delete el.dataset.barLayout;
 		delete el.dataset.arcLayout;
 		return;
 	}
-	const shape = normalizeGaugeShape(gauge.shape);
+	const shape = normalizeGaugeShape(gaugeSettings(gauge).shape);
 	const isBar = shape === "bar";
 	const isArc = shape === "arc";
 	const iconSize = isBar
-		? Math.round(gauge.height)
+		? Math.round(gauge.position.height)
 		: isArc
-			? Math.max(MIN_GAUGE_HEIGHT, Math.round(gauge.height))
+			? Math.max(MIN_GAUGE_HEIGHT, Math.round(gauge.position.height))
 			: 0;
 	const { w, h } = gaugeLayoutBox(gauge, iconSize);
 	const css = hudItemLayoutCss(gauge, w, h);
@@ -754,7 +994,7 @@ function layoutHudGauge(el, gauge) {
 		rotor.style.top = `${metrics.rotorTop}px`;
 		rotor.style.width = `${metrics.barW}px`;
 		rotor.style.height = `${metrics.barH}px`;
-		rotor.style.setProperty("--gauge-rot", `${gauge.rotation || 0}deg`);
+		rotor.style.setProperty("--gauge-rot", `${gauge.position.rotation || 0}deg`);
 		el.dataset.barLayout = JSON.stringify({
 			layoutW: metrics.layoutW,
 			layoutH: metrics.layoutH,
@@ -776,7 +1016,7 @@ function layoutHudGauge(el, gauge) {
 		rotor.style.top = `${metrics.rotorTop}px`;
 		rotor.style.width = `${metrics.arcW}px`;
 		rotor.style.height = `${metrics.arcH}px`;
-		rotor.style.setProperty("--gauge-rot", `${gauge.rotation || 0}deg`);
+		rotor.style.setProperty("--gauge-rot", `${gauge.position.rotation || 0}deg`);
 		ensureGaugeArcZones(el);
 		el.dataset.arcLayout = JSON.stringify({
 			layoutW: metrics.layoutW,
@@ -788,7 +1028,7 @@ function layoutHudGauge(el, gauge) {
 		});
 		delete el.dataset.barLayout;
 	} else {
-		el.style.setProperty("--gauge-rot", `${gauge.rotation || 0}deg`);
+		el.style.setProperty("--gauge-rot", `${gauge.position.rotation || 0}deg`);
 		delete el.dataset.barLayout;
 		delete el.dataset.arcLayout;
 	}
@@ -805,65 +1045,65 @@ function syncHudGauge(gauge) {
 }
 
 function gaugeBorderColor(gauge) {
-	return optionalHex(gauge.borderColor) || themeBorder();
+	return optionalHex(gaugeSettings(gauge).borderColor) || themeBorder();
 }
 
 function gaugeLinked(gauge) {
-	const src = sourceFor(gauge.gearMod, gauge.gearName);
-	const gear = gearBySource(gauge.gearMod, gauge.gearName);
+	const src = sourceFor(gauge.sourceMod, gauge.varName);
+	const gear = gearBySource(gauge.sourceMod, gauge.varName);
 	return { src, gear };
 }
 
 /** Geometry/style fingerprint — when unchanged, HUD sync can live-patch fill/count only. */
 function gaugeStyleSig(gauge) {
-	ensureGauge(gauge);
+	const s = gaugeSettings(gauge);
 	const { src, gear } = gaugeLinked(gauge);
 	const icon = src && typeof sourceIconPath === "function" ? sourceIconPath(src, gear) : "";
 	return [
-		gauge.type,
-		gauge.shape,
-		gauge.displayMode,
-		gauge.frameShape,
-		gauge.x,
-		gauge.y,
-		gauge.width,
-		gauge.height,
-		gauge.rotation,
-		gauge.borderColor,
-		gauge.borderThickness,
-		gauge.troughOpacity,
-		gauge.endCap,
-		gauge.endCapMode,
-		gauge.endCapOverlap,
-		gauge.showIcon,
-		gauge.showLabel,
-		gauge.showNumber,
-		gauge.fillDirection,
-		gauge.numberFormat,
-		gauge.fontSize,
-		gauge.iconColorMode,
-		gauge.labelColorMode,
-		gauge.numberColorMode,
-		gauge.frameFillColor,
-		gauge.frameBorderColor,
-		gauge.frameBorderThickness,
-		gauge.insideSize,
-		gauge.barTrough,
-		gauge.alwaysVisible,
-		gauge.pictureIcon,
-		gauge.pictureDirection,
-		gauge.pictureRotation,
-		gauge.pictureEmpty,
-		gauge.pictureFull,
-		gauge.pictureFade,
-		gauge.gearMod,
-		gauge.gearName,
+		s.type,
+		s.shape,
+		s.displayMode,
+		s.frameShape,
+		gauge.position.x,
+		gauge.position.y,
+		gauge.position.width,
+		gauge.position.height,
+		gauge.position.rotation,
+		s.borderColor,
+		s.borderThickness,
+		s.troughOpacity,
+		s.endCap,
+		s.endCapMode,
+		s.endCapOverlap,
+		s.showIcon,
+		s.showLabel,
+		s.showNumber,
+		s.fillDirection,
+		s.numberFormat,
+		s.fontSize,
+		s.iconColorMode,
+		s.labelColorMode,
+		s.numberColorMode,
+		s.frameFillColor,
+		s.frameBorderColor,
+		s.frameBorderThickness,
+		s.insideSize,
+		s.barTrough,
+		s.alwaysVisible,
+		s.pictureIcon,
+		s.pictureDirection,
+		s.pictureRotation,
+		s.pictureEmpty,
+		s.pictureFull,
+		s.pictureFade,
+		gauge.sourceMod,
+		gauge.varName,
 		icon,
 		// Gear label text (stock titles follow UI language) — must invalidate live-patch reuse.
 		typeof gearTitleSig === "function"
 			? gearTitleSig(src, gear)
 			: typeof sourceTitle === "function"
-				? sourceTitle(src, gear && gear.name, gear)
+				? sourceTitle(src, gear && gear.varName, gear)
 				: ""
 	].join("|");
 }
@@ -874,13 +1114,13 @@ function patchHudGaugeLive(el, gauge) {
 		}
 	ensureGauge(gauge);
 	const { src, gear } = gaugeLinked(gauge);
-	if (normalizeGaugeType(gauge.type) === "frame") {
+	if (normalizeGaugeType(gaugeSettings(gauge).type) === "frame") {
 		if (typeof patchGaugeFrameLive === "function") {
 			patchGaugeFrameLive(el, gauge, src, gear);
 		}
 			return;
 		}
-	if (normalizeGaugeShape(gauge.shape) === "arc") {
+	if (normalizeGaugeShape(gaugeSettings(gauge).shape) === "arc") {
 		patchGaugeArcLive(el, gauge, src, gear);
 	} else {
 		patchGaugeBarLive(el, gauge, src, gear);
@@ -899,11 +1139,11 @@ function patchHudGaugeLive(el, gauge) {
 
 function paintGauge(el, gauge) {
 	ensureGauge(gauge);
-	if (normalizeGaugeType(gauge.type) === "frame") {
+	if (normalizeGaugeType(gaugeSettings(gauge).type) === "frame") {
 		if (typeof paintGaugeFrame === "function") {
 			paintGaugeFrame(el, gauge);
 		}
-	} else if (normalizeGaugeShape(gauge.shape) === "arc") {
+	} else if (normalizeGaugeShape(gaugeSettings(gauge).shape) === "arc") {
 		paintGaugeArc(el, gauge);
 	} else {
 		paintGaugeBar(el, gauge);
@@ -1020,10 +1260,10 @@ function syncGaugeHandleBounds(el) {
 }
 
 function gaugeHudShape(gauge) {
-	if (normalizeGaugeType(gauge.type) === "frame") {
-		return `frame:${normalizeGaugeDisplayMode(gauge.displayMode)}:${String(gauge.frameShape || "")}`;
+	if (normalizeGaugeType(gaugeSettings(gauge).type) === "frame") {
+		return `frame:${normalizeGaugeDisplayMode(gaugeSettings(gauge).displayMode)}:${String(gaugeSettings(gauge).frameShape || "")}`;
 	}
-	return normalizeGaugeShape(gauge.shape);
+	return normalizeGaugeShape(gaugeSettings(gauge).shape);
 }
 
 function attachGaugeHandles(el, gauge) {
@@ -1063,12 +1303,12 @@ function attachGaugeHandles(el, gauge) {
 
 function buildGaugeEl(gauge, preview) {
 	ensureGauge(gauge);
-	if (normalizeGaugeType(gauge.type) === "frame") {
+	if (normalizeGaugeType(gaugeSettings(gauge).type) === "frame") {
 		if (typeof buildGaugeFrameEl === "function") {
 			return buildGaugeFrameEl(gauge, preview);
 		}
 	}
-	if (normalizeGaugeShape(gauge.shape) === "arc") {
+	if (normalizeGaugeShape(gaugeSettings(gauge).shape) === "arc") {
 		return buildGaugeArcEl(gauge, preview);
 	}
 	return buildGaugeBarEl(gauge, preview);
@@ -1082,12 +1322,14 @@ function syncHudGauges(root, frontRoot, preview) {
 		ensureGauge(gauge);
 		const isFront =
 			preview && (activeGaugeId === gauge.id || (activeTab === "gauges" && openGaugeId === gauge.id));
-		if (!gauge.visible && !preview) {
-				return;
+		const visibility = normalizeVisibility(gauge.visibility);
+		// none: editor preview only; hud: with vanilla HUD; ui: also while soft-hidden (menus).
+		if (visibility === "none" && !preview) {
+			return;
 		}
-			const stayVisible = !!gauge.alwaysVisible;
-			if (!hudVisible && !preview && !stayVisible) {
-				return;
+		const stayVisible = !!gaugeSettings(gauge).alwaysVisible;
+		if (visibility === "hud" && !hudVisible && !preview && !stayVisible) {
+			return;
 		}
 		const { src, gear } = gaugeLinked(gauge);
 			const hidden = !stayVisible && !!(src && isHudHidden(src, gear));
@@ -1140,6 +1382,10 @@ function syncHudGauges(root, frontRoot, preview) {
 			}
 		}
 		el.classList.toggle("is-front", isFront);
+		el.classList.toggle("is-preview", visibility === "none");
+		// CSS soft-hide only keeps data-visibility="ui". alwaysVisible still means stay in menus.
+		el.dataset.visibility =
+			visibility === "none" ? "none" : visibility === "ui" || stayVisible ? "ui" : visibility;
 		applyHudFadeClasses(el, fadeKey, preview, now);
 		});
 	}

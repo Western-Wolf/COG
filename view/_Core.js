@@ -335,6 +335,28 @@ window.cogReportError = function cogReportError(where, err) {
 	}
 };
 
+/** Config strip/migration notes → console + COG.log (jsConfig:). */
+window.cogConfigNote = function cogConfigNote(message) {
+	const text = String(message || "");
+	if (!text) {
+		return;
+	}
+	console.info("COG config:", text);
+	try {
+		if (typeof window.cogToSKSE === "function") {
+			window.cogToSKSE("jsConfig:" + text);
+		}
+	} catch (_) {
+		/* ignore bridge failures */
+	}
+};
+
+function cogConfigNote(message) {
+	if (typeof window.cogConfigNote === "function") {
+		window.cogConfigNote(message);
+	}
+}
+
 function normalizeSnapshot() {
 	if (!snapshot.general) {
 		snapshot.general = {};
@@ -435,8 +457,23 @@ function normalizeSnapshot() {
 		rebuildIconRootMap();
 	}
 	for (const src of snapshot.sources || []) {
-		if (src && src.icon) {
-			src.icon = normalizeIconRelPath(src.icon);
+		if (!src || typeof src !== "object") {
+			continue;
+		}
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy live source identity keys "mod"/"name" become sourceMod/varName.
+		if (!String(src.sourceMod || "").trim() && String(src.mod || "").trim()) {
+			src.sourceMod = String(src.mod).trim();
+		}
+		if (!String(src.varName || "").trim() && String(src.name || "").trim()) {
+			src.varName = String(src.name).trim();
+		}
+		delete src.mod;
+		delete src.name;
+		if (src.icon) {
+			src.icon =
+				(typeof normalizeIconRampValue === "function" ? normalizeIconRampValue(src.icon) : "") ||
+				normalizeIconRelPath(src.icon);
 		}
 	}
 	preloadEndCapAspects();
@@ -448,13 +485,13 @@ function cssAttr(value) {
 	return String(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
-function sourceFor(mod, name) {
-	const m = String(mod || "");
-	const n = String(name || "");
+function sourceFor(sourceMod, varName) {
+	const m = String(sourceMod || "");
+	const n = String(varName || "");
 	return (snapshot.sources || []).find(
 		(s) =>
-			String(s.mod || "").toLowerCase() === m.toLowerCase() &&
-			String(s.name || "").toLowerCase() === n.toLowerCase()
+			String(s.sourceMod || s.mod || "").toLowerCase() === m.toLowerCase() &&
+			String(s.varName || s.name || "").toLowerCase() === n.toLowerCase()
 	);
 }
 
@@ -499,18 +536,91 @@ function rotatedAabbSize(boxW, boxH, rotDeg) {
 }
 
 /**
+ * Ensure entity.position exists and return it.
+ * Call ensureGroup / ensureGauge / ensureGizmo first when migrating legacy flat keys.
+ */
+function entityPosition(e) {
+	if (!e || typeof e !== "object") {
+		return null;
+	}
+	if (!e.position || typeof e.position !== "object" || Array.isArray(e.position)) {
+		e.position = {};
+	}
+	return e.position;
+}
+
+/**
+ * Migration Code for Transition from v1.01 or earlier to v1.1:
+ * Legacy flat placement keys x/y/rotation[/width/height] move under nested "position" (never written back flat on save).
+ * Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
+ *
+ * @param {object} entity
+ * @param {{ x?: number, y?: number, rotation?: number, width?: number, height?: number, minW?: number, minH?: number, sized?: boolean }} defaults
+ */
+function migrateEntityPosition(entity, defaults = {}) {
+	if (!entity || typeof entity !== "object") {
+		return null;
+	}
+	const hadNested =
+		entity.position && typeof entity.position === "object" && !Array.isArray(entity.position);
+	const bag = hadNested ? { ...entity.position } : {};
+	const flatKeys = ["x", "y", "rotation", "width", "height", "posAnchor"];
+	const hadFlat = flatKeys.some((k) => Object.prototype.hasOwnProperty.call(entity, k));
+	const label = entity.id || entity.typeId || "?";
+	noteMigrationIf(!hadNested && hadFlat, `${label} flat placement → nested position`);
+	noteMigrationIf(
+		Object.prototype.hasOwnProperty.call(entity, "posAnchor") ||
+			Object.prototype.hasOwnProperty.call(bag, "posAnchor"),
+		`${label} ignored legacy posAnchor`
+	);
+	const knownPos = defaults.sized
+		? ["x", "y", "rotation", "width", "height"]
+		: ["x", "y", "rotation"];
+	stripUnknownKeys(bag, knownPos, "position", { id: label, legacySet: ["posAnchor"] });
+	const pick = (key, fallback) => {
+		if (Number.isFinite(Number(bag[key]))) {
+			return Number(bag[key]);
+		}
+		if (Number.isFinite(Number(entity[key]))) {
+			return Number(entity[key]);
+		}
+		return fallback;
+	};
+	const pos = {
+		x: pick("x", defaults.x ?? DEFAULT_HUD_X),
+		y: pick("y", defaults.y ?? DEFAULT_HUD_Y),
+		rotation: pick("rotation", defaults.rotation ?? 0)
+	};
+	if (defaults.sized) {
+		const minW = defaults.minW ?? 0;
+		const minH = defaults.minH ?? 0;
+		pos.width = Math.max(minW, pick("width", defaults.width ?? 0));
+		pos.height = Math.max(minH, pick("height", defaults.height ?? 0));
+	}
+	entity.position = pos;
+	delete entity.x;
+	delete entity.y;
+	delete entity.rotation;
+	delete entity.width;
+	delete entity.height;
+	delete entity.posAnchor;
+	return pos;
+}
+
+/**
  * CSS left/top are the unrotated layout box; with transform-origin 50% 50%, the visual
  * footprint is a larger AABB when rotated.
  *
- * Persisted gizmo/gauge x/y are visual AABB top-left fractions.
+ * Persisted gizmo/gauge position.x/y are visual AABB top-left fractions.
  * Groups still use layout CSS fractions. Helpers convert AABB ↔ layout for paint/drag.
  */
 function hudItemAabbPx(item, boxW, boxH, screenW, screenH) {
 	const sw = screenW || window.innerWidth || 1;
 	const sh = screenH || window.innerHeight || 1;
-	const left = (item.x ?? DEFAULT_HUD_X) * sw;
-	const top = (item.y ?? DEFAULT_HUD_Y) * sh;
-	const aabb = rotatedAabbSize(boxW, boxH, item.rotation || 0);
+	const pos = entityPosition(item) || {};
+	const left = (pos.x ?? DEFAULT_HUD_X) * sw;
+	const top = (pos.y ?? DEFAULT_HUD_Y) * sh;
+	const aabb = rotatedAabbSize(boxW, boxH, pos.rotation || 0);
 	return { left, top, w: aabb.w, h: aabb.h, cx: left + aabb.w / 2, cy: top + aabb.h / 2 };
 }
 
@@ -530,12 +640,13 @@ function hudItemLayoutFromAabbLeftTop(left, top, boxW, boxH, rotDeg, screenW, sc
 function hudItemLayoutCss(item, boxW, boxH) {
 	const sw = window.innerWidth || 1;
 	const sh = window.innerHeight || 1;
+	const pos = entityPosition(item) || {};
 	return hudItemLayoutFromAabbLeftTop(
-		(item.x ?? DEFAULT_HUD_X) * sw,
-		(item.y ?? DEFAULT_HUD_Y) * sh,
+		(pos.x ?? DEFAULT_HUD_X) * sw,
+		(pos.y ?? DEFAULT_HUD_Y) * sh,
 		boxW,
 		boxH,
-		item.rotation || 0,
+		pos.rotation || 0,
 		sw,
 		sh
 	);
@@ -543,28 +654,32 @@ function hudItemLayoutCss(item, boxW, boxH) {
 
 /** Editor X/Y % = persisted AABB top-left on screen. */
 function hudItemEditorPosPct(item, boxW, boxH) {
+	const pos = entityPosition(item) || {};
 	return {
-		x: (item.x ?? DEFAULT_HUD_X) * 100,
-		y: (item.y ?? DEFAULT_HUD_Y) * 100
+		x: (pos.x ?? DEFAULT_HUD_X) * 100,
+		y: (pos.y ?? DEFAULT_HUD_Y) * 100
 	};
 }
 
 function applyHudItemEditorPosPct(item, boxW, boxH, xPct, yPct) {
-	item.x = clampPct(Number(xPct), 0, 100) / 100;
-	item.y = clampPct(Number(yPct), 0, 100) / 100;
+	const pos = entityPosition(item);
+	pos.x = clampPct(Number(xPct), 0, 100) / 100;
+	pos.y = clampPct(Number(yPct), 0, 100) / 100;
 	clampHudItemToScreen(item, boxW, boxH);
 }
 
 /** Compute editor AABB X/Y without mutating the live item (so patch* can detect the change). */
 function hudItemEditorPosPatch(item, boxW, boxH, xPct, yPct) {
+	const src = entityPosition(item) || {};
 	const probe = {
-		x: item.x,
-		y: item.y,
-		rotation: item.rotation,
-		posAnchor: item.posAnchor
+		position: {
+			x: src.x,
+			y: src.y,
+			rotation: src.rotation
+		}
 	};
 	applyHudItemEditorPosPct(probe, boxW, boxH, xPct, yPct);
-	return { x: probe.x, y: probe.y };
+	return { position: { x: probe.position.x, y: probe.position.y } };
 }
 
 /** Keep the rotated visual footprint on-screen (allows negative layout CSS when rotated). */
@@ -574,8 +689,9 @@ function clampHudItemToScreen(item, boxW, boxH) {
 	const aabb = hudItemAabbPx(item, boxW, boxH, sw, sh);
 	const left = Math.min(Math.max(0, aabb.left), Math.max(0, sw - aabb.w));
 	const top = Math.min(Math.max(0, aabb.top), Math.max(0, sh - aabb.h));
-	item.x = left / sw;
-	item.y = top / sh;
+	const pos = entityPosition(item);
+	pos.x = left / sw;
+	pos.y = top / sh;
 }
 
 function hudItemCenterPx(item, boxW, boxH) {

@@ -39,6 +39,12 @@ Function GameLoad()
 EndFunction
 
 Event OnUpdate()
+	; ESP disabled but .pex still installed (MO2): save/cosave can keep RegisterForUpdate alive.
+	; Without this gate, Notify still fires while COG correctly prunes gears/types for the missing plugin.
+	If !COG_API.IsPluginLoaded(PluginFile)
+		StopCountdown()
+		Return
+	EndIf
 	COGUpdate()
 EndEvent
 
@@ -47,6 +53,10 @@ Function Setup()
 	; IsReady: true once COG's SKSE plugin and Prisma view are up. Register only after this.
 	; SetupBusy: OnInit / COG_Ready / Loading Menu close can overlap; avoid stacked batches.
 	If SetupBusy || !COG_API.IsReady()
+		Return
+	EndIf
+	If !COG_API.IsPluginLoaded(PluginFile)
+		StopCountdown()
 		Return
 	EndIf
 	SetupBusy = True
@@ -108,6 +118,19 @@ Function StartCountdown()
 	EndIf
 EndFunction
 
+Function StopCountdown()
+	If LoopArmed
+		UnregisterForUpdate()
+		LoopArmed = False
+	EndIf
+	CountReceipt = 0
+	PercentReceipt = 0
+	TimerReceipt = 0
+	GizmoGearReceipt = 0
+	GizmoPushReceipt = 0
+	IconPath = ""
+EndFunction
+
 Function COGUpdate()
 
 	; UpdateCount: set the integer value for a count-type receipt (no maximum).
@@ -135,7 +158,10 @@ Function COGUpdate()
 	If Remaining == 0
 		; Notify: toast on a play-visible Feed with Notifications on (colour + optional icon).
 		; No-op (logged) if no matching Feed. Icon path: shipped assets/icons/ or registered import.
-		COG_API.Notify("Example countdown finished", "#E8D2A0", IconPath)
+		; Only toast when registration succeeded this session (avoids orphan OnUpdate with empty IconPath).
+		If CountReceipt != 0 || PercentReceipt != 0 || TimerReceipt != 0
+			COG_API.Notify("Example countdown finished", "#E8D2A0", IconPath)
+		EndIf
 		Remaining = 10
 	Else
 		Remaining -= 1

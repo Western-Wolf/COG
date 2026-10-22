@@ -1103,7 +1103,7 @@ void CogHudSuppress::CollectSuppressions(const CogRegistry& reg, std::vector<Cog
 
 	auto findGearBySource = [&](const std::string& mod, const std::string& name) -> const CogGear* {
 		for (const auto& g : reg._gears) {
-			if (SourceKey(g.mod, g.name) == SourceKey(mod, name)) {
+			if (SourceKey(g.sourceMod, g.varName) == SourceKey(mod, name)) {
 				return &g;
 			}
 		}
@@ -1118,8 +1118,10 @@ void CogHudSuppress::CollectSuppressions(const CogRegistry& reg, std::vector<Cog
 	};
 
 	for (const auto& group : reg._groups) {
-		const bool visible = group.id == kDefaultGroupId ? reg._general.showDefaultGroup : group.visible;
-		for (const auto& gearId : group.gearIds) {
+		const bool visible = group.id == kDefaultGroupId
+			? reg._general.showDefaultGroup
+			: CogRegistryJson::NormalizeGizmoVisibility(group.visibility) != "none";
+		for (const auto& gearId : group.settings.gearIds) {
 			const CogGear* gear = nullptr;
 			for (const auto& g : reg._gears) {
 				if (g.id == gearId) {
@@ -1127,10 +1129,10 @@ void CogHudSuppress::CollectSuppressions(const CogRegistry& reg, std::vector<Cog
 					break;
 				}
 			}
-			if (!gear || !gear->enabled) {
+			if (!gear) {
 				continue;
 			}
-			const auto idx = reg._index.find(SourceKey(gear->mod, gear->name));
+			const auto idx = reg._index.find(SourceKey(gear->sourceMod, gear->varName));
 			if (idx == reg._index.end()) {
 				continue;
 			}
@@ -1146,7 +1148,7 @@ void CogHudSuppress::CollectSuppressions(const CogRegistry& reg, std::vector<Cog
 			CogHudSuppressController c;
 			c.kind = "group";
 			c.id = group.id;
-			c.label = std::string("Group ") + group.displayName;
+			c.label = std::string("Group ") + group.settings.displayName;
 			c.role = "hide";
 			c.active = visible;
 			if (!visible) {
@@ -1157,18 +1159,18 @@ void CogHudSuppress::CollectSuppressions(const CogRegistry& reg, std::vector<Cog
 	}
 
 	for (const auto& gauge : reg._gauges) {
-		const bool gaugeVisible = gauge.visible;
-		if (gauge.gearMod.empty() || gauge.gearName.empty()) {
+		const bool gaugeVisible = CogRegistryJson::NormalizeGizmoVisibility(gauge.visibility) != "none";
+		if (gauge.sourceMod.empty() || gauge.varName.empty()) {
 			continue;
 		}
-		const auto idx = reg._index.find(SourceKey(gauge.gearMod, gauge.gearName));
+		const auto idx = reg._index.find(SourceKey(gauge.sourceMod, gauge.varName));
 		if (idx == reg._index.end()) {
 			continue;
 		}
 		if (reg._sources.find(idx->second) == reg._sources.end()) {
 			continue;
 		}
-		const CogGear* gear = findGearBySource(gauge.gearMod, gauge.gearName);
+		const CogGear* gear = findGearBySource(gauge.sourceMod, gauge.varName);
 		if (!gear) {
 			continue;
 		}
@@ -1181,7 +1183,7 @@ void CogHudSuppress::CollectSuppressions(const CogRegistry& reg, std::vector<Cog
 		CogHudSuppressController c;
 		c.kind = "gauge";
 		c.id = gauge.id;
-		c.label = std::string("Gauge ") + (gauge.displayName.empty() ? gauge.id : gauge.displayName);
+		c.label = std::string("Gauge ") + (gauge.settings.displayName.empty() ? gauge.id : gauge.settings.displayName);
 		c.role = "hide";
 		c.active = gaugeVisible;
 		if (!gaugeVisible) {
@@ -1191,8 +1193,9 @@ void CogHudSuppress::CollectSuppressions(const CogRegistry& reg, std::vector<Cog
 	}
 
 	for (const auto& gizmo : reg._gizmos) {
-		const auto type = GizmoTypeKey(gizmo.type);
-		const auto gizmoLabel = std::string("Gizmo ") + (gizmo.displayName.empty() ? gizmo.id : gizmo.displayName);
+		const auto type = GizmoTypeKey(gizmo.typeId);
+		const auto gizmoTitle = CogRegistryJson::GizmoDisplayName(gizmo);
+		const auto gizmoLabel = std::string("Gizmo ") + (gizmoTitle.empty() ? gizmo.id : gizmoTitle);
 		if (type == "cog-suppressor") {
 			for (const auto& raw : ParseStringArrayJson(
 					 CogRegistryJson::NormalizeHudKeyListJson(

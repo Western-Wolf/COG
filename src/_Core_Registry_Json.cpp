@@ -9,11 +9,17 @@
 #include <cstdlib>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 namespace CogRegistryJson
 {
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Legacy gear-root exemptFromGroupColors moves onto the owning group's settings.exemptFromGroupColors[gearId]
+	// (never written on the gear again). Stashed during ParseGear; folded by MigrateLegacyGearExemptOntoGroups.
+	std::unordered_map<std::string, bool> g_pendingLegacyGearExempt;
+
 	std::string Lower(std::string s)
 	{
 		std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
@@ -545,6 +551,29 @@ namespace CogRegistryJson
 		}
 	}
 
+	std::string ReadIconField(const CogJson::Value& obj, CogJson::ParseContext& ctx, std::string_view key)
+	{
+		if (const auto* v = obj.Find(std::string(key)); v) {
+			if (v->IsString()) {
+				return NormalizeIcon(v->stringValue);
+			}
+			if (v->IsArray()) {
+				return NormalizeIcon(ctx.GetRawJson(obj, key, "[]"));
+			}
+		}
+		return {};
+	}
+
+	void WriteIconField(CogJson::Writer& w, std::string_view key, const std::string& icon)
+	{
+		WriteColorRampField(w, key, icon);
+	}
+
+	void AppendIconJson(std::ostringstream& o, std::string_view key, const std::string& icon)
+	{
+		AppendColorRampJson(o, key, icon);
+	}
+
 	std::string TrimCopy(std::string raw)
 	{
 		while (!raw.empty() && std::isspace(static_cast<unsigned char>(raw.front()))) {
@@ -747,16 +776,59 @@ namespace CogRegistryJson
 	{
 		CogGroup g;
 		g.id = kDefaultGroupId;
-		g.displayName = "Default Group";
 		g.locked = true;
-		g.visible = true;
-		g.x = 0.1f;
-		g.y = 0.10f;
-		g.rotation = 0.0f;
-		g.gearSize = kDefaultGearSize;
-		g.spacing = kDefaultSpacing;
-		g.stack = "below";
+		g.visibility = "hud";
+		g.position.x = 0.1f;
+		g.position.y = 0.10f;
+		g.position.rotation = 0.0f;
+		g.settings.displayName = "Default Group";
+		g.settings.gearSize = kDefaultGearSize;
+		g.settings.spacing = kDefaultSpacing;
+		g.settings.stack = "below";
 		return g;
+	}
+
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Legacy flat placement keys x/y/rotation[/width/height] move under nested "position" (never written back flat on save).
+	// Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
+	float ReadPlacementFloat(
+		const CogJson::Value& obj,
+		const CogJson::Value* posObj,
+		CogJson::ParseContext& ctx,
+		const char* key,
+		float fallback)
+	{
+		if (posObj && ctx.Has(*posObj, key)) {
+			return ctx.GetFloat(*posObj, key, fallback);
+		}
+		return ctx.GetFloat(obj, key, fallback);
+	}
+
+	bool HasPlacementKey(const CogJson::Value& obj, const CogJson::Value* posObj, CogJson::ParseContext& ctx, const char* key)
+	{
+		return (posObj && ctx.Has(*posObj, key)) || ctx.Has(obj, key);
+	}
+
+	void AppendPositionXYR(CogJson::Writer& w, const CogPosition& p)
+	{
+		w.Key("position");
+		w.BeginObject();
+		w.KeyNumber("x", p.x);
+		w.KeyNumber("y", p.y);
+		w.KeyNumber("rotation", p.rotation);
+		w.EndObject();
+	}
+
+	void AppendBoxPosition(CogJson::Writer& w, const CogBoxPosition& p)
+	{
+		w.Key("position");
+		w.BeginObject();
+		w.KeyNumber("x", p.x);
+		w.KeyNumber("y", p.y);
+		w.KeyNumber("rotation", p.rotation);
+		w.KeyNumber("width", p.width);
+		w.KeyNumber("height", p.height);
+		w.EndObject();
 	}
 
 	std::string NormalizeGroupId(std::string id)
@@ -785,29 +857,113 @@ namespace CogRegistryJson
 		       a.hideAt.empty();
 	}
 
-	CogGearAppearance ParseAppearance(const CogJson::Value& obj, CogJson::ParseContext& ctx)
+	void NoteMigration(CogJson::ParseContext& ctx, std::string_view detail)
+	{
+		logger::info(
+			"COG: Migration Code for Transition from v1.01 or earlier to v1.1: {} — {}",
+			ctx.path.empty() ? "(config)" : ctx.path,
+			detail);
+		ctx.repaired = true;
+	}
+
+	bool NoteIfHas(CogJson::ParseContext& ctx, const CogJson::Value& obj, const char* key, std::string_view detail)
+	{
+		if (!ctx.Has(obj, key)) {
+			return false;
+		}
+		NoteMigration(ctx, detail);
+		return true;
+	}
+
+	bool NoteIfHasAny(
+		CogJson::ParseContext& ctx,
+		const CogJson::Value& obj,
+		std::initializer_list<const char*> keys,
+		std::string_view detail)
+	{
+		for (const char* key : keys) {
+			if (ctx.Has(obj, key)) {
+				NoteMigration(ctx, detail);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	bool KeyInList(std::string_view key, std::initializer_list<const char*> keys)
+	{
+		for (const char* k : keys) {
+			if (key == k) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Log + mark repaired for keys that are neither allowlisted nor consumed legacy. */
+	void WarnUnknownKeys(
+		CogJson::ParseContext& ctx,
+		const CogJson::Value& obj,
+		std::initializer_list<const char*> allowed,
+		std::initializer_list<const char*> legacyConsumed,
+		std::string_view bagLabel)
+	{
+		if (!obj.IsObject()) {
+			return;
+		}
+		for (const auto& [key, _] : obj.objectValue) {
+			if (KeyInList(key, allowed) || KeyInList(key, legacyConsumed)) {
+				continue;
+			}
+			logger::warn(
+				"COG: stripped unknown {} key '{}' from {}",
+				bagLabel,
+				key,
+				ctx.path.empty() ? "(config)" : ctx.path);
+			ctx.repaired = true;
+		}
+	}
+
+	CogGearAppearance ParseAppearance(const CogJson::Value& obj, CogJson::ParseContext& ctx, std::string_view bagLabel)
 	{
 		CogGearAppearance a;
 		a.displayName = ctx.GetString(obj, "displayName");
 		// Migration Code for Transition from v1.01 or earlier to v1.1:
 		// Legacy appearance title key "display" becomes displayName (never written back on save).
-		if (a.displayName.empty()) {
+		if (a.displayName.empty() && ctx.Has(obj, "display")) {
 			a.displayName = ctx.GetString(obj, "display");
+			NoteMigration(ctx, std::string(bagLabel) + " display → displayName");
 		}
-		a.icon = NormalizeIcon(ctx.GetString(obj, "icon"));
+		a.icon = ReadIconField(obj, ctx, "icon");
+		const bool hadIconColor = ctx.Has(obj, "iconColor");
+		const bool hadLegacyPair = ctx.Has(obj, "startColor") || ctx.Has(obj, "endColor");
 		a.iconColor = ReadColorRampField(obj, ctx, "iconColor", true);
+		if (!hadIconColor && hadLegacyPair && !a.iconColor.empty()) {
+			NoteMigration(ctx, std::string(bagLabel) + " startColor/endColor → iconColor");
+		}
 		a.barColor = ReadColorRampField(obj, ctx, "barColor", false);
 		a.hideAt = ctx.GetString(obj, "hideAt");
 		a.hudLinkedElement = ctx.GetString(obj, "hudLinkedElement");
 		a.hudHideDuplicate = ctx.GetBool(obj, "hudHideDuplicate", false);
+		WarnUnknownKeys(
+			ctx,
+			obj,
+			{ "displayName", "icon", "iconColor", "barColor", "hideAt", "hudLinkedElement", "hudHideDuplicate" },
+			{ "display", "startColor", "endColor" },
+			bagLabel);
 		return a;
+	}
+
+	CogGearAppearance ParseAppearance(const CogJson::Value& obj, CogJson::ParseContext& ctx)
+	{
+		return ParseAppearance(obj, ctx, "appearance");
 	}
 
 	void AppendAppearance(CogJson::Writer& w, const CogGearAppearance& a)
 	{
 		w.BeginObject();
 		w.KeyString("displayName", a.displayName);
-		w.KeyString("icon", a.icon);
+		WriteIconField(w, "icon", a.icon);
 		WriteColorRampField(w, "iconColor", a.iconColor);
 		WriteColorRampField(w, "barColor", a.barColor);
 		w.KeyString("hideAt", a.hideAt);
@@ -825,72 +981,326 @@ namespace CogRegistryJson
 	CogGroup ParseGroup(const CogJson::Value& obj, CogJson::ParseContext& ctx)
 	{
 		CogGroup g = DefaultGroup();
-		// Migration Code for Transition from v1.01 or earlier to v1.1:
-		// Legacy group title key "name" becomes displayName (never written back on save).
-		auto title = ctx.GetString(obj, "displayName");
-		if (title.empty()) {
-			title = ctx.GetString(obj, "name");
-		}
 		g.id = ctx.GetString(obj, "id");
+		g.locked = g.id == kDefaultGroupId || ctx.GetBool(obj, "locked", false);
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy root bool "visible" becomes visibility none|hud|ui (never written back as bool).
+		if (ctx.Has(obj, "visibility")) {
+			g.visibility = NormalizeGizmoVisibility(ctx.GetString(obj, "visibility"));
+		} else if (ctx.Has(obj, "visible")) {
+			g.visibility = ctx.GetBool(obj, "visible", true) ? "hud" : "none";
+			NoteMigration(ctx, "visible → visibility");
+		} else {
+			g.visibility = "hud";
+		}
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy flat placement keys x/y/rotation move under nested "position" (never written back flat on save).
+		// Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
+		{
+			const CogJson::Value* posObj = ctx.GetObject(obj, "position");
+			if (!posObj) {
+				NoteIfHasAny(
+					ctx, obj, { "x", "y", "rotation", "posAnchor" },
+					"flat placement / posAnchor → nested position (posAnchor ignored)");
+			}
+			g.position.x = ReadPlacementFloat(obj, posObj, ctx, "x", g.position.x);
+			g.position.y = ReadPlacementFloat(obj, posObj, ctx, "y", g.position.y);
+			g.position.rotation = ReadPlacementFloat(obj, posObj, ctx, "rotation", 0.0f);
+			if (posObj) {
+				WarnUnknownKeys(ctx, *posObj, { "x", "y", "rotation" }, {}, "group.position");
+			}
+		}
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy group options bag "style" becomes "settings" (never written back on save).
+		const CogJson::Value* settingsBag = ctx.GetObject(obj, "settings");
+		if (!settingsBag) {
+			settingsBag = ctx.GetObject(obj, "style");
+			if (settingsBag) {
+				NoteMigration(ctx, "style → settings");
+			}
+		}
+		if (settingsBag) {
+			g.settings.showLabel = ctx.GetBool(*settingsBag, "showLabel", false);
+			g.settings.showIcon = ctx.GetBool(*settingsBag, "showIcon", true);
+			g.settings.showNumber = ctx.GetBool(*settingsBag, "showNumber", true);
+			g.settings.barTrough = ctx.GetBool(*settingsBag, "barTrough", true);
+			g.settings.fillFromHidden = NormalizeFillFromHidden(ctx.GetString(*settingsBag, "fillFromHidden"));
+			g.settings.numberFormat = NormalizeNumberFormat(*settingsBag, ctx);
+			g.settings.useGroupColors = ctx.GetBool(*settingsBag, "useGroupColors", false);
+			const bool hadIconColor = ctx.Has(*settingsBag, "iconColor");
+			const bool hadLegacyPair = ctx.Has(*settingsBag, "startColor") || ctx.Has(*settingsBag, "endColor");
+			g.settings.iconColor = ReadColorRampField(*settingsBag, ctx, "iconColor", true);
+			if (!hadIconColor && hadLegacyPair && !g.settings.iconColor.empty()) {
+				NoteMigration(ctx, "group settings startColor/endColor → iconColor");
+			}
+			g.settings.barColor = ReadColorRampField(*settingsBag, ctx, "barColor", false);
+			g.settings.borderColor = ctx.GetString(*settingsBag, "borderColor");
+			g.settings.neutralIconMode = NormalizeNeutralIconMode(ctx.GetString(*settingsBag, "neutralIconMode"));
+			if (const auto* exemptObj = ctx.GetObject(*settingsBag, "exemptFromGroupColors")) {
+				for (const auto& [gearId, val] : exemptObj->objectValue) {
+					if (val.IsBool() && val.boolValue && !gearId.empty()) {
+						g.settings.exemptFromGroupColors[gearId] = true;
+					}
+				}
+			}
+			WarnUnknownKeys(
+				ctx,
+				*settingsBag,
+				{ "displayName", "showLabel", "showIcon", "showNumber", "barTrough", "fillFromHidden",
+				  "numberFormat", "useGroupColors", "iconColor", "barColor", "borderColor", "neutralIconMode",
+				  "gearSize", "spacing", "stack", "exemptFromGroupColors", "gearIds" },
+				{ "startColor", "endColor" },
+				"group.settings");
+		}
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy root displayName (and older title key name) move under nested settings.displayName (never written on root again).
+		// Prefer settings.displayName; else root displayName; else legacy root name.
+		{
+			std::string title;
+			if (settingsBag && ctx.Has(*settingsBag, "displayName")) {
+				title = ctx.GetString(*settingsBag, "displayName");
+			}
+			if (title.empty() && NoteIfHas(ctx, obj, "displayName", "root displayName → settings.displayName")) {
+				title = ctx.GetString(obj, "displayName");
+			}
+			if (title.empty() && NoteIfHas(ctx, obj, "name", "root name → settings.displayName")) {
+				title = ctx.GetString(obj, "name");
+			}
+			if (!title.empty()) {
+				g.settings.displayName = std::move(title);
+			}
+		}
 		if (g.id.empty()) {
-			g.id = FileStem(title);
+			g.id = FileStem(g.settings.displayName);
 		}
 		g.id = NormalizeGroupId(g.id);
-		if (!title.empty()) {
-			g.displayName = title;
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy flat group line keys gearSize/spacing/stack move under nested "settings" (never written back flat on save).
+		// Prefer settings.*; if missing, fall back to flat root keys.
+		if (settingsBag && ctx.Has(*settingsBag, "gearSize")) {
+			g.settings.gearSize = ctx.GetFloat(*settingsBag, "gearSize", kDefaultGearSize);
+		} else if (NoteIfHas(ctx, obj, "gearSize", "root gearSize → settings.gearSize")) {
+			g.settings.gearSize = ctx.GetFloat(obj, "gearSize", kDefaultGearSize);
 		}
-		g.locked = g.id == kDefaultGroupId || ctx.GetBool(obj, "locked", false);
-		g.visible = ctx.GetBool(obj, "visible", true);
-		g.x = ctx.GetFloat(obj, "x", g.x);
-		g.y = ctx.GetFloat(obj, "y", g.y);
-		g.rotation = ctx.GetFloat(obj, "rotation", 0.0f);
-		if (ctx.Has(obj, "gearSize")) {
-			g.gearSize = ctx.GetFloat(obj, "gearSize", kDefaultGearSize);
+		if (settingsBag && ctx.Has(*settingsBag, "spacing")) {
+			g.settings.spacing = ctx.GetFloat(*settingsBag, "spacing", kDefaultSpacing);
+		} else if (NoteIfHas(ctx, obj, "spacing", "root spacing → settings.spacing")) {
+			g.settings.spacing = ctx.GetFloat(obj, "spacing", kDefaultSpacing);
+		} else {
+			g.settings.spacing = kDefaultSpacing;
 		}
-		g.spacing = ctx.GetFloat(obj, "spacing", kDefaultSpacing);
-		if (ctx.Has(obj, "stack")) {
-			g.stack = NormalizeStack(ctx.GetString(obj, "stack"));
-		}
-		if (const auto* style = ctx.GetObject(obj, "style")) {
-			g.style.showLabel = ctx.GetBool(*style, "showLabel", false);
-			g.style.showIcon = ctx.GetBool(*style, "showIcon", true);
-			g.style.showNumber = ctx.GetBool(*style, "showNumber", true);
-			g.style.barTrough = ctx.GetBool(*style, "barTrough", true);
-			g.style.fillFromHidden = NormalizeFillFromHidden(ctx.GetString(*style, "fillFromHidden"));
-			g.style.numberFormat = NormalizeNumberFormat(*style, ctx);
-			g.style.useGroupColors = ctx.GetBool(*style, "useGroupColors", false);
-			g.style.iconColor = ReadColorRampField(*style, ctx, "iconColor", true);
-			g.style.barColor = ReadColorRampField(*style, ctx, "barColor", false);
-			g.style.borderColor = ctx.GetString(*style, "borderColor");
-			g.style.neutralIconMode = NormalizeNeutralIconMode(ctx.GetString(*style, "neutralIconMode"));
+		if (settingsBag && ctx.Has(*settingsBag, "stack")) {
+			g.settings.stack = NormalizeStack(ctx.GetString(*settingsBag, "stack"));
+		} else if (NoteIfHas(ctx, obj, "stack", "root stack → settings.stack")) {
+			g.settings.stack = NormalizeStack(ctx.GetString(obj, "stack"));
 		}
 		if (g.id == kDefaultGroupId) {
 			g.locked = true;
-			g.displayName = "Default Group";
+			g.settings.displayName = "Default Group";
 		}
-		g.gearIds = ctx.GetStringArray(obj, "gearIds");
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy root gearIds move under nested settings.gearIds (never written on root again).
+		// Prefer settings.gearIds; else root gearIds.
+		if (settingsBag && ctx.Has(*settingsBag, "gearIds")) {
+			g.settings.gearIds = ctx.GetStringArray(*settingsBag, "gearIds");
+		} else if (NoteIfHas(ctx, obj, "gearIds", "root gearIds → settings.gearIds")) {
+			g.settings.gearIds = ctx.GetStringArray(obj, "gearIds");
+		} else {
+			g.settings.gearIds = ctx.GetStringArray(obj, "gearIds");
+		}
+		WarnUnknownKeys(
+			ctx,
+			obj,
+			{ "id", "locked", "visibility", "position", "settings" },
+			{ "visible", "style", "displayName", "name", "gearSize", "spacing", "stack", "gearIds", "x", "y",
+			  "rotation", "posAnchor" },
+			"group");
 		return g;
+	}
+
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Builtin Vampiric Hunger was registered as varName Bloodlust; rename to VampiricHunger.
+	bool IsBuiltinBloodlustSource(const std::string& sourceMod, const std::string& varName)
+	{
+		return Lower(sourceMod) == "cog.builtin" && Lower(varName) == "bloodlust";
+	}
+
+	std::string BuiltinBloodlustGearId()
+	{
+		return FileStem("COG.Builtin_Bloodlust");
+	}
+
+	std::string BuiltinVampiricHungerGearId()
+	{
+		return FileStem("COG.Builtin_VampiricHunger");
+	}
+
+	bool MigrateBuiltinBloodlustIdentity(
+		std::string& sourceMod,
+		std::string& varName,
+		std::string* id,
+		CogJson::ParseContext* ctx)
+	{
+		if (!IsBuiltinBloodlustSource(sourceMod, varName)) {
+			return false;
+		}
+		varName = "VampiricHunger";
+		if (sourceMod != "COG.Builtin") {
+			sourceMod = "COG.Builtin";
+		}
+		if (id) {
+			const auto oldId = BuiltinBloodlustGearId();
+			if (id->empty() || Lower(*id) == Lower(oldId)) {
+				*id = BuiltinVampiricHungerGearId();
+			}
+		}
+		if (ctx) {
+			NoteMigration(*ctx, "COG.Builtin Bloodlust → VampiricHunger");
+		}
+		return true;
 	}
 
 	CogGear ParseGear(const CogJson::Value& obj, CogJson::ParseContext& ctx)
 	{
 		CogGear g;
-		g.mod = ctx.GetString(obj, "mod");
-		g.name = ctx.GetString(obj, "name");
-		g.id = ctx.GetString(obj, "id");
-		if (g.id.empty() && !g.mod.empty() && !g.name.empty()) {
-			g.id = FileStem(g.mod + "_" + g.name);
+		g.sourceMod = ctx.GetString(obj, "sourceMod");
+		g.varName = ctx.GetString(obj, "varName");
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy gear identity keys "mod"/"name" become sourceMod/varName (never written back on save).
+		if (g.sourceMod.empty() && NoteIfHas(ctx, obj, "mod", "mod → sourceMod")) {
+			g.sourceMod = ctx.GetString(obj, "mod");
 		}
-		g.enabled = ctx.GetBool(obj, "enabled", true);
+		if (g.varName.empty() && NoteIfHas(ctx, obj, "name", "name → varName")) {
+			g.varName = ctx.GetString(obj, "name");
+		}
+		g.id = ctx.GetString(obj, "id");
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Builtin Vampiric Hunger varName Bloodlust → VampiricHunger (id COG_Builtin_Bloodlust → COG_Builtin_VampiricHunger).
+		MigrateBuiltinBloodlustIdentity(g.sourceMod, g.varName, &g.id, &ctx);
+		if (g.id.empty() && !g.sourceMod.empty() && !g.varName.empty()) {
+			g.id = FileStem(g.sourceMod + "_" + g.varName);
+		}
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy gear-root "enabled" is ignored (group membership + hideAt / visibility control display).
+		NoteIfHas(ctx, obj, "enabled", "ignored legacy root enabled");
 		g.locked = ctx.GetBool(obj, "locked", false);
-		g.exemptFromGroupColors = ctx.GetBool(obj, "exemptFromGroupColors", false);
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy gear-root exemptFromGroupColors moves onto the owning group's settings.exemptFromGroupColors[gearId]
+		// (never written on the gear again).
+		if (ctx.GetBool(obj, "exemptFromGroupColors", false) && !g.id.empty()) {
+			g_pendingLegacyGearExempt[g.id] = true;
+			NoteMigration(ctx, "root exemptFromGroupColors → group.settings.exemptFromGroupColors (pending fold)");
+		}
 		if (const auto* defaults = ctx.GetObject(obj, "defaults")) {
-			g.defaults = ParseAppearance(*defaults, ctx);
+			g.defaults = ParseAppearance(*defaults, ctx, "gear.defaults");
 		}
 		if (const auto* settings = ctx.GetObject(obj, "settings")) {
-			g.settings = ParseAppearance(*settings, ctx);
+			g.settings = ParseAppearance(*settings, ctx, "gear.settings");
 		}
+		WarnUnknownKeys(
+			ctx,
+			obj,
+			{ "id", "locked", "sourceMod", "varName", "defaults", "settings" },
+			{ "mod", "name", "enabled", "exemptFromGroupColors" },
+			"gear");
 		return g;
+	}
+
+	bool MigrateBuiltinBloodlustToVampiricHunger(
+		std::vector<CogGear>& gears,
+		std::vector<CogGroup>& groups,
+		std::vector<CogGauge>& gauges,
+		std::unordered_set<std::string>& seenSources)
+	{
+		bool changed = false;
+		const auto oldId = BuiltinBloodlustGearId();
+		const auto newId = BuiltinVampiricHungerGearId();
+		const auto oldSeen = Lower("COG.Builtin") + "\x1F" + Lower("Bloodlust");
+		const auto newSeen = Lower("COG.Builtin") + "\x1F" + Lower("VampiricHunger");
+
+		for (auto& gear : gears) {
+			if (MigrateBuiltinBloodlustIdentity(gear.sourceMod, gear.varName, &gear.id, nullptr)) {
+				changed = true;
+			} else if (Lower(gear.id) == Lower(oldId) && Lower(gear.sourceMod) == "cog.builtin" &&
+				Lower(gear.varName) == "vampirichunger") {
+				gear.id = newId;
+				changed = true;
+			}
+		}
+
+		for (auto& group : groups) {
+			for (auto& gearId : group.settings.gearIds) {
+				if (Lower(gearId) == Lower(oldId)) {
+					gearId = newId;
+					changed = true;
+				}
+			}
+			std::unordered_map<std::string, bool> nextExempt;
+			bool exemptChanged = false;
+			for (const auto& [id, on] : group.settings.exemptFromGroupColors) {
+				if (Lower(id) == Lower(oldId)) {
+					nextExempt[newId] = on;
+					exemptChanged = true;
+					changed = true;
+				} else {
+					nextExempt[id] = on;
+				}
+			}
+			if (exemptChanged) {
+				group.settings.exemptFromGroupColors = std::move(nextExempt);
+			}
+		}
+
+		for (auto& gauge : gauges) {
+			if (MigrateBuiltinBloodlustIdentity(gauge.sourceMod, gauge.varName, nullptr, nullptr)) {
+				changed = true;
+			}
+		}
+
+		if (seenSources.erase(oldSeen)) {
+			seenSources.insert(newSeen);
+			changed = true;
+		}
+
+		if (changed) {
+			logger::info(
+				"COG: Migration Code for Transition from v1.01 or earlier to v1.1: "
+				"COG.Builtin Bloodlust → VampiricHunger");
+		}
+		return changed;
+	}
+
+	bool MigrateLegacyGearExemptOntoGroups(std::vector<CogGroup>& groups)
+	{
+		if (g_pendingLegacyGearExempt.empty()) {
+			return false;
+		}
+		bool folded = false;
+		for (const auto& [gearId, on] : g_pendingLegacyGearExempt) {
+			if (!on || gearId.empty()) {
+				continue;
+			}
+			// Migration Code for Transition from v1.01 or earlier to v1.1:
+			// Pending exempt may still name the pre-rename Bloodlust gear id.
+			const auto foldId =
+				Lower(gearId) == Lower(BuiltinBloodlustGearId()) ? BuiltinVampiricHungerGearId() : gearId;
+			for (auto& group : groups) {
+				if (std::find(group.settings.gearIds.begin(), group.settings.gearIds.end(), foldId) ==
+					group.settings.gearIds.end()) {
+					continue;
+				}
+				group.settings.exemptFromGroupColors[foldId] = true;
+				folded = true;
+				logger::info(
+					"COG: Migration Code for Transition from v1.01 or earlier to v1.1: "
+					"folded gear '{}' exemptFromGroupColors onto group '{}'",
+					foldId,
+					group.id);
+				break;
+			}
+		}
+		g_pendingLegacyGearExempt.clear();
+		return folded;
 	}
 
 	std::string NormalizeGaugeType(std::string raw)
@@ -933,60 +1343,164 @@ namespace CogRegistryJson
 	{
 		CogGauge g;
 		g.id = ctx.GetString(obj, "id");
-		g.displayName = ctx.GetString(obj, "displayName");
+		g.locked = ctx.GetBool(obj, "locked", false);
 		// Migration Code for Transition from v1.01 or earlier to v1.1:
-		// Legacy gauge title key "name" becomes displayName (never written back on save).
-		if (g.displayName.empty()) {
-			g.displayName = ctx.GetString(obj, "name");
+		// Legacy root bool "visible" becomes visibility none|hud|ui (never written back as bool).
+		if (ctx.Has(obj, "visibility")) {
+			g.visibility = NormalizeGizmoVisibility(ctx.GetString(obj, "visibility"));
+		} else if (ctx.Has(obj, "visible")) {
+			g.visibility = ctx.GetBool(obj, "visible", true) ? "hud" : "none";
+			NoteMigration(ctx, "visible → visibility");
+		} else {
+			g.visibility = "hud";
+		}
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy flat placement keys x/y/rotation/width/height move under nested "position" (never written back flat on save).
+		// Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
+		{
+			const CogJson::Value* posObj = ctx.GetObject(obj, "position");
+			if (!posObj) {
+				NoteIfHasAny(
+					ctx, obj, { "x", "y", "rotation", "width", "height", "posAnchor" },
+					"flat placement / posAnchor → nested position (posAnchor ignored)");
+			}
+			g.position.x = ReadPlacementFloat(obj, posObj, ctx, "x", 0.1f);
+			g.position.y = ReadPlacementFloat(obj, posObj, ctx, "y", 0.1f);
+			g.position.rotation = ReadPlacementFloat(obj, posObj, ctx, "rotation", 0.0f);
+			g.position.width = ReadPlacementFloat(obj, posObj, ctx, "width", 240.0f);
+			g.position.height = ReadPlacementFloat(obj, posObj, ctx, "height", 24.0f);
+			if (g.position.width < 8.0f) {
+				g.position.width = 8.0f;
+			}
+			if (g.position.height < 4.0f) {
+				g.position.height = 4.0f;
+			}
+			if (posObj) {
+				WarnUnknownKeys(
+					ctx, *posObj, { "x", "y", "rotation", "width", "height" }, {}, "gauge.position");
+			}
+		}
+		g.sourceMod = ctx.GetString(obj, "sourceMod");
+		g.varName = ctx.GetString(obj, "varName");
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy gauge binding keys "gearMod"/"gearName" become sourceMod/varName (never written back on save).
+		if (g.sourceMod.empty() && NoteIfHas(ctx, obj, "gearMod", "gearMod → sourceMod")) {
+			g.sourceMod = ctx.GetString(obj, "gearMod");
+		}
+		if (g.varName.empty() && NoteIfHas(ctx, obj, "gearName", "gearName → varName")) {
+			g.varName = ctx.GetString(obj, "gearName");
+		}
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Builtin Vampiric Hunger varName Bloodlust → VampiricHunger on gauge bindings.
+		MigrateBuiltinBloodlustIdentity(g.sourceMod, g.varName, nullptr, &ctx);
+
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy flat gauge chrome keys move under nested "settings" (never written back flat on save).
+		const CogJson::Value* settingsObj = ctx.GetObject(obj, "settings");
+		auto hasSetting = [&](const char* key) {
+			return (settingsObj && ctx.Has(*settingsObj, key)) || ctx.Has(obj, key);
+		};
+		auto settingString = [&](const char* key) {
+			if (settingsObj && ctx.Has(*settingsObj, key)) {
+				return ctx.GetString(*settingsObj, key);
+			}
+			return ctx.GetString(obj, key);
+		};
+		auto settingBool = [&](const char* key, bool fallback) {
+			if (settingsObj && ctx.Has(*settingsObj, key)) {
+				return ctx.GetBool(*settingsObj, key, fallback);
+			}
+			return ctx.GetBool(obj, key, fallback);
+		};
+		auto settingFloat = [&](const char* key, float fallback) {
+			if (settingsObj && ctx.Has(*settingsObj, key)) {
+				return ctx.GetFloat(*settingsObj, key, fallback);
+			}
+			return ctx.GetFloat(obj, key, fallback);
+		};
+
+		auto& s = g.settings;
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy root displayName (and older title key name) move under nested settings.displayName (never written on root again).
+		// Prefer settings.displayName; else root displayName; else legacy root name.
+		{
+			std::string title;
+			if (settingsObj && ctx.Has(*settingsObj, "displayName")) {
+				title = ctx.GetString(*settingsObj, "displayName");
+			}
+			if (title.empty() && NoteIfHas(ctx, obj, "displayName", "root displayName → settings.displayName")) {
+				title = ctx.GetString(obj, "displayName");
+			}
+			if (title.empty() && NoteIfHas(ctx, obj, "name", "root name → settings.displayName")) {
+				title = ctx.GetString(obj, "name");
+			}
+			s.displayName = std::move(title);
 		}
 		if (g.id.empty()) {
-			g.id = FileStem(g.displayName);
+			g.id = FileStem(s.displayName);
 		}
-		g.type = NormalizeGaugeType(ctx.GetString(obj, "type"));
-		g.shape = NormalizeGaugeShape(ctx.GetString(obj, "shape"));
-		g.locked = ctx.GetBool(obj, "locked", false);
-		g.visible = ctx.GetBool(obj, "visible", true);
-		g.x = ctx.GetFloat(obj, "x", 0.1f);
-		g.y = ctx.GetFloat(obj, "y", 0.1f);
-		g.rotation = ctx.GetFloat(obj, "rotation", 0.0f);
-		g.width = ctx.GetFloat(obj, "width", 240.0f);
-		g.height = ctx.GetFloat(obj, "height", 24.0f);
-		if (g.width < 8.0f) {
-			g.width = 8.0f;
-		}
-		if (g.height < 4.0f) {
-			g.height = 4.0f;
-		}
-		g.gearMod = ctx.GetString(obj, "gearMod");
-		g.gearName = ctx.GetString(obj, "gearName");
-		g.borderColor = ctx.GetString(obj, "borderColor");
-		g.borderThickness = ctx.GetFloat(obj, "borderThickness", 15.0f);
-		g.troughOpacity = ctx.GetFloat(obj, "troughOpacity", 20.0f);
-		g.endCap = NormalizeEndCapArt(ctx.GetString(obj, "endCap"));
-		g.endCapMode = NormalizeEndCapMode(ctx.GetString(obj, "endCapMode"));
-		if (g.endCapMode.empty()) {
-			g.endCapMode = g.endCap.empty() ? "border" : "endcap";
-		}
-		g.endCapOverlap = ctx.GetFloat(obj, "endCapOverlap", 0.0f);
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy root type moves under nested settings.type (never written on root again).
+		// Prefer settings.type; else root type.
 		{
-			const bool isFrame = g.type == "frame";
+			std::string typeRaw;
+			if (settingsObj && ctx.Has(*settingsObj, "type")) {
+				typeRaw = ctx.GetString(*settingsObj, "type");
+			} else if (NoteIfHas(ctx, obj, "type", "root type → settings.type")) {
+				typeRaw = ctx.GetString(obj, "type");
+			}
+			s.type = NormalizeGaugeType(std::move(typeRaw));
+		}
+		// Flat chrome on the root (when settings bag exists or not) is migrated by settingString/hasSetting.
+		{
+			static constexpr const char* kFlatChrome[] = {
+				"shape", "borderColor", "borderThickness", "troughOpacity", "endCapMode", "endCap",
+				"endCapOverlap", "showIcon", "showLabel", "showNumber", "fillDirection", "iconColorMode",
+				"labelColorMode", "numberColorMode", "numberAsPercent", "fontSize", "frameShape",
+				"frameFillColor", "frameBorderColor", "frameBorderThickness", "insideSize", "displayMode",
+				"alwaysVisible", "barTrough", "numberFormat", "pictureIcon", "pictureDirection",
+				"pictureRotation", "pictureEmpty", "pictureFull", "pictureFade"
+			};
+			bool anyFlatChrome = false;
+			for (const char* key : kFlatChrome) {
+				if ((!settingsObj || !ctx.Has(*settingsObj, key)) && ctx.Has(obj, key)) {
+					anyFlatChrome = true;
+					break;
+				}
+			}
+			if (anyFlatChrome) {
+				NoteMigration(ctx, "flat gauge chrome → settings");
+			}
+		}
+		s.shape = NormalizeGaugeShape(settingString("shape"));
+		s.borderColor = settingString("borderColor");
+		s.borderThickness = settingFloat("borderThickness", 15.0f);
+		s.troughOpacity = settingFloat("troughOpacity", 20.0f);
+		s.endCap = NormalizeEndCapArt(settingString("endCap"));
+		s.endCapMode = NormalizeEndCapMode(settingString("endCapMode"));
+		if (s.endCapMode.empty()) {
+			s.endCapMode = s.endCap.empty() ? "border" : "endcap";
+		}
+		s.endCapOverlap = settingFloat("endCapOverlap", 0.0f);
+		{
+			const bool isFrame = s.type == "frame";
 			auto readPlacement = [&](const char* key) {
-				auto raw = ctx.GetString(obj, key);
+				auto raw = settingString(key);
 				return isFrame ? NormalizeFrameSlot(std::move(raw)) : NormalizeGaugePlacement(std::move(raw));
 			};
-			g.showIcon = readPlacement("showIcon");
-			g.showLabel = readPlacement("showLabel");
-			g.showNumber = readPlacement("showNumber");
+			s.showIcon = readPlacement("showIcon");
+			s.showLabel = readPlacement("showLabel");
+			s.showNumber = readPlacement("showNumber");
 			if (isFrame) {
 				// Gear-mode chrome defaults when keys are absent (Title / Icon / Number).
-				if (!ctx.Has(obj, "showIcon")) {
-					g.showIcon = "middle";
+				if (!hasSetting("showIcon")) {
+					s.showIcon = "middle";
 				}
-				if (!ctx.Has(obj, "showLabel")) {
-					g.showLabel = "top";
+				if (!hasSetting("showLabel")) {
+					s.showLabel = "top";
 				}
-				if (!ctx.Has(obj, "showNumber")) {
-					g.showNumber = "bottom";
+				if (!hasSetting("showNumber")) {
+					s.showNumber = "bottom";
 				}
 				// Keep first claim by Icon → Number → Title; clear duplicates to none.
 				std::unordered_set<std::string> claimed;
@@ -1000,143 +1514,166 @@ namespace CogRegistryJson
 						claimed.insert(slot);
 					}
 				};
-				claim(g.showIcon);
-				claim(g.showNumber);
-				claim(g.showLabel);
+				claim(s.showIcon);
+				claim(s.showNumber);
+				claim(s.showLabel);
 			}
 		}
-		g.fillDirection = ctx.GetString(obj, "fillDirection");
-		if (g.fillDirection.empty()) {
-			g.fillDirection = "left";
-		}
-		g.iconColorMode = NormalizeIconColorMode(ctx.GetString(obj, "iconColorMode"));
-		if (g.iconColorMode.empty()) {
-			g.iconColorMode = "border";
+		s.fillDirection = settingString("fillDirection");
+		if (s.fillDirection.empty()) {
+			s.fillDirection = "left";
 		}
 		{
-			auto rawLabel = ctx.GetString(obj, "labelColorMode");
-			g.labelColorMode = NormalizeLabelColorMode(rawLabel);
+			auto rawIcon = settingString("iconColorMode");
+			s.iconColorMode = NormalizeIconColorMode(rawIcon);
+			if (rawIcon.empty()) {
+				s.iconColorMode = "border";
+			}
+		}
+		{
+			auto rawLabel = settingString("labelColorMode");
+			s.labelColorMode = NormalizeLabelColorMode(rawLabel);
 			if (rawLabel.empty()) {
-				g.labelColorMode = "border";
+				s.labelColorMode = "border";
 			}
 		}
 		{
-			auto raw = ctx.GetString(obj, "numberColorMode");
-			g.numberColorMode = NormalizeLabelColorMode(raw);
+			auto raw = settingString("numberColorMode");
+			s.numberColorMode = NormalizeLabelColorMode(raw);
 			if (raw.empty()) {
-				g.numberColorMode = "border";
+				s.numberColorMode = "border";
 			}
 		}
-		g.numberAsPercent = ctx.GetBool(obj, "numberAsPercent", false);
-		g.fontSize = ctx.GetFloat(obj, "fontSize", 0.0f);
-		if (g.fontSize < 0.0f) {
-			g.fontSize = 0.0f;
+		s.numberAsPercent = settingBool("numberAsPercent", false);
+		s.fontSize = settingFloat("fontSize", 0.0f);
+		if (s.fontSize < 0.0f) {
+			s.fontSize = 0.0f;
 		}
-		g.posAnchor = ctx.GetString(obj, "posAnchor");
-		if (g.posAnchor != "tlc") {
-			g.posAnchor = "tlc";
+		s.frameShape = settingString("frameShape");
+		if (s.frameShape.empty()) {
+			s.frameShape = "Frames/circle.svg";
 		}
-		g.frameShape = ctx.GetString(obj, "frameShape");
-		if (g.frameShape.empty()) {
-			g.frameShape = "Frames/circle.svg";
+		s.frameFillColor = settingString("frameFillColor");
+		s.frameBorderColor = settingString("frameBorderColor");
+		s.frameBorderThickness = settingFloat("frameBorderThickness", 5.0f);
+		if (s.frameBorderThickness < 0.0f) {
+			s.frameBorderThickness = 0.0f;
 		}
-		g.frameFillColor = ctx.GetString(obj, "frameFillColor");
-		g.frameBorderColor = ctx.GetString(obj, "frameBorderColor");
-		g.frameBorderThickness = ctx.GetFloat(obj, "frameBorderThickness", 5.0f);
-		if (g.frameBorderThickness < 0.0f) {
-			g.frameBorderThickness = 0.0f;
+		if (s.frameBorderThickness > 50.0f) {
+			s.frameBorderThickness = 50.0f;
 		}
-		if (g.frameBorderThickness > 50.0f) {
-			g.frameBorderThickness = 50.0f;
+		s.insideSize = settingFloat("insideSize", 65.0f);
+		if (s.insideSize < 5.0f) {
+			s.insideSize = 5.0f;
 		}
-		g.insideSize = ctx.GetFloat(obj, "insideSize", 65.0f);
-		if (g.insideSize < 5.0f) {
-			g.insideSize = 5.0f;
+		if (s.insideSize > 100.0f) {
+			s.insideSize = 100.0f;
 		}
-		if (g.insideSize > 100.0f) {
-			g.insideSize = 100.0f;
-		}
-		g.displayMode = NormalizeGaugeDisplayMode(ctx.GetString(obj, "displayMode"));
+		s.displayMode = NormalizeGaugeDisplayMode(settingString("displayMode"));
 		// Frames default on; meters default off. Missing key uses type-based default.
 		{
-			const bool frameDefault = g.type == "frame";
-			if (ctx.Has(obj, "alwaysVisible")) {
-				g.alwaysVisible = ctx.GetBool(obj, "alwaysVisible", frameDefault);
+			const bool frameDefault = s.type == "frame";
+			if (hasSetting("alwaysVisible")) {
+				s.alwaysVisible = settingBool("alwaysVisible", frameDefault);
 			} else {
-				g.alwaysVisible = frameDefault;
+				s.alwaysVisible = frameDefault;
 			}
 		}
-		g.barTrough = ctx.GetBool(obj, "barTrough", false);
+		s.barTrough = settingBool("barTrough", false);
 		{
-			auto raw = ctx.GetString(obj, "numberFormat");
+			auto raw = settingString("numberFormat");
 			auto canon = CanonicalPercentMode(raw);
-			g.numberFormat = canon.empty() ? "barPercent" : std::move(canon);
+			s.numberFormat = canon.empty() ? "barPercent" : std::move(canon);
 		}
-		g.pictureIcon = ctx.GetString(obj, "pictureIcon");
-		g.pictureDirection = NormalizePictureDirection(ctx.GetString(obj, "pictureDirection"));
-		g.pictureRotation = ctx.GetFloat(obj, "pictureRotation", 0.0f);
-		g.pictureEmpty = ctx.GetString(obj, "pictureEmpty");
-		if (g.pictureEmpty.empty()) {
-			g.pictureEmpty = "#000000";
+		s.pictureIcon = settingString("pictureIcon");
+		s.pictureDirection = NormalizePictureDirection(settingString("pictureDirection"));
+		s.pictureRotation = settingFloat("pictureRotation", 0.0f);
+		s.pictureEmpty = settingString("pictureEmpty");
+		if (s.pictureEmpty.empty()) {
+			s.pictureEmpty = "#000000";
 		}
-		g.pictureFull = ctx.GetString(obj, "pictureFull");
-		if (g.pictureFull.empty()) {
-			g.pictureFull = "#ffffff";
+		s.pictureFull = settingString("pictureFull");
+		if (s.pictureFull.empty()) {
+			s.pictureFull = "#ffffff";
 		}
-		g.pictureFade = ctx.GetString(obj, "pictureFade");
-		if (g.pictureFade.empty()) {
-			g.pictureFade = "#c4a35a";
+		s.pictureFade = settingString("pictureFade");
+		if (s.pictureFade.empty()) {
+			s.pictureFade = "#c4a35a";
 		}
+		if (settingsObj) {
+			WarnUnknownKeys(
+				ctx,
+				*settingsObj,
+				{ "displayName", "type", "shape", "borderColor", "borderThickness", "troughOpacity", "endCapMode",
+				  "endCap", "endCapOverlap", "showIcon", "showLabel", "showNumber", "fillDirection",
+				  "iconColorMode", "labelColorMode", "numberColorMode", "numberAsPercent", "fontSize",
+				  "frameShape", "frameFillColor", "frameBorderColor", "frameBorderThickness", "insideSize",
+				  "displayMode", "alwaysVisible", "barTrough", "numberFormat", "pictureIcon", "pictureDirection",
+				  "pictureRotation", "pictureEmpty", "pictureFull", "pictureFade" },
+				{},
+				"gauge.settings");
+		}
+		WarnUnknownKeys(
+			ctx,
+			obj,
+			{ "id", "locked", "visibility", "position", "sourceMod", "varName", "settings" },
+			{ "visible", "gearMod", "gearName", "displayName", "name", "type", "shape", "borderColor",
+			  "borderThickness", "troughOpacity", "endCapMode", "endCap", "endCapOverlap", "showIcon",
+			  "showLabel", "showNumber", "fillDirection", "iconColorMode", "labelColorMode", "numberColorMode",
+			  "numberAsPercent", "fontSize", "frameShape", "frameFillColor", "frameBorderColor",
+			  "frameBorderThickness", "insideSize", "displayMode", "alwaysVisible", "barTrough", "numberFormat",
+			  "pictureIcon", "pictureDirection", "pictureRotation", "pictureEmpty", "pictureFull", "pictureFade",
+			  "x", "y", "rotation", "width", "height", "posAnchor" },
+			"gauge");
 		return g;
 	}
 
 	void AppendGauge(CogJson::Writer& w, const CogGauge& g)
 	{
+		const auto& s = g.settings;
 		w.BeginObject();
 		w.KeyString("id", g.id);
-		w.KeyString("displayName", g.displayName);
-		w.KeyString("type", g.type);
-		w.KeyString("shape", g.shape);
 		w.KeyBool("locked", g.locked);
-		w.KeyBool("visible", g.visible);
-		w.KeyNumber("x", g.x);
-		w.KeyNumber("y", g.y);
-		w.KeyNumber("rotation", g.rotation);
-		w.KeyNumber("width", g.width);
-		w.KeyNumber("height", g.height);
-		w.KeyString("gearMod", g.gearMod);
-		w.KeyString("gearName", g.gearName);
-		w.KeyString("borderColor", g.borderColor);
-		w.KeyNumber("borderThickness", g.borderThickness);
-		w.KeyNumber("troughOpacity", g.troughOpacity);
-		w.KeyString("endCapMode", g.endCapMode);
-		w.KeyString("endCap", g.endCap);
-		w.KeyNumber("endCapOverlap", g.endCapOverlap);
-		w.KeyString("showIcon", g.showIcon);
-		w.KeyString("showLabel", g.showLabel);
-		w.KeyString("showNumber", g.showNumber);
-		w.KeyString("fillDirection", g.fillDirection);
-		w.KeyString("iconColorMode", g.iconColorMode);
-		w.KeyString("labelColorMode", g.labelColorMode);
-		w.KeyString("numberColorMode", g.numberColorMode);
-		w.KeyBool("numberAsPercent", g.numberAsPercent);
-		w.KeyNumber("fontSize", g.fontSize);
-		w.KeyString("posAnchor", g.posAnchor.empty() ? "" : g.posAnchor);
-		w.KeyString("frameShape", g.frameShape);
-		w.KeyString("frameFillColor", g.frameFillColor);
-		w.KeyString("frameBorderColor", g.frameBorderColor);
-		w.KeyNumber("frameBorderThickness", g.frameBorderThickness);
-		w.KeyNumber("insideSize", g.insideSize);
-		w.KeyString("displayMode", g.displayMode);
-		w.KeyBool("alwaysVisible", g.alwaysVisible);
-		w.KeyBool("barTrough", g.barTrough);
-		w.KeyString("numberFormat", g.numberFormat);
-		w.KeyString("pictureIcon", g.pictureIcon);
-		w.KeyString("pictureDirection", g.pictureDirection);
-		w.KeyNumber("pictureRotation", g.pictureRotation);
-		w.KeyString("pictureEmpty", g.pictureEmpty);
-		w.KeyString("pictureFull", g.pictureFull);
-		w.KeyString("pictureFade", g.pictureFade);
+		w.KeyString("visibility", NormalizeGizmoVisibility(g.visibility));
+		w.KeyString("sourceMod", g.sourceMod);
+		w.KeyString("varName", g.varName);
+		w.Key("settings");
+		w.BeginObject();
+		w.KeyString("displayName", s.displayName);
+		w.KeyString("type", s.type);
+		w.KeyString("shape", s.shape);
+		w.KeyString("borderColor", s.borderColor);
+		w.KeyNumber("borderThickness", s.borderThickness);
+		w.KeyNumber("troughOpacity", s.troughOpacity);
+		w.KeyString("endCapMode", s.endCapMode);
+		w.KeyString("endCap", s.endCap);
+		w.KeyNumber("endCapOverlap", s.endCapOverlap);
+		w.KeyString("showIcon", s.showIcon);
+		w.KeyString("showLabel", s.showLabel);
+		w.KeyString("showNumber", s.showNumber);
+		w.KeyString("fillDirection", s.fillDirection);
+		w.KeyString("iconColorMode", s.iconColorMode);
+		w.KeyString("labelColorMode", s.labelColorMode);
+		w.KeyString("numberColorMode", s.numberColorMode);
+		w.KeyBool("numberAsPercent", s.numberAsPercent);
+		w.KeyNumber("fontSize", s.fontSize);
+		w.KeyString("frameShape", s.frameShape);
+		w.KeyString("frameFillColor", s.frameFillColor);
+		w.KeyString("frameBorderColor", s.frameBorderColor);
+		w.KeyNumber("frameBorderThickness", s.frameBorderThickness);
+		w.KeyNumber("insideSize", s.insideSize);
+		w.KeyString("displayMode", s.displayMode);
+		w.KeyBool("alwaysVisible", s.alwaysVisible);
+		w.KeyBool("barTrough", s.barTrough);
+		w.KeyString("numberFormat", s.numberFormat);
+		w.KeyString("pictureIcon", s.pictureIcon);
+		w.KeyString("pictureDirection", s.pictureDirection);
+		w.KeyNumber("pictureRotation", s.pictureRotation);
+		w.KeyString("pictureEmpty", s.pictureEmpty);
+		w.KeyString("pictureFull", s.pictureFull);
+		w.KeyString("pictureFade", s.pictureFade);
+		w.EndObject();
+		AppendBoxPosition(w, g.position);
 		w.EndObject();
 	}
 
@@ -1187,6 +1724,48 @@ namespace CogRegistryJson
 		}
 		auto cleaned = SanitizeGizmoTypeId(std::move(raw));
 		return cleaned.empty() ? "cog-clock" : cleaned;
+	}
+
+	std::string ResolveGizmoInstanceTypeId(const CogJson::Value& obj, CogJson::ParseContext& ctx)
+	{
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy gizmo instance product key "type" becomes typeId (never written back on save).
+		// Read raw before any normalize — NormalizeGizmoType("") invents cog-clock (create default only).
+		std::string raw;
+		if (ctx.Has(obj, "typeId")) {
+			raw = ctx.GetString(obj, "typeId");
+		}
+		if (raw.empty() && ctx.Has(obj, "type")) {
+			raw = ctx.GetString(obj, "type");
+		}
+		while (!raw.empty() && std::isspace(static_cast<unsigned char>(raw.front()))) {
+			raw.erase(raw.begin());
+		}
+		while (!raw.empty() && std::isspace(static_cast<unsigned char>(raw.back()))) {
+			raw.pop_back();
+		}
+		if (raw.empty()) {
+			return {};
+		}
+		std::string lower = raw;
+		std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) {
+			return static_cast<char>(std::tolower(c));
+		});
+		if (lower == "cog-shout-meter" || lower == "shout-meter" || lower == "shoutmeter" || lower == "shout") {
+			return "cog-shout-meter";
+		}
+		if (lower == "cog-feed" || lower == "feed" || lower == "feeds") {
+			return "cog-feed";
+		}
+		if (lower == "cog-suppressor" || lower == "suppressor" || lower == "suppress") {
+			return "cog-suppressor";
+		}
+		if (lower == "cog-clock" || lower == "clock") {
+			return "cog-clock";
+		}
+		auto cleaned = SanitizeGizmoTypeId(std::move(lower));
+		// Invalid junk (sanitizes to empty) — unrecognized, not a silent clock.
+		return cleaned;
 	}
 
 	std::string SanitizeViewScriptPath(std::string path)
@@ -1447,6 +2026,20 @@ namespace CogRegistryJson
 		return ctx.GetBool(root, key, fallback);
 	}
 
+	std::string GizmoSettingsString(const CogGizmo& g, std::string_view key, std::string_view fallback)
+	{
+		CogJson::Value root;
+		if (!ParseSettingsObject(g.settingsJson, root)) {
+			return std::string(fallback);
+		}
+		CogJson::ParseContext ctx;
+		auto value = ctx.GetString(root, key);
+		if (value.empty()) {
+			return std::string(fallback);
+		}
+		return value;
+	}
+
 	std::string GizmoSettingsRawJson(const CogGizmo& g, std::string_view key, std::string_view fallback)
 	{
 		CogJson::Value root;
@@ -1457,31 +2050,27 @@ namespace CogRegistryJson
 		return ctx.GetRawJson(root, key, fallback);
 	}
 
+	std::string GizmoDisplayName(const CogGizmo& g)
+	{
+		return GizmoSettingsString(g, "displayName");
+	}
+
 	CogGizmo ParseGizmo(const CogJson::Value& obj, CogJson::ParseContext& ctx, const CogGizmoType* type)
 	{
 		CogGizmo g;
 		g.id = ctx.GetString(obj, "id");
-		g.displayName = ctx.GetString(obj, "displayName");
-		// Migration Code for Transition from v1.01 or earlier to v1.1:
-		// Legacy gizmo instance title key "name" becomes displayName (never written back on save).
-		if (g.displayName.empty()) {
-			g.displayName = ctx.GetString(obj, "name");
-		}
-		if (g.id.empty()) {
-			g.id = FileStem(g.displayName);
-		}
-		g.type = NormalizeGizmoType(ctx.GetString(obj, "type"));
+		g.typeId = ResolveGizmoInstanceTypeId(obj, ctx);
 		const bool hasVisibility = ctx.Has(obj, "visibility");
-		const bool hasWidth = ctx.Has(obj, "width");
-		const bool hasHeight = ctx.Has(obj, "height");
-		g.x = ctx.GetFloat(obj, "x", 0.1f);
-		g.y = ctx.GetFloat(obj, "y", 0.1f);
-		g.rotation = ctx.GetFloat(obj, "rotation", 0.0f);
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy flat placement keys x/y/rotation/width/height move under nested "position" (never written back flat on save).
+		// Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
+		const CogJson::Value* posObj = ctx.GetObject(obj, "position");
+		const bool hasWidth = HasPlacementKey(obj, posObj, ctx, "width");
+		const bool hasHeight = HasPlacementKey(obj, posObj, ctx, "height");
+		g.position.x = ReadPlacementFloat(obj, posObj, ctx, "x", 0.1f);
+		g.position.y = ReadPlacementFloat(obj, posObj, ctx, "y", 0.1f);
+		g.position.rotation = ReadPlacementFloat(obj, posObj, ctx, "rotation", 0.0f);
 		g.sourceMod = ctx.GetString(obj, "sourceMod");
-		g.posAnchor = ctx.GetString(obj, "posAnchor");
-		if (g.posAnchor != "tlc") {
-			g.posAnchor = "tlc";
-		}
 
 		CogJson::Value settings;
 		settings.type = CogJson::Type::Object;
@@ -1491,6 +2080,35 @@ namespace CogRegistryJson
 			CogJson::Value parsed;
 			if (CogJson::Parse(raw, parsed, err) && parsed.IsObject()) {
 				settings = std::move(parsed);
+			}
+		}
+		// Caller may have looked up `type` before Resolve — drop a mismatched record.
+		if (type && type->typeId != g.typeId) {
+			type = nullptr;
+		}
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Legacy root displayName (and older title key name) move under nested settings.displayName (never written on root again).
+		// Prefer settings.displayName; else root displayName; else legacy root name.
+		{
+			std::string title;
+			const auto it = settings.objectValue.find("displayName");
+			if (it != settings.objectValue.end() && it->second.IsString() && !it->second.stringValue.empty()) {
+				title = it->second.stringValue;
+			}
+			if (title.empty()) {
+				title = ctx.GetString(obj, "displayName");
+			}
+			if (title.empty()) {
+				title = ctx.GetString(obj, "name");
+			}
+			if (!title.empty()) {
+				CogJson::Value titleVal;
+				titleVal.type = CogJson::Type::String;
+				titleVal.stringValue = title;
+				settings.objectValue["displayName"] = std::move(titleVal);
+			}
+			if (g.id.empty()) {
+				g.id = FileStem(title);
 			}
 		}
 		// Instance settings ← type schema defaults ← (universal leave-absent for ensure/create).
@@ -1503,27 +2121,27 @@ namespace CogRegistryJson
 		} else if (type) {
 			g.visibility = NormalizeGizmoVisibility(type->defaultVisibility);
 		} else {
-			g.visibility = BuiltinDefaultVisibilityForType(g.type);
+			g.visibility = BuiltinDefaultVisibilityForType(g.typeId);
 		}
 
 		float defaultW = type ? type->defaultWidth : 240.0f;
 		float defaultH = type ? type->defaultHeight : 48.0f;
 		if (!type) {
-			if (g.type == "cog-feed") {
+			if (g.typeId == "cog-feed") {
 				defaultW = 400.0f;
 				defaultH = 400.0f;
-			} else if (g.type == "cog-suppressor") {
+			} else if (g.typeId == "cog-suppressor") {
 				defaultW = 100.0f;
 				defaultH = 100.0f;
-			} else if (g.type == "cog-clock") {
+			} else if (g.typeId == "cog-clock") {
 				defaultW = 275.0f;
 				defaultH = 40.0f;
-			} else if (g.type == "cog-shout-meter") {
+			} else if (g.typeId == "cog-shout-meter") {
 				defaultW = 220.0f;
 				defaultH = 48.0f;
 			}
 		}
-		if (g.type == "cog-clock") {
+		if (g.typeId == "cog-clock") {
 			std::string modeRaw;
 			const auto it = settings.objectValue.find("displayMode");
 			if (it != settings.objectValue.end() && it->second.IsString()) {
@@ -1534,13 +2152,13 @@ namespace CogRegistryJson
 				defaultH = 40.0f;
 			}
 		}
-		g.width = hasWidth ? ctx.GetFloat(obj, "width", defaultW) : defaultW;
-		g.height = hasHeight ? ctx.GetFloat(obj, "height", defaultH) : defaultH;
-		if (g.width < 32.0f) {
-			g.width = 32.0f;
+		g.position.width = hasWidth ? ReadPlacementFloat(obj, posObj, ctx, "width", defaultW) : defaultW;
+		g.position.height = hasHeight ? ReadPlacementFloat(obj, posObj, ctx, "height", defaultH) : defaultH;
+		if (g.position.width < 32.0f) {
+			g.position.width = 32.0f;
 		}
-		if (g.height < 6.0f) {
-			g.height = 6.0f;
+		if (g.position.height < 6.0f) {
+			g.position.height = 6.0f;
 		}
 
 		g.settingsJson = CogJson::Stringify(settings, false);
@@ -1594,21 +2212,16 @@ namespace CogRegistryJson
 	{
 		w.BeginObject();
 		w.KeyString("id", g.id);
-		w.KeyString("displayName", g.displayName);
-		w.KeyString("type", g.type);
+		w.KeyString("typeId", g.typeId);
 		// Always persist visibility. Omitting "hud" made Feed's JS ensure treat a missing
 		// key as "ui" (new-feed default) and reset HUD Visible on the next snapshot push.
 		w.KeyString("visibility", NormalizeGizmoVisibility(g.visibility));
-		w.KeyNumber("x", g.x);
-		w.KeyNumber("y", g.y);
-		w.KeyNumber("rotation", g.rotation);
-		w.KeyNumber("width", g.width);
-		w.KeyNumber("height", g.height);
 		if (!g.sourceMod.empty()) {
 			w.KeyString("sourceMod", g.sourceMod);
 		}
-		w.KeyString("posAnchor", g.posAnchor.empty() ? "tlc" : g.posAnchor);
+		// Instance title lives in settings.displayName (never written on root).
 		w.KeyRaw("settings", g.settingsJson.empty() ? "{}" : g.settingsJson);
+		AppendBoxPosition(w, g.position);
 		w.EndObject();
 	}
 
@@ -1653,35 +2266,52 @@ namespace CogRegistryJson
 	{
 		w.BeginObject();
 		w.KeyString("id", g.id);
-		w.KeyString("displayName", g.displayName);
 		w.KeyBool("locked", g.locked);
-		w.KeyBool("visible", g.visible);
-		w.KeyNumber("x", g.x);
-		w.KeyNumber("y", g.y);
-		w.KeyNumber("rotation", g.rotation);
-		w.KeyNumber("gearSize", g.gearSize);
-		w.KeyNumber("spacing", g.spacing);
-		w.KeyString("stack", g.stack);
-		w.Key("style");
+		w.KeyString("visibility", NormalizeGizmoVisibility(g.visibility));
+		w.Key("settings");
 		w.BeginObject();
-		w.KeyBool("showLabel", g.style.showLabel);
-		w.KeyBool("showIcon", g.style.showIcon);
-		w.KeyBool("showNumber", g.style.showNumber);
-		w.KeyBool("barTrough", g.style.barTrough);
-		w.KeyString("fillFromHidden", g.style.fillFromHidden);
-		w.KeyString("numberFormat", g.style.numberFormat);
-		w.KeyBool("useGroupColors", g.style.useGroupColors);
-		WriteColorRampField(w, "iconColor", g.style.iconColor);
-		WriteColorRampField(w, "barColor", g.style.barColor);
-		w.KeyString("borderColor", g.style.borderColor);
-		w.KeyString("neutralIconMode", g.style.neutralIconMode);
-		w.EndObject();
+		w.KeyString("displayName", g.settings.displayName);
+		w.KeyBool("showLabel", g.settings.showLabel);
+		w.KeyBool("showIcon", g.settings.showIcon);
+		w.KeyBool("showNumber", g.settings.showNumber);
+		w.KeyBool("barTrough", g.settings.barTrough);
+		w.KeyString("fillFromHidden", g.settings.fillFromHidden);
+		w.KeyString("numberFormat", g.settings.numberFormat);
+		w.KeyBool("useGroupColors", g.settings.useGroupColors);
+		WriteColorRampField(w, "iconColor", g.settings.iconColor);
+		WriteColorRampField(w, "barColor", g.settings.barColor);
+		w.KeyString("borderColor", g.settings.borderColor);
+		w.KeyString("neutralIconMode", g.settings.neutralIconMode);
+		w.KeyNumber("gearSize", g.settings.gearSize);
+		w.KeyNumber("spacing", g.settings.spacing);
+		w.KeyString("stack", g.settings.stack);
+		{
+			bool anyExempt = false;
+			for (const auto& [id, on] : g.settings.exemptFromGroupColors) {
+				if (on && !id.empty()) {
+					anyExempt = true;
+					break;
+				}
+			}
+			if (anyExempt) {
+				w.Key("exemptFromGroupColors");
+				w.BeginObject();
+				for (const auto& [id, on] : g.settings.exemptFromGroupColors) {
+					if (on && !id.empty()) {
+						w.KeyBool(id, true);
+					}
+				}
+				w.EndObject();
+			}
+		}
 		w.Key("gearIds");
 		w.BeginArray();
-		for (const auto& id : g.gearIds) {
+		for (const auto& id : g.settings.gearIds) {
 			w.String(id);
 		}
 		w.EndArray();
+		w.EndObject();
+		AppendPositionXYR(w, g.position);
 		w.EndObject();
 	}
 
@@ -1700,11 +2330,9 @@ namespace CogRegistryJson
 	{
 		w.BeginObject();
 		w.KeyString("id", g.id);
-		w.KeyString("mod", g.mod);
-		w.KeyString("name", g.name);
-		w.KeyBool("enabled", g.enabled);
+		w.KeyString("sourceMod", g.sourceMod);
+		w.KeyString("varName", g.varName);
 		w.KeyBool("locked", g.locked);
-		w.KeyBool("exemptFromGroupColors", g.exemptFromGroupColors);
 		w.Key("defaults");
 		AppendAppearance(w, g.defaults);
 		w.Key("settings");

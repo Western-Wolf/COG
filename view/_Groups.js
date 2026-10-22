@@ -9,8 +9,9 @@ const DEFAULT_SPACING = 25;
 
 let openGroupId = DEFAULT_GROUP_ID;
 
-function defaultGroupStyle() {
+function defaultGroupSettings() {
 	return {
+		displayName: "",
 		showLabel: false,
 		showIcon: true,
 		showNumber: true,
@@ -21,9 +22,53 @@ function defaultGroupStyle() {
 		iconColor: "",
 		barColor: "",
 		borderColor: "",
-		neutralIconMode: "white"
+		neutralIconMode: "white",
+		gearSize: DEFAULT_GEAR_SIZE,
+		spacing: DEFAULT_SPACING,
+		stack: "below",
+		exemptFromGroupColors: {},
+		gearIds: []
 	};
 }
+
+function normalizeExemptFromGroupColors(raw) {
+	const out = {};
+	if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+		return out;
+	}
+	for (const [id, v] of Object.entries(raw)) {
+		if (v === true && id) {
+			out[id] = true;
+		}
+	}
+	return out;
+}
+
+function gearExemptFromGroupColors(group, gearId) {
+	if (!group || !gearId) {
+		return false;
+	}
+	const map = ensureGroupSettings(group).exemptFromGroupColors;
+	return !!(map && map[gearId] === true);
+}
+
+function setGearExemptFromGroupColors(group, gearId, exempt) {
+	if (!group || !gearId) {
+		return;
+	}
+	ensureGroupLine(group);
+	const settings = ensureGroupSettings(group);
+	const map = normalizeExemptFromGroupColors(settings.exemptFromGroupColors);
+	if (exempt) {
+		map[gearId] = true;
+	} else {
+		delete map[gearId];
+	}
+	settings.exemptFromGroupColors = map;
+}
+
+/** Group line / title keys nested under settings (also accepted flat on patch). */
+const GROUP_LINE_SETTINGS_KEYS = new Set(["displayName", "gearSize", "spacing", "stack", "gearIds"]);
 
 const NEUTRAL_ICON_MODES = ["white", "bar", "border", "icon0", "icon50", "icon100"];
 
@@ -83,53 +128,184 @@ function usesRatio(src) {
 	return src && (src.type === "percent" || src.type === "timer");
 }
 
-function ensureGroupStyle(group) {
-	const style = group.style && typeof group.style === "object" ? group.style : {};
-	group.style = {
-		showLabel: style.showLabel === true,
-		showIcon: style.showIcon !== false,
-		showNumber: style.showNumber !== false,
-		barTrough: style.barTrough === true,
-		fillFromHidden: normalizeFillFromHidden(style.fillFromHidden),
-		numberFormat: normalizeNumberFormat(style),
-		useGroupColors: style.useGroupColors === true,
-		iconColor: normalizeColorRampValue(style.iconColor, style.startColor, style.endColor),
-		barColor: normalizeColorRampValue(style.barColor, "", ""),
-		borderColor: String(style.borderColor || ""),
-		neutralIconMode: normalizeNeutralIconMode(style.neutralIconMode)
+function ensureGroupSettings(group) {
+	const gid = (group && group.id) || "?";
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Legacy group options bag "style" becomes "settings" (never written back on save).
+	let bag =
+		group.settings && typeof group.settings === "object" && !Array.isArray(group.settings)
+			? group.settings
+			: null;
+	if (!bag && group.style && typeof group.style === "object" && !Array.isArray(group.style)) {
+		bag = group.style;
+		noteMigration(`group ${gid} style → settings`);
+	}
+	bag = bag || {};
+	delete group.style;
+	const knownSettings = new Set([
+		"displayName",
+		"showLabel",
+		"showIcon",
+		"showNumber",
+		"barTrough",
+		"fillFromHidden",
+		"numberFormat",
+		"useGroupColors",
+		"iconColor",
+		"barColor",
+		"borderColor",
+		"neutralIconMode",
+		"gearSize",
+		"spacing",
+		"stack",
+		"exemptFromGroupColors",
+		"gearIds"
+	]);
+	stripUnknownKeys(bag, knownSettings, "group.settings", {
+		id: gid,
+		legacySet: ["startColor", "endColor"],
+		deleteUnknown: false
+	});
+	noteMigrationIf(
+		(Object.prototype.hasOwnProperty.call(bag, "startColor") ||
+			Object.prototype.hasOwnProperty.call(bag, "endColor")) &&
+			!String(bag.iconColor || "").trim(),
+		`group ${gid} startColor/endColor → iconColor`
+	);
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Legacy root displayName (and older title key name) move under nested settings.displayName (never written on root again).
+	// Prefer settings.displayName; else root displayName; else legacy root name.
+	let displayName = "";
+	if (Object.prototype.hasOwnProperty.call(bag, "displayName") && String(bag.displayName || "").trim()) {
+		displayName = String(bag.displayName).trim();
+	} else if (String(group.displayName || "").trim()) {
+		displayName = String(group.displayName).trim();
+		noteMigration(`group ${gid} root displayName → settings.displayName`);
+	} else if (String(group.name || "").trim()) {
+		displayName = String(group.name).trim();
+		noteMigration(`group ${gid} root name → settings.displayName`);
+	}
+	delete group.displayName;
+	delete group.name;
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Legacy flat group line keys gearSize/spacing/stack move under nested "settings" (never written back flat on save).
+	// Prefer settings.*; if missing, fall back to flat root keys.
+	const gearSizeRaw = Object.prototype.hasOwnProperty.call(bag, "gearSize") ? bag.gearSize : group.gearSize;
+	const spacingRaw = Object.prototype.hasOwnProperty.call(bag, "spacing") ? bag.spacing : group.spacing;
+	const stackRaw = Object.prototype.hasOwnProperty.call(bag, "stack") ? bag.stack : group.stack;
+	noteMigrationIf(
+		!Object.prototype.hasOwnProperty.call(bag, "gearSize") && group.gearSize != null,
+		`group ${gid} root gearSize → settings.gearSize`
+	);
+	noteMigrationIf(
+		!Object.prototype.hasOwnProperty.call(bag, "spacing") && group.spacing != null,
+		`group ${gid} root spacing → settings.spacing`
+	);
+	noteMigrationIf(
+		!Object.prototype.hasOwnProperty.call(bag, "stack") && group.stack != null,
+		`group ${gid} root stack → settings.stack`
+	);
+	delete group.gearSize;
+	delete group.spacing;
+	delete group.stack;
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Legacy root gearIds move under nested settings.gearIds (never written on root again).
+	// Prefer settings.gearIds; else root gearIds.
+	let gearIds = [];
+	if (Array.isArray(bag.gearIds)) {
+		gearIds = bag.gearIds.slice();
+	} else if (Array.isArray(group.gearIds)) {
+		gearIds = group.gearIds.slice();
+		noteMigration(`group ${gid} root gearIds → settings.gearIds`);
+	}
+	delete group.gearIds;
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Builtin Vampiric Hunger gear id COG_Builtin_Bloodlust → COG_Builtin_VampiricHunger in gearIds / exempt.
+	const oldBloodlustId =
+		typeof gearIdFor === "function" ? gearIdFor("COG.Builtin", "Bloodlust") : "COG_Builtin_Bloodlust";
+	const newVampiricId =
+		typeof gearIdFor === "function" ? gearIdFor("COG.Builtin", "VampiricHunger") : "COG_Builtin_VampiricHunger";
+	let remappedBloodlust = false;
+	gearIds = gearIds.map((id) => {
+		if (String(id || "").toLowerCase() === oldBloodlustId.toLowerCase()) {
+			remappedBloodlust = true;
+			return newVampiricId;
+		}
+		return id;
+	});
+	let exempt = normalizeExemptFromGroupColors(bag.exemptFromGroupColors);
+	if (exempt && typeof exempt === "object") {
+		const next = {};
+		for (const [id, on] of Object.entries(exempt)) {
+			if (String(id || "").toLowerCase() === oldBloodlustId.toLowerCase()) {
+				next[newVampiricId] = on;
+				remappedBloodlust = true;
+			} else {
+				next[id] = on;
+			}
+		}
+		exempt = next;
+	}
+	if (remappedBloodlust) {
+		noteMigration(`group ${gid} COG_Builtin_Bloodlust → COG_Builtin_VampiricHunger`);
+	}
+	group.settings = {
+		displayName,
+		showLabel: bag.showLabel === true,
+		showIcon: bag.showIcon !== false,
+		showNumber: bag.showNumber !== false,
+		barTrough: bag.barTrough === true,
+		fillFromHidden: normalizeFillFromHidden(bag.fillFromHidden),
+		numberFormat: normalizeNumberFormat(bag),
+		useGroupColors: bag.useGroupColors === true,
+		iconColor: normalizeColorRampValue(bag.iconColor, bag.startColor, bag.endColor),
+		barColor: normalizeColorRampValue(bag.barColor, "", ""),
+		borderColor: String(bag.borderColor || ""),
+		neutralIconMode: normalizeNeutralIconMode(bag.neutralIconMode),
+		gearSize: gearSizeRaw,
+		spacing: spacingRaw,
+		stack: stackRaw,
+		exemptFromGroupColors: exempt,
+		gearIds
 	};
-	return group.style;
+	return group.settings;
 }
 
-/** Group title lives in `displayName` (`name` was the title key before v1.1). */
 function ensureGroup(group) {
 	if (!group) {
 		return;
 	}
-	// Migration Code for Transition from v1.01 or earlier to v1.1: copy legacy title `name` into `displayName` when empty.
-	if (!String(group.displayName || "").trim() && String(group.name || "").trim()) {
-		group.displayName = String(group.name).trim();
+	ensureGroupSettings(group);
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Legacy root bool "visible" → visibility none|hud|ui (never kept as bool).
+	if (typeof ensureEntityVisibility === "function") {
+		ensureEntityVisibility(group);
+	} else {
+		group.visibility = group.visibility == null ? "hud" : group.visibility;
+		delete group.visible;
 	}
-	if (typeof group.displayName !== "string") {
-		group.displayName = "";
-	}
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Legacy flat placement keys x/y/rotation move under nested "position" (never written back flat on save).
+	migrateEntityPosition(group, { x: DEFAULT_HUD_X, y: DEFAULT_HUD_Y, rotation: 0 });
 }
 
 function ensureGroupLine(group) {
-	if (group.rotation == null) {
-		group.rotation = 0;
+	ensureGroup(group);
+	const settings = ensureGroupSettings(group);
+	if (group.position.rotation == null) {
+		group.position.rotation = 0;
 	}
-	const size = Number(group.gearSize);
+	const size = Number(settings.gearSize);
 	if (!Number.isFinite(size) || size <= 1) {
-		group.gearSize = DEFAULT_GEAR_SIZE;
+		settings.gearSize = DEFAULT_GEAR_SIZE;
 	}
-	const gap = Number(group.spacing);
+	const gap = Number(settings.spacing);
 	if (!Number.isFinite(gap) || gap < 0 || (gap > 0 && gap <= 1)) {
-		group.spacing = DEFAULT_SPACING;
+		settings.spacing = DEFAULT_SPACING;
 	}
-	group.stack = normalizeStack(group.stack);
-	if (!Array.isArray(group.gearIds)) {
-		group.gearIds = [];
+	settings.stack = normalizeStack(settings.stack);
+	if (!Array.isArray(settings.gearIds)) {
+		settings.gearIds = [];
 	}
 }
 
@@ -143,7 +319,7 @@ function groupIdForGear(gear) {
 	}
 	for (const group of snapshot.groups || []) {
 		ensureGroupLine(group);
-		if (group.gearIds.includes(gear.id)) {
+		if (ensureGroupSettings(group).gearIds.includes(gear.id)) {
 			return group.id;
 		}
 	}
@@ -153,7 +329,12 @@ function groupIdForGear(gear) {
 function removeGearFromAllGroups(gearId) {
 	for (const group of snapshot.groups || []) {
 		ensureGroupLine(group);
-		group.gearIds = group.gearIds.filter((id) => id !== gearId);
+		const settings = ensureGroupSettings(group);
+		settings.gearIds = settings.gearIds.filter((id) => id !== gearId);
+		const map = settings.exemptFromGroupColors;
+		if (map && Object.prototype.hasOwnProperty.call(map, gearId)) {
+			delete map[gearId];
+		}
 	}
 }
 
@@ -167,8 +348,9 @@ function addGearToGroup(gearId, groupId) {
 		return;
 	}
 	ensureGroupLine(group);
-	if (!group.gearIds.includes(gearId)) {
-		group.gearIds.push(gearId);
+	const settings = ensureGroupSettings(group);
+	if (!settings.gearIds.includes(gearId)) {
+		settings.gearIds.push(gearId);
 	}
 }
 
@@ -182,13 +364,21 @@ function pruneGroupMembership() {
 	const placed = new Set();
 	for (const group of snapshot.groups || []) {
 		ensureGroupLine(group);
-		group.gearIds = group.gearIds.filter((id) => {
+		const settings = ensureGroupSettings(group);
+		settings.gearIds = settings.gearIds.filter((id) => {
 			if (!known.has(id) || placed.has(id)) {
 				return false;
 			}
 			placed.add(id);
 			return true;
 		});
+		const members = new Set(settings.gearIds);
+		const map = settings.exemptFromGroupColors;
+		for (const id of Object.keys(map || {})) {
+			if (!members.has(id)) {
+				delete map[id];
+			}
+		}
 	}
 }
 
@@ -197,35 +387,54 @@ function ensureDefaultGroup() {
 		snapshot.groups = [];
 	}
 	if (!snapshot.groups.some((g) => g.id === DEFAULT_GROUP_ID)) {
+		const settings = defaultGroupSettings();
+		settings.displayName = "Default Group";
 		snapshot.groups.unshift({
 			id: DEFAULT_GROUP_ID,
-			displayName: "Default Group",
 			locked: true,
-			visible: !!(snapshot.general && snapshot.general.showDefaultGroup),
-			x: DEFAULT_HUD_X,
-			y: DEFAULT_HUD_Y,
-			rotation: 0,
-			gearSize: DEFAULT_GEAR_SIZE,
-			spacing: DEFAULT_SPACING,
-			stack: "below",
-			style: defaultGroupStyle(),
-			gearIds: []
+			visibility: snapshot.general && snapshot.general.showDefaultGroup ? "hud" : "none",
+			position: { x: DEFAULT_HUD_X, y: DEFAULT_HUD_Y, rotation: 0 },
+			settings
 		});
 	}
 	const defaultGroup = snapshot.groups.find((g) => g.id === DEFAULT_GROUP_ID);
 	defaultGroup.locked = true;
-	defaultGroup.displayName = "Default Group";
-	defaultGroup.visible = !!(snapshot.general && snapshot.general.showDefaultGroup);
+	ensureGroupSettings(defaultGroup).displayName = "Default Group";
+	defaultGroup.visibility = snapshot.general && snapshot.general.showDefaultGroup ? "hud" : "none";
+	delete defaultGroup.visible;
 }
 
 function normalizeGroupsSnapshot() {
 	ensureDefaultGroup();
 	for (const group of snapshot.groups) {
 		ensureGroup(group);
-		ensureGroupStyle(group);
+		ensureGroupSettings(group);
 		ensureGroupLine(group);
 	}
 	pruneGroupMembership();
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Legacy gear-root exemptFromGroupColors moves onto the owning group's settings.exemptFromGroupColors[gearId]
+	// (never written on the gear again). Legacy gear-root enabled is ignored.
+	for (const gear of snapshot.gears || []) {
+		const gearLabel = (gear && (gear.id || gear.varName)) || "?";
+		if (gear && Object.prototype.hasOwnProperty.call(gear, "enabled")) {
+			noteMigration(`gear ${gearLabel} ignored legacy root enabled`);
+			delete gear.enabled;
+		}
+		if (!gear || !gear.exemptFromGroupColors) {
+			if (gear) {
+				delete gear.exemptFromGroupColors;
+			}
+			continue;
+		}
+		const gid = groupIdForGear(gear);
+		const group = gid ? groupFor(gid) : null;
+		if (group) {
+			setGearExemptFromGroupColors(group, gear.id, true);
+			noteMigration(`gear ${gearLabel} exemptFromGroupColors → group ${group.id}`);
+		}
+		delete gear.exemptFromGroupColors;
+	}
 }
 
 function effectiveGroupId(gear) {
@@ -238,23 +447,28 @@ function gearsInGroup(groupId) {
 		return [];
 	}
 	ensureGroupLine(group);
-	return group.gearIds
-		.map((id) => gearFor(id))
-		.filter((g) => g && g.enabled !== false);
+	return ensureGroupSettings(group).gearIds.map((id) => gearFor(id)).filter((g) => g);
+}
+
+/** Effective none|hud|ui for mount (Default Group follows General checkbox). */
+function groupVisibility(group) {
+	if (!group) {
+		return "none";
+	}
+	if (group.id === DEFAULT_GROUP_ID) {
+		return snapshot.general && snapshot.general.showDefaultGroup ? "hud" : "none";
+	}
+	return typeof normalizeVisibility === "function"
+		? normalizeVisibility(group.visibility)
+		: "hud";
 }
 
 function isGroupVisible(group) {
-	if (!group) {
-		return false;
-	}
-	if (group.id === DEFAULT_GROUP_ID) {
-		return !!snapshot.general.showDefaultGroup;
-	}
-	return group.visible !== false;
+	return groupVisibility(group) !== "none";
 }
 
 function pixelSize(group) {
-	const v = Number(group.gearSize);
+	const v = Number(ensureGroupSettings(group).gearSize);
 	if (!Number.isFinite(v) || v <= 1) {
 		return 20;
 	}
@@ -262,7 +476,7 @@ function pixelSize(group) {
 }
 
 function pixelSpacing(group) {
-	const v = Number(group.spacing);
+	const v = Number(ensureGroupSettings(group).spacing);
 	if (!Number.isFinite(v) || v < 0) {
 		return 10;
 	}
@@ -271,7 +485,7 @@ function pixelSpacing(group) {
 
 function hudMembers(group, preview) {
 	return gearsInGroup(group.id).filter((gear) => {
-		const src = sourceFor(gear.mod, gear.name);
+		const src = sourceFor(gear.sourceMod, gear.varName);
 		if (!src) {
 			return false;
 		}
@@ -298,7 +512,7 @@ function groupMetrics(group, count) {
 		lengthPx: groupLengthPx(group, count),
 		sizePx,
 		gapPx: pixelSpacing(group),
-		rot: Number(group.rotation) || 0
+		rot: Number(group.position.rotation) || 0
 	};
 }
 
@@ -331,8 +545,8 @@ function findHudGroupEl(id, preferredHost) {
 function layoutHudGroup(el, group, count) {
 	const n = count == null ? hudMembers(group, document.body.classList.contains("is-focused")).length : count;
 	const m = groupMetrics(group, n);
-	const left = `${(group.x ?? DEFAULT_HUD_X) * 100}%`;
-	const top = `${(group.y ?? DEFAULT_HUD_Y) * 100}%`;
+	const left = `${(group.position.x ?? DEFAULT_HUD_X) * 100}%`;
+	const top = `${(group.position.y ?? DEFAULT_HUD_Y) * 100}%`;
 	const minW = n <= 0 ? `${m.sizePx}px` : "";
 	const minH = `${m.sizePx}px`;
 	const fontSize = `${Math.max(8, m.sizePx * 0.32)}px`;
@@ -381,8 +595,8 @@ function beginGroupDrag(ev, groupId, mode) {
 		kind: "group",
 		id: group.id,
 		mode,
-		grabX: ev.clientX / w - (group.x ?? DEFAULT_HUD_X),
-		grabY: ev.clientY / h - (group.y ?? DEFAULT_HUD_Y)
+		grabX: ev.clientX / w - (group.position.x ?? DEFAULT_HUD_X),
+		grabY: ev.clientY / h - (group.position.y ?? DEFAULT_HUD_Y)
 	};
 	if (ev.currentTarget && ev.pointerId != null && ev.currentTarget.setPointerCapture) {
 		ev.currentTarget.setPointerCapture(ev.pointerId);
@@ -395,12 +609,12 @@ function onGroupPointerMove(ev) {
 		return;
 	}
 	if (drag.mode === "move") {
-		group.x = clampPct((ev.clientX / window.innerWidth - drag.grabX) * 100, 0, 100) / 100;
-		group.y = clampPct((ev.clientY / window.innerHeight - drag.grabY) * 100, 0, 100) / 100;
+		group.position.x = clampPct((ev.clientX / window.innerWidth - drag.grabX) * 100, 0, 100) / 100;
+		group.position.y = clampPct((ev.clientY / window.innerHeight - drag.grabY) * 100, 0, 100) / 100;
 	} else if (drag.mode === "rotate") {
-		const sx = (group.x ?? DEFAULT_HUD_X) * window.innerWidth;
-		const sy = (group.y ?? DEFAULT_HUD_Y) * window.innerHeight;
-		group.rotation = Math.atan2(ev.clientY - sy, ev.clientX - sx) * (180 / Math.PI);
+		const sx = (group.position.x ?? DEFAULT_HUD_X) * window.innerWidth;
+		const sy = (group.position.y ?? DEFAULT_HUD_Y) * window.innerHeight;
+		group.position.rotation = Math.atan2(ev.clientY - sy, ev.clientX - sx) * (180 / Math.PI);
 	}
 	syncHudGroup(group);
 }
@@ -413,14 +627,38 @@ function patchGroup(id, patch, skipHud, live) {
 	if (group.locked && patch.id && patch.id !== DEFAULT_GROUP_ID) {
 		return;
 	}
+	const settings = ensureGroupSettings(group);
 	let changed = false;
 	for (const [key, value] of Object.entries(patch)) {
-		if (key === "style") {
-			if (JSON.stringify(group.style || {}) !== JSON.stringify(value || {})) {
-				changed = true;
+		if (key === "settings" && value && typeof value === "object" && !Array.isArray(value)) {
+			for (const [sk, sv] of Object.entries(value)) {
+				if (settings[sk] !== sv) {
+					changed = true;
+					settings[sk] = sv;
+				}
 			}
-		} else if (group[key] !== value) {
+			continue;
+		}
+		if (key === "position" && value && typeof value === "object" && !Array.isArray(value)) {
+			const pos = entityPosition(group);
+			for (const [pk, pv] of Object.entries(value)) {
+				if (pos[pk] !== pv) {
+					changed = true;
+					pos[pk] = pv;
+				}
+			}
+			continue;
+		}
+		if (GROUP_LINE_SETTINGS_KEYS.has(key)) {
+			if (settings[key] !== value) {
+				changed = true;
+				settings[key] = value;
+			}
+			continue;
+		}
+		if (group[key] !== value) {
 			changed = true;
+			group[key] = value;
 		}
 	}
 	if (!changed) {
@@ -429,11 +667,13 @@ function patchGroup(id, patch, skipHud, live) {
 		}
 		return;
 	}
-	Object.assign(group, patch);
+	group.settings = settings;
+	ensureGroupLine(group);
 	if (id === DEFAULT_GROUP_ID) {
 		group.locked = true;
-		group.displayName = "Default Group";
-		group.visible = snapshot.general.showDefaultGroup;
+		settings.displayName = "Default Group";
+		group.visibility = snapshot.general.showDefaultGroup ? "hud" : "none";
+		delete group.visible;
 	}
 	if (live === true) {
 		if (!skipHud) {
@@ -458,22 +698,17 @@ function addGroup() {
 	const n = snapshot.groups.filter((g) => g.id !== DEFAULT_GROUP_ID).length + 1;
 	const id = `group_${Date.now().toString(36)}`;
 	openGroupId = id;
+	const settings = defaultGroupSettings();
+	settings.displayName =
+		typeof formatStockName === "function"
+			? formatStockName("Group {num}", { num: n })
+			: `Group ${n}`;
 	snapshot.groups.push({
 		id,
-		displayName:
-			typeof formatStockName === "function"
-				? formatStockName("Group {num}", { num: n })
-				: `Group ${n}`,
 		locked: false,
-		visible: true,
-		x: DEFAULT_HUD_X,
-		y: DEFAULT_HUD_Y,
-		rotation: 0,
-		gearSize: DEFAULT_GEAR_SIZE,
-		spacing: DEFAULT_SPACING,
-		stack: "below",
-		style: defaultGroupStyle(),
-		gearIds: []
+		visibility: "hud",
+		position: { x: DEFAULT_HUD_X, y: DEFAULT_HUD_Y, rotation: 0 },
+		settings
 	});
 	selectEditorItem("group", id);
 	renderGears();
@@ -498,23 +733,24 @@ function groupDisplayName(groupId) {
 	if (!group) {
 		return typeof tName === "function" ? tName("Default Group") : "Default Group";
 	}
+	const settings = ensureGroupSettings(group);
 	// Default Group is locked / uneditable — keep English on disk, translate at display time only
 	// (pushStockEntityTitles skips id === "default" on purpose).
 	if (group.id === DEFAULT_GROUP_ID) {
 		const key = "Default Group";
 		if (typeof resolveStockDisplayName === "function") {
-			return resolveStockDisplayName(group.displayName || key, key, {
+			return resolveStockDisplayName(settings.displayName || key, key, {
 				defaultsDisplayName: key
 			});
 		}
 		return typeof tName === "function" ? tName(key) : key;
 	}
-	return group.displayName || "Default Group";
+	return settings.displayName || "Default Group";
 }
 
 function sourcesNotInGroup(groupId) {
 	return (snapshot.sources || []).filter((src) => {
-		const gear = gearBySource(src.mod, src.name);
+		const gear = gearBySource(src.sourceMod, src.varName);
 		return !gear || effectiveGroupId(gear) !== groupId;
 	});
 }
@@ -541,16 +777,17 @@ function moveGearInGroup(id, dir) {
 		return;
 	}
 	ensureGroupLine(group);
-	const i = group.gearIds.indexOf(id);
+	const settings = ensureGroupSettings(group);
+	const i = settings.gearIds.indexOf(id);
 	const j = i + dir;
-	if (i < 0 || j < 0 || j >= group.gearIds.length) {
+	if (i < 0 || j < 0 || j >= settings.gearIds.length) {
 		return;
 	}
-	const next = group.gearIds.slice();
+	const next = settings.gearIds.slice();
 	const tmp = next[i];
 	next[i] = next[j];
 	next[j] = tmp;
-	group.gearIds = next;
+	settings.gearIds = next;
 	scheduleSave();
 	renderGears();
 	renderEditor(true);
@@ -680,7 +917,8 @@ function renderGroups(body) {
 			</div>`;
 		const title = details.querySelector(".group-title");
 		const nameInput = details.querySelector('[data-role="displayName"]');
-		nameInput.value = group.displayName;
+		const groupSettings = ensureGroupSettings(group);
+		nameInput.value = groupSettings.displayName || "";
 		const end = details.querySelector(".end");
 		title.textContent = groupDisplayName(group.id);
 		if (canRename) {
@@ -702,11 +940,11 @@ function renderGroups(body) {
 				nameInput.hidden = true;
 				title.hidden = false;
 				if (save) {
-					const next = nameInput.value.trim() || group.displayName;
+					const next = nameInput.value.trim() || ensureGroupSettings(group).displayName;
 					patchGroup(group.id, { displayName: next });
 					title.textContent = groupDisplayName(group.id);
 				} else {
-					nameInput.value = group.displayName;
+					nameInput.value = ensureGroupSettings(group).displayName || "";
 				}
 			};
 			edit.addEventListener("click", () => {
@@ -714,7 +952,7 @@ function renderGroups(body) {
 				details.classList.add("is-renaming");
 				title.hidden = true;
 				nameInput.hidden = false;
-				nameInput.value = group.displayName;
+				nameInput.value = ensureGroupSettings(group).displayName || "";
 				parkRenameFieldForEdit(details, nameInput);
 				nameInput.focus();
 				nameInput.select();
@@ -849,9 +1087,9 @@ function renderGroups(body) {
 				const v = Number(raw);
 				return Number.isFinite(v) ? clampPct(v, 0, 100) / 100 : null;
 			},
-			apply: (v) => patchGroup(group.id, { x: v }),
+			apply: (v) => patchGroup(group.id, { position: { x: v } }),
 			format: (v) => fmtPct(v * 100),
-			current: () => groupFor(group.id)?.x ?? DEFAULT_HUD_X
+			current: () => groupFor(group.id)?.position?.x ?? DEFAULT_HUD_X
 		});
 		bindNumberField(details.querySelector('[data-role="y"]'), {
 			suffix: "%",
@@ -862,9 +1100,9 @@ function renderGroups(body) {
 				const v = Number(raw);
 				return Number.isFinite(v) ? clampPct(v, 0, 100) / 100 : null;
 			},
-			apply: (v) => patchGroup(group.id, { y: v }),
+			apply: (v) => patchGroup(group.id, { position: { y: v } }),
 			format: (v) => fmtPct(v * 100),
-			current: () => groupFor(group.id)?.y ?? DEFAULT_HUD_Y
+			current: () => groupFor(group.id)?.position?.y ?? DEFAULT_HUD_Y
 		});
 		bindNumberField(details.querySelector('[data-role="rotation"]'), {
 			suffix: "°",
@@ -875,9 +1113,9 @@ function renderGroups(body) {
 				const v = Number(raw);
 				return Number.isFinite(v) ? v : null;
 			},
-			apply: (v) => patchGroup(group.id, { rotation: v }),
+			apply: (v) => patchGroup(group.id, { position: { rotation: v } }),
 			format: (v) => (Number(v) || 0).toFixed(1),
-			current: () => groupFor(group.id)?.rotation || 0
+			current: () => groupFor(group.id)?.position?.rotation || 0
 		});
 		bindNumberField(details.querySelector('[data-role="gearSize"]'), {
 			suffix: "px",
@@ -894,21 +1132,21 @@ function renderGroups(body) {
 			current: () => pixelSpacing(groupFor(group.id) || group)
 		});
 		const stackSel = details.querySelector('[data-role="stack"]');
-		stackSel.value = normalizeStack(group.stack);
+		stackSel.value = normalizeStack(ensureGroupSettings(group).stack);
 		stackSel.addEventListener("change", () => patchGroup(group.id, { stack: normalizeStack(stackSel.value) }));
 		const xInput = details.querySelector('[data-role="x"]');
 		const yInput = details.querySelector('[data-role="y"]');
 		const rotInput = details.querySelector('[data-role="rotation"]');
 		const sizeInput = details.querySelector('[data-role="gearSize"]');
 		const gapInput = details.querySelector('[data-role="spacing"]');
-		xInput.value = fmtPct((group.x ?? DEFAULT_HUD_X) * 100);
-		yInput.value = fmtPct((group.y ?? DEFAULT_HUD_Y) * 100);
-		rotInput.value = (Number(group.rotation) || 0).toFixed(1);
+		xInput.value = fmtPct((group.position.x ?? DEFAULT_HUD_X) * 100);
+		yInput.value = fmtPct((group.position.y ?? DEFAULT_HUD_Y) * 100);
+		rotInput.value = (Number(group.position.rotation) || 0).toFixed(1);
 		sizeInput.value = String(pixelSize(group));
 		gapInput.value = String(pixelSpacing(group));
 		const catSel = details.querySelector(".filter-category");
 		refreshCategorySelects(details);
-		const style = ensureGroupStyle(group);
+		const style = ensureGroupSettings(group);
 		const labelBox = details.querySelector('[data-role="showLabel"]');
 		const iconBox = details.querySelector('[data-role="showIcon"]');
 		const numberBox = details.querySelector('[data-role="showNumber"]');
@@ -946,14 +1184,14 @@ function renderGroups(body) {
 			);
 		}
 		const currentStyle = () => {
-			const live = ensureGroupStyle(groupFor(group.id) || group);
+			const live = ensureGroupSettings(groupFor(group.id) || group);
 			return { ...live };
 		};
 		const writeStyle = (patch) => {
 			const live = currentStyle();
 			const neutralSel = details.querySelector('[data-role="neutralIconMode"]');
 			patchGroup(group.id, {
-				style: {
+				settings: {
 					...live,
 					showLabel: labelBox.checked,
 					showIcon: iconBox.checked,
@@ -1044,7 +1282,7 @@ function renderGroups(body) {
 					}
 					patchGroup(
 						group.id,
-						{ style: { ...ensureGroupStyle(liveGroup), iconColor: ramp } },
+						{ settings: { ...ensureGroupSettings(liveGroup), iconColor: ramp } },
 						false,
 						live
 					);
@@ -1062,7 +1300,7 @@ function renderGroups(body) {
 					}
 					patchGroup(
 						group.id,
-						{ style: { ...ensureGroupStyle(liveGroup), barColor: ramp } },
+						{ settings: { ...ensureGroupSettings(liveGroup), barColor: ramp } },
 						false,
 						live
 					);
@@ -1084,7 +1322,7 @@ function renderGroups(body) {
 			list.appendChild(empty);
 		}
 		members.forEach((gear, index) => {
-			const src = sourceFor(gear.mod, gear.name);
+			const src = sourceFor(gear.sourceMod, gear.varName);
 			const row = document.createElement("div");
 			row.className = "gear-item";
 			row.innerHTML = `
@@ -1096,7 +1334,7 @@ function renderGroups(body) {
 				<button type="button" class="tiny" data-role="up">Up</button>
 				<button type="button" class="tiny" data-role="down">Down</button>
 				<button type="button" class="tiny" data-role="remove">Remove</button>`;
-			row.querySelector("strong").textContent = sourceTitle(src, gear.name, gear);
+			row.querySelector("strong").textContent = sourceTitle(src, gear.varName, gear);
 			row.querySelector(".meta").textContent = sourceMeta(src);
 			const exemptBox = row.querySelector('[data-role="exempt"]');
 			const exemptSpan = row.querySelector(".gear-exempt > span");
@@ -1106,10 +1344,14 @@ function renderGroups(body) {
 				setTranslatedText(row.querySelector('[data-role="down"]'), "cog-down", "Down");
 				setTranslatedText(row.querySelector('[data-role="remove"]'), "cog-remove", "Remove");
 			}
-			exemptBox.checked = !!gear.exemptFromGroupColors;
+			exemptBox.checked = gearExemptFromGroupColors(group, gear.id);
 			exemptBox.disabled = !style.useGroupColors;
 			exemptBox.addEventListener("change", () => {
-				patchGear(gear.id, { exemptFromGroupColors: exemptBox.checked });
+				const liveGroup = groupFor(group.id) || group;
+				setGearExemptFromGroupColors(liveGroup, gear.id, exemptBox.checked);
+				patchGroup(group.id, {
+					settings: { exemptFromGroupColors: { ...ensureGroupSettings(liveGroup).exemptFromGroupColors } }
+				});
 			});
 			row.querySelector('[data-role="up"]').disabled = index === 0;
 			row.querySelector('[data-role="down"]').disabled = index === members.length - 1;
@@ -1129,8 +1371,8 @@ function makeGroupColorField(label, groupId, key, value, fallback) {
 		if (!group) {
 			return;
 		}
-		const style = { ...ensureGroupStyle(group), [key]: hex };
-		patchGroup(groupId, { style }, false, live);
+		const settings = { ...ensureGroupSettings(group), [key]: hex };
+		patchGroup(groupId, { settings }, false, live);
 	});
 }
 

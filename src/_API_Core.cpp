@@ -73,6 +73,11 @@ namespace
 		return true;
 	}
 
+	bool IsPluginLoaded(RE::StaticFunctionTag*, std::string pluginFile)
+	{
+		return CogCaller::IsPluginLoaded(pluginFile);
+	}
+
 	void SetUiHidden(RE::StaticFunctionTag*, bool hidden)
 	{
 		CogRegistry::Get().SetUiHidden(hidden);
@@ -156,6 +161,7 @@ bool CogApi::Bind(RE::BSScript::IVirtualMachine* vm)
 		return false;
 	}
 	vm->RegisterFunction("IsReady", "COG_API", IsReady);
+	vm->RegisterFunction("IsPluginLoaded", "COG_API", IsPluginLoaded);
 	vm->RegisterFunction("SetUiHidden", "COG_API", SetUiHidden);
 	vm->RegisterFunction("IsUiHidden", "COG_API", IsUiHidden);
 	vm->RegisterFunction("ToggleUiHidden", "COG_API", ToggleUiHidden);

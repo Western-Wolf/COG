@@ -10,6 +10,8 @@ Papyrus-only reference pack that exercises the public **COG_API** surface: gears
 
 If the StartGameEnabled quest does not start, generate SEQ with the CK or xEdit for `COG - Example.esp`.
 
+**Disabled ESP, mod still installed:** MO2 can leave `Scripts\COG_Example.pex` in the VFS while `COG - Example.esp` is unchecked. COG then correctly prunes Example gears/types (`plugin is not loaded`), but a save that previously armed `RegisterForUpdate` can keep calling `Notify` with an empty icon. The Example quest now gates on `COG_API.IsPluginLoaded(PluginFile)` and stops the countdown when the ESP is absent.
+
 ## What this pack does
 
 | Piece | Role |

@@ -250,9 +250,11 @@ std::string CogRegistry::BuildSnapshotJson()
 			o << ",";
 		}
 		first = false;
-		o << "{\"receipt\":" << src.receipt << ",\"mod\":\"" << EscapeJson(src.mod) << "\",\"name\":\""
-		  << EscapeJson(src.name) << "\",\"displayName\":\"" << EscapeJson(src.displayName) << "\",\"category\":\""
-		  << EscapeJson(src.category) << "\",\"icon\":\"" << EscapeJson(src.icon) << "\",";
+		o << "{\"receipt\":" << src.receipt << ",\"sourceMod\":\"" << EscapeJson(src.sourceMod) << "\",\"varName\":\""
+		  << EscapeJson(src.varName) << "\",\"displayName\":\"" << EscapeJson(src.displayName) << "\",\"category\":\""
+		  << EscapeJson(src.category) << "\",";
+		CogRegistryJson::AppendIconJson(o, "icon", src.icon);
+		o << ",";
 		CogRegistryJson::AppendColorRampJson(o, "iconColor", src.iconColor);
 		o << ",";
 		CogRegistryJson::AppendColorRampJson(o, "barColor", src.barColor);
@@ -560,9 +562,11 @@ std::string CogRegistry::BuildLivePatchJson()
 			o << ",";
 		}
 		first = false;
-		o << "{\"receipt\":" << src.receipt << ",\"mod\":\"" << EscapeJson(src.mod) << "\",\"name\":\""
-		  << EscapeJson(src.name) << "\",\"displayName\":\"" << EscapeJson(src.displayName) << "\",\"category\":\""
-		  << EscapeJson(src.category) << "\",\"icon\":\"" << EscapeJson(src.icon) << "\",";
+		o << "{\"receipt\":" << src.receipt << ",\"sourceMod\":\"" << EscapeJson(src.sourceMod) << "\",\"varName\":\""
+		  << EscapeJson(src.varName) << "\",\"displayName\":\"" << EscapeJson(src.displayName) << "\",\"category\":\""
+		  << EscapeJson(src.category) << "\",";
+		CogRegistryJson::AppendIconJson(o, "icon", src.icon);
+		o << ",";
 		CogRegistryJson::AppendColorRampJson(o, "iconColor", src.iconColor);
 		o << ",";
 		CogRegistryJson::AppendColorRampJson(o, "barColor", src.barColor);

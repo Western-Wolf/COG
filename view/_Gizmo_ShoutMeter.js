@@ -68,20 +68,21 @@ function defaultShoutMeterGizmo(n) {
 		secondaryColor: DEFAULT_SHOUT_SECONDARY,
 		troughOpacity: DEFAULT_TROUGH_OPACITY
 	};
+	settings.displayName =
+		typeof formatStockName === "function"
+			? formatStockName("Shout Meter {num}", { num: n })
+			: `Shout Meter ${n}`;
 	return {
 		id: `gizmo_${Date.now().toString(36)}`,
-		displayName:
-			typeof formatStockName === "function"
-				? formatStockName("Shout Meter {num}", { num: n })
-				: `Shout Meter ${n}`,
-		type: "cog-shout-meter",
+		typeId: "cog-shout-meter",
 		visibility: "hud",
-		x: DEFAULT_HUD_X,
-		y: DEFAULT_HUD_Y,
-		posAnchor: "tlc",
-		rotation: 0,
-		width: DEFAULT_GIZMO_SHOUT_WIDTH,
-		height: DEFAULT_GIZMO_SHOUT_HEIGHT,
+		position: {
+			x: DEFAULT_HUD_X,
+			y: DEFAULT_HUD_Y,
+			rotation: 0,
+			width: DEFAULT_GIZMO_SHOUT_WIDTH,
+			height: DEFAULT_GIZMO_SHOUT_HEIGHT
+		},
 		settings,
 		settingsJson: JSON.stringify(settings)
 	};
@@ -89,11 +90,19 @@ function defaultShoutMeterGizmo(n) {
 function ensureShoutMeterGizmo(gizmo) {
 	ensureGizmoDisplayName(gizmo);
 	const s = ensureGizmoSettings(gizmo);
-	gizmo.x = Number.isFinite(Number(gizmo.x)) ? Number(gizmo.x) : DEFAULT_HUD_X;
-	gizmo.y = Number.isFinite(Number(gizmo.y)) ? Number(gizmo.y) : DEFAULT_HUD_Y;
-	gizmo.rotation = Number(gizmo.rotation) || 0;
-	gizmo.width = Math.max(MIN_GIZMO_WIDTH, Number(gizmo.width) || DEFAULT_GIZMO_SHOUT_WIDTH);
-	gizmo.height = Math.max(MIN_GIZMO_HEIGHT, Number(gizmo.height) || DEFAULT_GIZMO_SHOUT_HEIGHT);
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Legacy flat placement keys x/y/rotation/width/height move under nested "position" (never written back flat on save).
+	// Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
+	migrateEntityPosition(gizmo, {
+		sized: true,
+		x: DEFAULT_HUD_X,
+		y: DEFAULT_HUD_Y,
+		rotation: 0,
+		width: DEFAULT_GIZMO_SHOUT_WIDTH,
+		height: DEFAULT_GIZMO_SHOUT_HEIGHT,
+		minW: MIN_GIZMO_WIDTH,
+		minH: MIN_GIZMO_HEIGHT
+	});
 	s.fontSize = Math.max(0, Number(s.fontSize) || 0);
 	s.textAlign = normalizeClockTextAlign(s.textAlign);
 	s.drainOrigin = normalizeShoutDrainOrigin(s.drainOrigin);
@@ -101,7 +110,6 @@ function ensureShoutMeterGizmo(gizmo) {
 	s.primaryColor = optionalHex(s.primaryColor) || DEFAULT_SHOUT_PRIMARY;
 	s.secondaryColor = optionalHex(s.secondaryColor) || DEFAULT_SHOUT_SECONDARY;
 	s.troughOpacity = Math.max(0, Math.min(100, Number(s.troughOpacity) || DEFAULT_TROUGH_OPACITY));
-	gizmo.posAnchor = "tlc";
 	gizmo.visibility = coalesceGizmoVisibility(gizmo, "cog-shout-meter");
 	gizmo.settings = s;
 	gizmo.settingsJson = JSON.stringify(s);
@@ -318,7 +326,7 @@ function layoutHudGizmoShoutMeter(el, gizmo) {
 	el.style.top = `${css.y * 100}%`;
 	el.style.width = `${box.w}px`;
 	el.style.height = `${box.h}px`;
-	el.style.setProperty("--gizmo-rot", `${gizmo.rotation || 0}deg`);
+	el.style.setProperty("--gizmo-rot", `${gizmo.position.rotation || 0}deg`);
 	const body = el.querySelector(".shout-meter-body");
 	if (body) {
 		const align = normalizeClockTextAlign(gizmo.settings.textAlign);
@@ -611,6 +619,6 @@ window.CogRegisterGizmoRenderer("cog-shout-meter", {
 		if (s.fontSize > 0) {
 			return Math.round(s.fontSize);
 		}
-		return Math.max(16, Math.round(gizmo.height * 0.72));
+		return Math.max(16, Math.round(gizmo.position.height * 0.72));
 	}
 });

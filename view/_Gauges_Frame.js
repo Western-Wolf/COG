@@ -5,15 +5,15 @@ const FRAME_FADE_BLEND_PCT = 6;
 
 function frameEffectiveBorderColor(gauge) {
 	// Blank = transparent (user cleared).
-	return optionalHex(gauge.frameBorderColor) || "";
+	return optionalHex(gaugeSettings(gauge).frameBorderColor) || "";
 }
 
 function frameEffectiveFillColor(gauge) {
-	return optionalHex(gauge.frameFillColor) || "";
+	return optionalHex(gaugeSettings(gauge).frameFillColor) || "";
 }
 
 function frameEffectiveFadeColor(gauge) {
-	return optionalHex(gauge.pictureFade) || frameDefaultPictureFade();
+	return optionalHex(gaugeSettings(gauge).pictureFade) || frameDefaultPictureFade();
 }
 
 /** Border rim inset in px (legacy plate inset; also drives rim scale). */
@@ -26,7 +26,7 @@ function frameBorderInsetPx(borderInset) {
  * Apex-up triangles have centroid at 2/3 height — bbox center sits too high.
  */
 function frameShapeFocus(gauge) {
-	const path = String(gauge.frameShape || "").toLowerCase();
+	const path = String(gaugeSettings(gauge).frameShape || "").toLowerCase();
 	if (path.includes("triangle")) {
 		return { x: 0.5, y: 2 / 3 };
 	}
@@ -35,8 +35,8 @@ function frameShapeFocus(gauge) {
 
 /** Inner plate scale (0–1) so a uniform shrink about the shape focus keeps rim width even. */
 function frameRimScale(gauge, rimPx) {
-	const w = Math.max(1, Math.round(gauge.width));
-	const h = Math.max(1, Math.round(gauge.height));
+	const w = Math.max(1, Math.round(gauge.position.width));
+	const h = Math.max(1, Math.round(gauge.position.height));
 	const m = Math.min(w, h);
 	const rim = Math.max(0, Math.min(frameBorderInsetPx(rimPx), m / 2));
 	return Math.max(0, (m - 2 * rim) / m);
@@ -77,14 +77,14 @@ function applyFrameInnerMask(node, href, gauge, rimPx) {
 
 /** Inside Size as a 0.05–1 scale factor for picture/gear content. */
 function frameInsideScale(gauge) {
-	const pct = Math.max(5, Math.min(100, Number(gauge.insideSize) || 65));
+	const pct = Math.max(5, Math.min(100, Number(gaugeSettings(gauge).insideSize) || 65));
 	return pct / 100;
 }
 
 /** Gear content inset: border rim + Inside Size shrink (centered on shape focus). */
 function frameContentInsetPx(gauge, borderInset) {
-	const w = Math.max(1, Math.round(gauge.width));
-	const h = Math.max(1, Math.round(gauge.height));
+	const w = Math.max(1, Math.round(gauge.position.width));
+	const h = Math.max(1, Math.round(gauge.position.height));
 	const rim = frameBorderInsetPx(borderInset);
 	const inner = Math.max(0, Math.min(w, h) - rim * 2);
 	const shrink = (inner * (1 - frameInsideScale(gauge))) / 2;
@@ -100,8 +100,8 @@ function applyFrameContentInset(el, gauge, borderInset) {
 	const focus = frameShapeFocus(gauge);
 	// Keep a rectangular safe box, then shift so its center meets the shape focus.
 	content.style.inset = `${inset}px`;
-	const plateH = Math.max(1, Math.round(gauge.height) - inset * 2);
-	const plateW = Math.max(1, Math.round(gauge.width) - inset * 2);
+	const plateH = Math.max(1, Math.round(gauge.position.height) - inset * 2);
+	const plateW = Math.max(1, Math.round(gauge.position.width) - inset * 2);
 	const dx = (focus.x - 0.5) * plateW;
 	const dy = (focus.y - 0.5) * plateH;
 	content.style.transform = dx || dy ? `translate(${dx}px, ${dy}px)` : "";
@@ -122,7 +122,7 @@ function applyFramePictureLayout(el, gauge, borderInset) {
 		content.style.inset = "0px";
 		content.style.transform = "";
 	}
-	const deg = Number(gauge.pictureRotation) || 0;
+	const deg = Number(gaugeSettings(gauge).pictureRotation) || 0;
 	const scale = frameInsideScale(gauge);
 	if (rot) {
 		// Full plate box + scale/rotate about the shape focus (no translate+scale bias).
@@ -159,11 +159,11 @@ function applyCenteredMask(node, href, size, focus) {
 }
 
 function frameShapeHref(gauge) {
-	return resolveIconHref(String(gauge.frameShape || "").trim() || defaultFrameShapePath());
+	return resolveIconHref(String(gaugeSettings(gauge).frameShape || "").trim() || defaultFrameShapePath());
 }
 
 function framePictureHref(gauge) {
-	const path = String(gauge.pictureIcon || "").trim() || defaultPictureIconPath();
+	const path = String(gaugeSettings(gauge).pictureIcon || "").trim() || defaultPictureIconPath();
 	return resolveIconHref(path);
 }
 
@@ -203,12 +203,12 @@ function paintGaugeFrameChrome(el, gauge) {
 		return { inset: 0 };
 	}
 	const href = frameShapeHref(gauge);
-	const w = Math.max(1, Math.round(gauge.width));
-	const h = Math.max(1, Math.round(gauge.height));
-	const rim = Math.max(0, (Math.min(w, h) * (Number(gauge.frameBorderThickness) || 0)) / 100);
+	const w = Math.max(1, Math.round(gauge.position.width));
+	const h = Math.max(1, Math.round(gauge.position.height));
+	const rim = Math.max(0, (Math.min(w, h) * (Number(gaugeSettings(gauge).frameBorderThickness) || 0)) / 100);
 	const inset = Math.min(rim, Math.min(w, h) / 2);
 	el.style.setProperty("--frame-plate-inset", "0px");
-	el.style.setProperty("--gauge-frame-rot", `${gauge.rotation || 0}deg`);
+	el.style.setProperty("--gauge-frame-rot", `${gauge.position.rotation || 0}deg`);
 	const borderColor = frameEffectiveBorderColor(gauge);
 	const fillColor = frameEffectiveFillColor(gauge);
 	// Outer silhouette (border colour) fills the gauge box.
@@ -313,11 +313,11 @@ function paintGaugeFramePicture(el, gauge, src, inset) {
 	// Clip picture to the inner plate (same mask as fill), not the outer bezel.
 	applyFrameInnerMask(host, shapeHref, gauge, inset);
 	const picHref = framePictureHref(gauge);
-	const empty = optionalHex(gauge.pictureEmpty) || "#000000";
-	const full = optionalHex(gauge.pictureFull) || "#ffffff";
+	const empty = optionalHex(gaugeSettings(gauge).pictureEmpty) || "#000000";
+	const full = optionalHex(gaugeSettings(gauge).pictureFull) || "#ffffff";
 	const fade = frameEffectiveFadeColor(gauge);
 	const { fillPct } = framePictureProgress(el, src);
-	const direction = normalizePictureDirection(gauge.pictureDirection);
+	const direction = normalizePictureDirection(gaugeSettings(gauge).pictureDirection);
 	paintMaskedFace(emptyLayer, "gauge-frame-pic-face", { color: empty, href: picHref });
 	const emptyFace = emptyLayer.querySelector(".gauge-frame-pic-face");
 	if (emptyFace) {
@@ -331,13 +331,13 @@ function paintGaugeFramePicture(el, gauge, src, inset) {
 }
 
 function frameGearStructureSig(gauge, src, gear, inset) {
-	const iconSlot = normalizeFrameSlot(gauge.showIcon);
-	const titleSlot = normalizeFrameSlot(gauge.showLabel);
-	const numberSlot = normalizeFrameSlot(gauge.showNumber);
+	const iconSlot = normalizeFrameSlot(gaugeSettings(gauge).showIcon);
+	const titleSlot = normalizeFrameSlot(gaugeSettings(gauge).showLabel);
+	const numberSlot = normalizeFrameSlot(gaugeSettings(gauge).showNumber);
 	const fmt =
 		typeof normalizeNumberFormat === "function"
-			? normalizeNumberFormat(gauge.numberFormat)
-			: normalizeNumberFormatGauge(gauge.numberFormat);
+			? normalizeNumberFormat(gaugeSettings(gauge).numberFormat)
+			: normalizeNumberFormatGauge(gaugeSettings(gauge).numberFormat);
 	const isRatio = !!(src && typeof usesRatio === "function" && usesRatio(src));
 	const showBar =
 		numberSlot !== "none" &&
@@ -356,11 +356,11 @@ function frameGearStructureSig(gauge, src, gear, inset) {
 		fmt,
 		showBar ? 1 : 0,
 		showValue ? 1 : 0,
-		gauge.barTrough === true ? 1 : 0,
-		gauge.width,
-		gauge.height,
-		gauge.fontSize,
-		gauge.insideSize,
+		gaugeSettings(gauge).barTrough === true ? 1 : 0,
+		gauge.position.width,
+		gauge.position.height,
+		gaugeSettings(gauge).fontSize,
+		gaugeSettings(gauge).insideSize,
 		rim,
 		href,
 		src ? 1 : 0,
@@ -371,9 +371,9 @@ function frameGearStructureSig(gauge, src, gear, inset) {
 
 function patchGaugeFrameLive(el, gauge, src, gear) {
 	ensureGauge(gauge);
-	const mode = normalizeGaugeDisplayMode(gauge.displayMode);
+	const mode = normalizeGaugeDisplayMode(gaugeSettings(gauge).displayMode);
 	const inactive =
-		!gauge.alwaysVisible &&
+		!gaugeSettings(gauge).alwaysVisible &&
 		(src ? isHudHidden(src, gear) : !src) &&
 		document.body.classList.contains("is-focused");
 	el.classList.toggle("is-inactive", inactive);
@@ -382,11 +382,11 @@ function patchGaugeFrameLive(el, gauge, src, gear) {
 		if (!progressLayer || !src) {
 			return;
 		}
-		const empty = optionalHex(gauge.pictureEmpty) || "#000000";
-		const full = optionalHex(gauge.pictureFull) || "#ffffff";
+		const empty = optionalHex(gaugeSettings(gauge).pictureEmpty) || "#000000";
+		const full = optionalHex(gaugeSettings(gauge).pictureFull) || "#ffffff";
 		const fade = frameEffectiveFadeColor(gauge);
 		const { fillPct } = framePictureProgress(el, src);
-		const direction = normalizePictureDirection(gauge.pictureDirection);
+		const direction = normalizePictureDirection(gaugeSettings(gauge).pictureDirection);
 		const focus = frameShapeFocus(gauge);
 		progressLayer.style.background = framePictureFrontierGradient(
 			direction,
@@ -406,8 +406,8 @@ function patchGaugeFrameLive(el, gauge, src, gear) {
 	const group = { id: `frame:${gauge.id}`, style: {} };
 	const fmt =
 		typeof normalizeNumberFormat === "function"
-			? normalizeNumberFormat(gauge.numberFormat)
-			: normalizeNumberFormatGauge(gauge.numberFormat);
+			? normalizeNumberFormat(gaugeSettings(gauge).numberFormat)
+			: normalizeNumberFormatGauge(gaugeSettings(gauge).numberFormat);
 	const isRatio = !!(typeof usesRatio === "function" && usesRatio(src));
 	const showTotal =
 		isRatio && typeof numberFormatShowsTotal === "function" && numberFormatShowsTotal(fmt);
@@ -437,7 +437,7 @@ function patchGaugeFrameLive(el, gauge, src, gear) {
 	}
 	const label = host.querySelector(".gear-label");
 	if (label) {
-		label.textContent = sourceTitle(src, gear && gear.name, gear);
+		label.textContent = sourceTitle(src, gear && gear.varName, gear);
 	}
 }
 
@@ -461,13 +461,13 @@ function paintGaugeFrameGear(el, gauge, src, gear, inset) {
 	const shapeHref = frameShapeHref(gauge);
 	const focus = frameShapeFocus(gauge);
 	applyFrameInnerMask(host, shapeHref, gauge, inset);
-	const iconSlot = normalizeFrameSlot(gauge.showIcon);
-	const titleSlot = normalizeFrameSlot(gauge.showLabel);
-	const numberSlot = normalizeFrameSlot(gauge.showNumber);
+	const iconSlot = normalizeFrameSlot(gaugeSettings(gauge).showIcon);
+	const titleSlot = normalizeFrameSlot(gaugeSettings(gauge).showLabel);
+	const numberSlot = normalizeFrameSlot(gaugeSettings(gauge).showNumber);
 	const fmt =
 		typeof normalizeNumberFormat === "function"
-			? normalizeNumberFormat(gauge.numberFormat)
-			: normalizeNumberFormatGauge(gauge.numberFormat);
+			? normalizeNumberFormat(gaugeSettings(gauge).numberFormat)
+			: normalizeNumberFormatGauge(gaugeSettings(gauge).numberFormat);
 	const showIcon = iconSlot !== "none";
 	const showLabel = titleSlot !== "none";
 	const showNumber = numberSlot !== "none";
@@ -480,7 +480,7 @@ function paintGaugeFrameGear(el, gauge, src, gear, inset) {
 		showNumber && isRatio && typeof numberFormatShowsTotal === "function" && numberFormatShowsTotal(fmt);
 	// Fake a minimal group so gear colour helpers keep working.
 	const group = { id: `frame:${gauge.id}`, style: {} };
-	const style = { barTrough: gauge.barTrough === true };
+	const style = { barTrough: gaugeSettings(gauge).barTrough === true };
 	const willShowIcon = showIcon;
 	const willShowNumber = showNumber && (showBar || showValue);
 	const willShowLabel = showLabel;
@@ -488,16 +488,16 @@ function paintGaugeFrameGear(el, gauge, src, gear, inset) {
 		1,
 		(willShowIcon ? 1 : 0) + (willShowNumber ? 1 : 0) + (willShowLabel ? 1 : 0)
 	);
-	const plateW = Math.max(8, Math.round(gauge.width) - rim * 2);
-	const plateH = Math.max(8, Math.round(gauge.height) - rim * 2);
+	const plateW = Math.max(8, Math.round(gauge.position.width) - rim * 2);
+	const plateH = Math.max(8, Math.round(gauge.position.height) - rim * 2);
 	const gapPx = Math.max(2, Math.round(Math.min(plateW, plateH) * 0.03));
 	const shareH = Math.max(8, (plateH - gapPx * (slotCount - 1)) / slotCount);
 	const alone = slotCount === 1;
 	const fill = alone ? 0.92 : 0.88;
 	const iconPx = Math.max(16, Math.round(Math.min(shareH, plateW) * fill));
 	const fontPx =
-		gauge.fontSize > 0
-			? Math.round(gauge.fontSize)
+		gaugeSettings(gauge).fontSize > 0
+			? Math.round(gaugeSettings(gauge).fontSize)
 			: Math.max(10, Math.round(shareH * (alone ? 0.28 : 0.4)));
 	const barW = Math.max(24, Math.round(plateW * fill));
 	const barH = Math.max(
@@ -619,7 +619,7 @@ function paintGaugeFrameGear(el, gauge, src, gear, inset) {
 		const label = document.createElement("div");
 		label.className = "gear-label gauge-frame-gear-slot";
 		label.style.order = String(slotOrder[titleSlot] || 2);
-		label.textContent = sourceTitle(src, gear && gear.name, gear);
+		label.textContent = sourceTitle(src, gear && gear.varName, gear);
 		slots.push(label);
 	}
 
@@ -637,14 +637,14 @@ function paintGaugeFrame(el, gauge) {
 	ensureGauge(gauge);
 	const { inset } = paintGaugeFrameChrome(el, gauge);
 	const { src, gear } = gaugeLinked(gauge);
-	const mode = normalizeGaugeDisplayMode(gauge.displayMode);
+	const mode = normalizeGaugeDisplayMode(gaugeSettings(gauge).displayMode);
 	if (mode === "picture") {
 		paintGaugeFramePicture(el, gauge, src, inset);
 	} else {
 		paintGaugeFrameGear(el, gauge, src, gear, inset);
 	}
 	const inactive =
-		!gauge.alwaysVisible &&
+		!gaugeSettings(gauge).alwaysVisible &&
 		(src ? isHudHidden(src, gear) : !src) &&
 		document.body.classList.contains("is-focused");
 	el.classList.toggle("is-inactive", inactive);
@@ -677,7 +677,7 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 	modeRow.className = "style-row";
 	const shapeCtrl = makeIconControl({
 		label: "Shape",
-		value: gauge.frameShape || defaultFrameShapePath(),
+		value: gaugeSettings(gauge).frameShape || defaultFrameShapePath(),
 			folder: "Frames",
 		clearLabel: typeof t === "function" ? t("cog-reset-shape", "Reset shape") : "Reset shape",
 		showName: true,
@@ -699,7 +699,7 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 		gear: ["cog-gear", "Gear"],
 		picture: ["cog-picture", "Picture"]
 	});
-	modeSel.value = normalizeGaugeDisplayMode(gauge.displayMode);
+	modeSel.value = normalizeGaugeDisplayMode(gaugeSettings(gauge).displayMode);
 	modeSel.addEventListener("change", () => {
 		patchGauge(gid, { displayMode: normalizeGaugeDisplayMode(modeSel.value) });
 		renderEditor(true);
@@ -712,7 +712,7 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 
 	const fillColor = makeOptionalColorField(
 		"Frame Fill",
-		gauge.frameFillColor,
+		gaugeSettings(gauge).frameFillColor,
 		"",
 		(hex, live) => patchGauge(gid, { frameFillColor: hex }, false, live)
 	);
@@ -722,7 +722,7 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 
 	const borderColor = makeOptionalColorField(
 		"Frame Border",
-		gauge.frameBorderColor,
+		gaugeSettings(gauge).frameBorderColor,
 		"",
 		(hex, live) => patchGauge(gid, { frameBorderColor: hex }, false, live)
 	);
@@ -735,13 +735,13 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 	thick.innerHTML = `<span>Border Thickness</span><input type="number" min="0" max="50" step="0.5" data-role="frameBorderThickness">`;
 	tagFieldLabel(thick, "cog-border-thickness", "Border Thickness");
 	const thickInput = thick.querySelector("input");
-	thickInput.value = fmtDec(gauge.frameBorderThickness, 1);
+	thickInput.value = fmtDec(gaugeSettings(gauge).frameBorderThickness, 1);
 	bindNumberField(thickInput, {
 		suffix: "%",
 		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(50, Number(raw) || 0))),
 		apply: (v) => patchGauge(gid, { frameBorderThickness: v }),
 		decimals: 1,
-		current: () => live().frameBorderThickness
+		current: () => gaugeSettings(live()).frameBorderThickness
 	});
 	rowA.appendChild(thick);
 
@@ -750,18 +750,18 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 	inside.innerHTML = `<span>Inside Size</span><input type="number" min="5" max="100" step="1" data-role="insideSize">`;
 	tagFieldLabel(inside, "cog-inside-size", "Inside Size");
 	const insideInput = inside.querySelector("input");
-	insideInput.value = fmtDec(gauge.insideSize, 0);
+	insideInput.value = fmtDec(gaugeSettings(gauge).insideSize, 0);
 	bindNumberField(insideInput, {
 		suffix: "%",
 		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(5, Math.min(100, Number(raw) || 0))),
 		apply: (v) => patchGauge(gid, { insideSize: v }),
 		decimals: 0,
-		current: () => live().insideSize
+		current: () => gaugeSettings(live()).insideSize
 	});
 	rowA.appendChild(inside);
 	panel.appendChild(rowA);
 
-	const mode = normalizeGaugeDisplayMode(gauge.displayMode);
+	const mode = normalizeGaugeDisplayMode(gaugeSettings(gauge).displayMode);
 	appendEditorRule(panel);
 	if (mode === "picture") {
 		const picLede = document.createElement("p");
@@ -777,7 +777,7 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 		picRow.className = "style-row";
 		const picCtrl = makeIconControl({
 			label: "Picture",
-			value: gauge.pictureIcon || defaultPictureIconPath(),
+			value: gaugeSettings(gauge).pictureIcon || defaultPictureIconPath(),
 			folder: "Pictures",
 			clearLabel:
 				typeof t === "function" ? t("cog-reset-picture", "Reset picture") : "Reset picture",
@@ -822,7 +822,7 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 			left: ["cog-left", "Left"],
 			right: ["cog-right", "Right"]
 		});
-		dirSel.value = normalizePictureDirection(gauge.pictureDirection);
+		dirSel.value = normalizePictureDirection(gaugeSettings(gauge).pictureDirection);
 		dirSel.addEventListener("change", () => {
 			patchGauge(gid, { pictureDirection: normalizePictureDirection(dirSel.value) });
 		});
@@ -834,7 +834,7 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 		picRot.innerHTML = `<span>Picture Rotation</span><input type="number" min="-180" max="180" step="0.1" data-role="pictureRotation">`;
 		tagFieldLabel(picRot, "cog-picture-rotation", "Picture Rotation");
 		const picRotInput = picRot.querySelector("input");
-		picRotInput.value = (Number(gauge.pictureRotation) || 0).toFixed(1);
+		picRotInput.value = (Number(gaugeSettings(gauge).pictureRotation) || 0).toFixed(1);
 		bindNumberField(picRotInput, {
 			suffix: "°",
 			parse: (raw) => {
@@ -846,7 +846,7 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 			},
 			apply: (v) => patchGauge(gid, { pictureRotation: v }),
 			format: (v) => (Number(v) || 0).toFixed(1),
-			current: () => live().pictureRotation || 0
+			current: () => gaugeSettings(live()).pictureRotation || 0
 		});
 		picRow.appendChild(picRot);
 		panel.appendChild(picRow);
@@ -855,7 +855,7 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 		colorRow.className = "style-row";
 		const emptyColor = makeOptionalColorField(
 			"Empty",
-			gauge.pictureEmpty === "#000000" ? "" : gauge.pictureEmpty,
+			gaugeSettings(gauge).pictureEmpty === "#000000" ? "" : gaugeSettings(gauge).pictureEmpty,
 			"#000000",
 			(hex, live) => patchGauge(gid, { pictureEmpty: hex || "#000000" }, false, live)
 		);
@@ -864,7 +864,7 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 		colorRow.appendChild(emptyColor);
 		const fullColor = makeOptionalColorField(
 			"Full",
-			gauge.pictureFull === "#ffffff" ? "" : gauge.pictureFull,
+			gaugeSettings(gauge).pictureFull === "#ffffff" ? "" : gaugeSettings(gauge).pictureFull,
 			"#ffffff",
 			(hex, live) => patchGauge(gid, { pictureFull: hex || "#ffffff" }, false, live)
 		);
@@ -873,7 +873,7 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 		colorRow.appendChild(fullColor);
 		const fadeColor = makeOptionalColorField(
 			"Fade",
-			optionalHex(gauge.pictureFade) === frameDefaultPictureFade() ? "" : gauge.pictureFade,
+			optionalHex(gaugeSettings(gauge).pictureFade) === frameDefaultPictureFade() ? "" : gaugeSettings(gauge).pictureFade,
 			frameDefaultPictureFade(),
 			(hex, live) => patchGauge(gid, { pictureFade: hex || frameDefaultPictureFade() }, false, live)
 		);
@@ -896,9 +896,9 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 	const gearRow = document.createElement("div");
 	gearRow.className = "style-row";
 
-	const iconSlot = normalizeFrameSlot(gauge.showIcon);
-	const titleSlot = normalizeFrameSlot(gauge.showLabel);
-	const numberSlot = normalizeFrameSlot(gauge.showNumber);
+	const iconSlot = normalizeFrameSlot(gaugeSettings(gauge).showIcon);
+	const titleSlot = normalizeFrameSlot(gaugeSettings(gauge).showLabel);
+	const numberSlot = normalizeFrameSlot(gaugeSettings(gauge).showNumber);
 
 	const showIcon = document.createElement("label");
 	showIcon.className = "pos-field compact mid";
@@ -972,7 +972,7 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 		percent: ["cog-percentage", "Percentage"],
 		total: ["cog-total", "Total"]
 	});
-	numberFormatSel.value = normalizeNumberFormatGauge(gauge.numberFormat);
+	numberFormatSel.value = normalizeNumberFormatGauge(gaugeSettings(gauge).numberFormat);
 	numberFormatSel.addEventListener("change", (ev) => {
 		patchGauge(gid, { numberFormat: normalizeNumberFormatGauge(ev.target.value) });
 	});
@@ -983,7 +983,7 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 	trough.innerHTML = `<span>Bar trough</span><input type="checkbox" data-role="barTrough">`;
 	tagFieldLabel(trough, "cog-bar-trough", "Bar trough");
 	const troughBox = trough.querySelector("input");
-	troughBox.checked = gauge.barTrough === true;
+	troughBox.checked = gaugeSettings(gauge).barTrough === true;
 	troughBox.addEventListener("change", () => {
 		patchGauge(gid, { barTrough: troughBox.checked });
 	});

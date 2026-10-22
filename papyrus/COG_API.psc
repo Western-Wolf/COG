@@ -3,6 +3,10 @@ ScriptName COG_API Hidden
 
 Bool Function IsReady() Global Native
 
+; True when pluginFile is in the active load order (full or light / ESL-flagged .esp).
+; Use before Register / Notify loops so a disabled ESP with loose scripts still installed cannot keep ticking.
+Bool Function IsPluginLoaded(String pluginFile) Global Native
+
 ; --- UI hide (session only) ---
 ; Hides all COG play HUD (gears / gauges / gizmos) as if visibility were "none".
 ; When General → "Toggle also hides Flash HUD" is on (default), also soft-hides Flash
@@ -30,7 +34,7 @@ Function EndRegister(String sourceMod) Global Native
 ;   Empty = General backup icon. Legacy: pass a second #hex in legacyEndColor for a 0%/100% pair (old start/end callers).
 ; barColor: optional bar fill — same hex-or-JSON-stops shape. Empty = General backup bar.
 ; hideAt: optional hide rule. Percent: 0–1 ratio e.g. "<0.3", or explicit percent e.g. ">99%". Count: raw number e.g. "<1". Timer: seconds e.g. "<30". Empty = never hide from this.
-; HUDLinkedElement: optional Scaleform target to soft-hide while this variable is on a visible enabled gear.
+; HUDLinkedElement: optional Scaleform target to soft-hide while this variable is shown on a visible group or bound to a visible gauge.
 ;   Aliases: hud.health, hud.stamina, hud.magicka, hud.ammo (vanilla equipped ammo), hud.oxygen (Oxygen Meter 2), hud.casting (Casting Bar),
 ;   hud.charge (right / two-hand enchantment meter), hud.leftcharge (left-hand enchantment meter).
 ;   hud.casting is shared by Bow Draw, Spell Casting, and Shout Cooldown — any exposed gear keeps Casting Bar hidden.

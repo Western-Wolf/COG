@@ -11,6 +11,15 @@
 	overflow: visible;
 }
 
+/* visibility "none" in editor — same translucency as hidden Default Group. */
+.hud-gizmo.is-preview > :not(.hud-handle) {
+	opacity: 0.55;
+}
+
+.hud-gizmo.is-preview > .hud-handle {
+	opacity: 1;
+}
+
 /* Author display:flex beats UA [hidden] in CEF/Ultralight without !important. */
 .hud-gizmo[hidden] {
 	display: none !important;

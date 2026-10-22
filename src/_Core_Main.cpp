@@ -142,6 +142,10 @@ namespace
 			logger::error("JS: {}", msg.substr(8));
 			return;
 		}
+		if (msg.rfind("jsConfig:", 0) == 0) {
+			logger::info("JS config: {}", msg.substr(9));
+			return;
+		}
 		if (msg.rfind("clipboard:", 0) == 0) {
 			// Win32 clipboard — safe on the listener thread; no game/GFx access.
 			const auto text = msg.substr(10);

@@ -1,8 +1,8 @@
 // COG overlay - Meter arc shape (loads after _Gauges.js / _Gauges_Meter.js).
 
 function gaugeArcMetrics(gauge) {
-	const W = Math.round(gauge.width);
-	const band = Math.max(MIN_GAUGE_HEIGHT, Math.round(gauge.height));
+	const W = Math.round(gauge.position.width);
+	const band = Math.max(MIN_GAUGE_HEIGHT, Math.round(gauge.position.height));
 	const ro = W / 2;
 	const ri = Math.max(1, ro - band);
 	const cx = W / 2;
@@ -11,12 +11,12 @@ function gaugeArcMetrics(gauge) {
 }
 
 function gaugeArcCapLayout(gauge, band) {
-	const W = Math.round(gauge.width);
+	const W = Math.round(gauge.position.width);
 	const hasCaps = gaugeUsesEndArt(gauge) && !!resolveGaugeEndArtHref(gauge);
-	const artPath = migrateEndCapPath(gauge.endCap);
+	const artPath = migrateEndCapPath(gaugeSettings(gauge).endCap);
 	const capH = Math.max(MIN_GAUGE_HEIGHT, Math.round(band));
 	const capW = hasCaps ? Math.max(1, Math.round(capH * endCapAspectRatio(artPath))) : 0;
-	const overlapPx = hasCaps ? (W * gauge.endCapOverlap) / 100 : 0;
+	const overlapPx = hasCaps ? (W * gaugeSettings(gauge).endCapOverlap) / 100 : 0;
 	const capOutPx = hasCaps ? (band * GAUGE_BAR_CAP_OUT_PCT) / 100 : 0;
 	let contactIn = hasCaps ? overlapPx + capOutPx : 0;
 	if (hasCaps && W % 2) {
@@ -281,12 +281,12 @@ function gaugeArcOverlayStackIntent(gauge, src, gear, placement) {
 	if (!src) {
 		return { icon: false, title: false, count: false };
 	}
-	const icon = normalizeGaugePlacement(gauge.showIcon);
-	const title = normalizeGaugePlacement(gauge.showLabel);
-	const count = normalizeGaugePlacement(gauge.showNumber);
+	const icon = normalizeGaugePlacement(gaugeSettings(gauge).showIcon);
+	const title = normalizeGaugePlacement(gaugeSettings(gauge).showLabel);
+	const count = normalizeGaugePlacement(gaugeSettings(gauge).showNumber);
 	return {
 		icon: icon === placement && !!sourceIconPath(src, gear),
-		title: title === placement && !!sourceTitle(src, gear && gear.name, gear),
+		title: title === placement && !!sourceTitle(src, gear && gear.varName, gear),
 		count:
 			gaugeCountVisible(gauge) &&
 			count === placement &&
@@ -391,11 +391,11 @@ function gaugeTitleCountShareArcHollow(gauge) {
 	if (!gaugeCountVisible(gauge)) {
 		return false;
 	}
-	const title = normalizeGaugePlacement(gauge.showLabel);
+	const title = normalizeGaugePlacement(gaugeSettings(gauge).showLabel);
 	if (title === "none") {
 		return false;
 	}
-	return gaugeArcSidePlacement(title) && gaugeArcSidePlacement(gauge.showNumber);
+	return gaugeArcSidePlacement(title) && gaugeArcSidePlacement(gaugeSettings(gauge).showNumber);
 }
 
 /** Title and count occupy the same placement slot (stack count below title). */
@@ -410,12 +410,12 @@ function gaugeArcOverlayInHollow(gauge, src, gear, role) {
 		return false;
 	}
 	if (role === "icon") {
-		const place = normalizeGaugePlacement(gauge.showIcon);
+		const place = normalizeGaugePlacement(gaugeSettings(gauge).showIcon);
 		return gaugeArcInHollowPlacement(place) && !!sourceIconPath(src, gear);
 	}
 	if (role === "label") {
-		const place = normalizeGaugePlacement(gauge.showLabel);
-		return gaugeArcInHollowPlacement(place) && !!sourceTitle(src, gear && gear.name, gear);
+		const place = normalizeGaugePlacement(gaugeSettings(gauge).showLabel);
+		return gaugeArcInHollowPlacement(place) && !!sourceTitle(src, gear && gear.varName, gear);
 	}
 	if (role === "count") {
 		const place = gaugeCountPlacement(gauge);
@@ -450,7 +450,7 @@ function gaugeArcHollowHeight(gauge, src, gear, iconSize, iconGap, labelSize) {
 	const lineGap = Math.max(2, Math.round(iconGap * 0.5));
 	const lineH = gaugeLabelLineBoxPx(labelSize);
 	let copyH = 0;
-	const iconPlace = normalizeGaugePlacement(gauge.showIcon);
+	const iconPlace = normalizeGaugePlacement(gaugeSettings(gauge).showIcon);
 	if (gaugeArcOverlayInHollow(gauge, src, gear, "icon") && iconPlace === "centered") {
 		copyH += iconSize;
 	}
@@ -559,7 +559,7 @@ function layoutGaugeArcHollowZone(el, gauge, { iconSize, arcLayout, arcMetrics, 
 	const labelEl = el.querySelector(".gauge-gear-label");
 	const countEl = el.querySelector(".gauge-gear-count");
 	const { src, gear } = gaugeLinked(gauge);
-	const iconPlace = normalizeGaugePlacement(gauge.showIcon);
+	const iconPlace = normalizeGaugePlacement(gaugeSettings(gauge).showIcon);
 	const iconGap = Math.max(2, Math.round(iconSize * 0.1));
 	const lineGap = Math.max(2, Math.round(iconGap * 0.5));
 	const labelSize = gaugeFontSizePx(gauge, iconSize);
@@ -593,7 +593,7 @@ function layoutGaugeArcHollowZone(el, gauge, { iconSize, arcLayout, arcMetrics, 
 	const hasIcon = gaugeArcOverlayInHollow(gauge, src, gear, "icon") && iconEl && !iconEl.hidden;
 	const hasLabel = gaugeArcOverlayInHollow(gauge, src, gear, "label") && labelEl && !labelEl.hidden;
 	const hasCount = gaugeArcOverlayInHollow(gauge, src, gear, "count") && countEl && !countEl.hidden;
-	const labelPlace = normalizeGaugePlacement(gauge.showLabel);
+	const labelPlace = normalizeGaugePlacement(gaugeSettings(gauge).showLabel);
 	const countPlace = gaugeCountPlacement(gauge);
 	const iconCentered = hasIcon && iconPlace === "centered";
 	const iconLeft = hasIcon && iconPlace === "left";
@@ -922,7 +922,7 @@ function patchGaugeArcLive(el, gauge, src, gear) {
 	}
 	const arcCore = gaugeArcMetrics(gauge);
 	const pct = src ? barPercent(src) : 0;
-	const dir = normalizeFillDirection(gauge.fillDirection);
+	const dir = normalizeFillDirection(gaugeSettings(gauge).fillDirection);
 	const fillClipD = arcFillClipD(arcCore, pct, dir);
 	fill.style.fill = src ? sourceBarColor(src, gear, null) : themeFill();
 	if (clipPath) {
@@ -952,7 +952,7 @@ function patchGaugeArcLive(el, gauge, src, gear) {
 /** Live value/count/color patch without layout or chrome rebuild. */
 
 function paintGaugeArc(el, gauge) {
-	if (normalizeGaugeType(gauge.type) !== "meter" || normalizeGaugeShape(gauge.shape) !== "arc") {
+	if (normalizeGaugeType(gaugeSettings(gauge).type) !== "meter" || normalizeGaugeShape(gaugeSettings(gauge).shape) !== "arc") {
 		return;
 	}
 	ensureGauge(gauge);
@@ -987,7 +987,7 @@ function paintGaugeArc(el, gauge) {
 
 	const bandPath = arcBandPathD(arcCore);
 	const pct = src ? barPercent(src) : 0;
-	const dir = normalizeFillDirection(gauge.fillDirection);
+	const dir = normalizeFillDirection(gaugeSettings(gauge).fillDirection);
 	const clipId = `gauge-arc-clip-${gauge.id}`;
 	const maskId = `gauge-arc-trough-mask-${gauge.id}`;
 	const fillClipD = arcFillClipD(arcCore, pct, dir);
@@ -1008,7 +1008,7 @@ function paintGaugeArc(el, gauge) {
 	trough.setAttribute("d", bandPath);
 	fill.setAttribute("d", bandPath);
 
-	const troughA = gauge.troughOpacity / 100;
+	const troughA = gaugeSettings(gauge).troughOpacity / 100;
 	trough.style.fill = troughA <= 0 ? "none" : `rgba(0, 0, 0, ${troughA})`;
 	trough.style.opacity = "1";
 
@@ -1057,7 +1057,7 @@ function paintGaugeArc(el, gauge) {
 
 	// Inset stroke centerlines by half thickness so the visual outer/inner edges
 	// match the band (same as CSS border-box on bars), and endcaps can seat on 0..band.
-	paintArcMeterBorders(borderOuter, borderInner, arcCore, borderColor, gauge.borderThickness, {
+	paintArcMeterBorders(borderOuter, borderInner, arcCore, borderColor, gaugeSettings(gauge).borderThickness, {
 		left: borderEndL,
 		right: borderEndR,
 		enabled: !hasCaps
@@ -1139,7 +1139,7 @@ function paintGaugeArc(el, gauge) {
 	fitGaugeArcHollowText(el, gauge, src, gear, capH, hollowInfo);
 
 	const inactive =
-		!gauge.alwaysVisible &&
+		!gaugeSettings(gauge).alwaysVisible &&
 		(src ? isHudHidden(src, gear) : !src) &&
 		document.body.classList.contains("is-focused");
 	el.classList.toggle("is-inactive", inactive);
