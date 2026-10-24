@@ -55,6 +55,18 @@ target("COG")
 		for _, file in ipairs(os.files(path.join(cog_dir, "view/_*.js"))) do
 			os.cp(file, view_dir)
 		end
+		-- Drop staged _*.js that are no longer in source (e.g. rolled-back split shards).
+		do
+			local src_names = {}
+			for _, file in ipairs(os.files(path.join(cog_dir, "view/_*.js"))) do
+				src_names[path.filename(file)] = true
+			end
+			for _, file in ipairs(os.files(path.join(view_dir, "_*.js"))) do
+				if not src_names[path.filename(file)] then
+					os.rm(file)
+				end
+			end
+		end
 		os.mkdir(path.join(view_dir, "help"))
 		if os.isdir(path.join(cog_dir, "view/help")) then
 			for _, file in ipairs(os.files(path.join(view_dir, "help/*"))) do

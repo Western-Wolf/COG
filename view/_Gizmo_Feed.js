@@ -771,7 +771,8 @@ window.applyFeedEvents = (jsonStr) => {
 					);
 				} else if (channel === "inventory") {
 					enqueueInventoryFeedLine(
-						incoming.varName,
+						// C++ InventoryFeed JSON uses "name" (item display); accept legacy varName.
+						incoming.name || incoming.varName,
 						incoming.count,
 						incoming.added,
 						incoming.icon,
@@ -832,7 +833,8 @@ window.pushInventory = (jsonStr) => {
 			return;
 		}
 		enqueueInventoryFeedLine(
-			incoming.varName,
+			// C++ InventoryFeed JSON uses "name" (item display); accept legacy varName.
+			incoming.name || incoming.varName,
 			incoming.count,
 			incoming.added,
 			incoming.icon,

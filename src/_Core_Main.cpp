@@ -35,7 +35,7 @@ namespace
 	void LogSessionBanner()
 	{
 		const auto* plugin = SKSE::PluginDeclaration::GetSingleton();
-		const auto version = plugin ? plugin->GetVersion().string() : std::string{ "?" };
+		const auto version = plugin ? REL::FormatProductVersion(plugin->GetVersion()) : std::string{ "?" };
 		const auto name = plugin ? plugin->GetName() : "COG"sv;
 		logger::info(
 			"COG: session start — {} v{} ({}); view={}",

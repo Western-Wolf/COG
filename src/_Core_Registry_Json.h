@@ -3,12 +3,15 @@
 #include "_Core_Registry.h"
 #include "_Core_Json.h"
 
+#include <initializer_list>
 #include <string>
 #include <string_view>
 #include <unordered_set>
 #include <vector>
 
 // Entity normalize / parse / serialize shared by Registry core, Config, and UiPush.
+// Shared helpers live in _Core_Registry_Json.cpp; entity Parse/Append in
+// _Core_Registry_Json_{Gear,Gauge,Gizmo}.cpp (same CogRegistryJson namespace).
 namespace CogRegistryJson
 {
 	std::string Lower(std::string s);
@@ -83,6 +86,36 @@ namespace CogRegistryJson
 	std::string SanitizeViewScriptPath(std::string path);
 	bool LooksLikeJsonObjectOrArray(std::string_view s);
 
+	/** Shared helpers used by Gear / Gauge / Gizmo Json TUs. */
+	std::string CanonicalPercentMode(std::string raw);
+	float ReadPlacementFloat(
+		const CogJson::Value& obj,
+		const CogJson::Value* posObj,
+		CogJson::ParseContext& ctx,
+		const char* key,
+		float fallback);
+	bool HasPlacementKey(
+		const CogJson::Value& obj,
+		const CogJson::Value* posObj,
+		CogJson::ParseContext& ctx,
+		const char* key);
+	void AppendPositionXYR(CogJson::Writer& w, const CogPosition& p);
+	void AppendBoxPosition(CogJson::Writer& w, const CogBoxPosition& p);
+	void NoteMigration(CogJson::ParseContext& ctx, std::string_view detail);
+	bool NoteIfHas(CogJson::ParseContext& ctx, const CogJson::Value& obj, const char* key, std::string_view detail);
+	bool NoteIfHasAny(
+		CogJson::ParseContext& ctx,
+		const CogJson::Value& obj,
+		std::initializer_list<const char*> keys,
+		std::string_view detail);
+	bool KeyInList(std::string_view key, std::initializer_list<const char*> keys);
+	void WarnUnknownKeys(
+		CogJson::ParseContext& ctx,
+		const CogJson::Value& obj,
+		std::initializer_list<const char*> allowed,
+		std::initializer_list<const char*> legacyConsumed,
+		std::string_view bagLabel);
+
 	CogGroup DefaultGroup();
 	bool AppearanceEmpty(const CogGearAppearance& a);
 	CogGearAppearance ParseAppearance(const CogJson::Value& obj, CogJson::ParseContext& ctx);
@@ -92,6 +125,12 @@ namespace CogRegistryJson
 	CogGear ParseGear(const CogJson::Value& obj, CogJson::ParseContext& ctx);
 	/** Migration Code for Transition from v1.01 or earlier to v1.1: fold legacy gear-root exemptFromGroupColors into group settings maps. Returns true if any flag was folded. */
 	bool MigrateLegacyGearExemptOntoGroups(std::vector<CogGroup>& groups);
+	/** Single gear/gauge identity Bloodlust → VampiricHunger (shared by ParseGear / ParseGauge). */
+	bool MigrateBuiltinBloodlustIdentity(
+		std::string& sourceMod,
+		std::string& varName,
+		std::string* id,
+		CogJson::ParseContext* ctx);
 	/**
 	 * Migration Code for Transition from v1.01 or earlier to v1.1:
 	 * Builtin Vampiric Hunger `Bloodlust` → `VampiricHunger` (gear id, group gearIds/exempt, gauges, seen keys).

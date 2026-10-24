@@ -581,6 +581,110 @@ function syncHudGroup(group) {
 	}
 }
 
+/**
+ * Ensure a .hud-group host (line + slots) exists in dest for this group.
+ * Returns { groupEl, slots, created }.
+ */
+function ensureHudGroupHost(group, dest, visibility, isFront) {
+	let groupEl = findHudGroupEl(group.id, dest);
+	let created = false;
+	if (!groupEl) {
+		groupEl = document.createElement("div");
+		groupEl.className = "hud-group";
+		groupEl.dataset.id = group.id;
+		const line = document.createElement("div");
+		line.className = "hud-line";
+		groupEl.appendChild(line);
+		const slots = document.createElement("div");
+		slots.className = "hud-slots";
+		groupEl.appendChild(slots);
+		dest.appendChild(groupEl);
+		created = true;
+	} else if (groupEl.parentElement !== dest) {
+		dest.appendChild(groupEl);
+		created = true;
+	}
+	groupEl.classList.toggle("is-preview", visibility === "none");
+	groupEl.classList.toggle("is-front", isFront);
+	groupEl.dataset.visibility = visibility;
+	let slots = groupEl.querySelector(".hud-slots");
+	if (!slots) {
+		slots = document.createElement("div");
+		slots.className = "hud-slots";
+		groupEl.appendChild(slots);
+	}
+	return { groupEl, slots, created };
+}
+
+/** Editor preview drag handles on a group host (or strip them in play). */
+function syncHudGroupEditHandles(groupEl, preview) {
+	if (!groupEl) {
+		return;
+	}
+	if (preview) {
+		if (!groupEl.querySelector(".hud-handle-rotate")) {
+			const rotateHandle = document.createElement("div");
+			rotateHandle.className = "hud-handle hud-handle-rotate";
+			rotateHandle.addEventListener("pointerdown", (ev) => beginGroupDrag(ev, groupEl.dataset.id, "rotate"));
+			groupEl.appendChild(rotateHandle);
+			groupEl.addEventListener("pointerdown", (ev) => {
+				if (ev.target.closest(".hud-handle")) {
+					return;
+				}
+				beginGroupDrag(ev, groupEl.dataset.id, "move");
+			});
+		}
+	} else {
+		for (const handle of groupEl.querySelectorAll(".hud-handle")) {
+			handle.remove();
+		}
+	}
+}
+
+/** Drop stale group hosts and keep root order aligned with snapshot.groups. */
+function reconcileHudGroupHosts(root, frontRoot, keepGroups, preview) {
+	for (const host of [root, frontRoot]) {
+		if (!host) {
+			continue;
+		}
+		for (const groupEl of [...host.querySelectorAll(".hud-group")]) {
+			const id = groupEl.dataset.id;
+			if (!keepGroups.has(id)) {
+				groupEl.remove();
+				continue;
+			}
+			const isFront = preview && activeTab === "groups" && openGroupId === id;
+			const belongsInFront = !!(isFront && frontRoot);
+			const belongsHere = belongsInFront ? host === frontRoot : host === root;
+			if (!belongsHere) {
+				groupEl.remove();
+			}
+		}
+	}
+	// Groups are created as they first gain visible gears; keep DOM order = snapshot order.
+	if (!root) {
+		return;
+	}
+	let hostIndex = 0;
+	for (const group of snapshot.groups) {
+		if (!keepGroups.has(group.id)) {
+			continue;
+		}
+		const isFront = preview && activeTab === "groups" && openGroupId === group.id;
+		if (isFront && frontRoot) {
+			continue;
+		}
+		const groupEl = findHudGroupEl(group.id, root);
+		if (!groupEl || groupEl.parentElement !== root) {
+			continue;
+		}
+		if (root.children[hostIndex] !== groupEl) {
+			root.insertBefore(groupEl, root.children[hostIndex] || null);
+		}
+		hostIndex += 1;
+	}
+}
+
 function beginGroupDrag(ev, groupId, mode) {
 	ev.preventDefault();
 	ev.stopPropagation();
