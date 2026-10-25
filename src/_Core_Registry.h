@@ -87,22 +87,24 @@ struct CogGear
 	CogGearAppearance settings;
 };
 
-/** Screen placement: AABB top-left (tlc). Groups use x/y/rotation only. */
-struct CogPosition
+/** Screen display: AABB top-left (tlc). Groups use x/y/rotation/maxAlpha. */
+struct CogDisplay
 {
 	float x = 0.1f;
 	float y = 0.10f;
 	float rotation = 0.0f;
+	float maxAlpha = 100.0f;
 };
 
-/** Gauge/gizmo placement box (AABB top-left + size). */
-struct CogBoxPosition
+/** Gauge/gizmo display box (AABB top-left + size + maxAlpha). */
+struct CogBoxDisplay
 {
 	float x = 0.1f;
 	float y = 0.10f;
 	float rotation = 0.0f;
 	float width = 240.0f;
 	float height = 24.0f;
+	float maxAlpha = 100.0f;
 };
 
 struct CogGroup
@@ -111,11 +113,11 @@ struct CogGroup
 	bool locked = false;
 	// none | hud | ui — same triad as gizmos (groups default hud; no editor control except Default via General).
 	std::string visibility = "hud";
-	CogPosition position;
+	CogDisplay display;
 	CogGroupSettings settings;
 };
 
-/** Appearance / options nested under gauge.settings (identity + position stay on CogGauge). */
+/** Appearance / options nested under gauge.settings (identity + display stay on CogGauge). */
 struct CogGaugeSettings
 {
 	std::string displayName;
@@ -159,7 +161,7 @@ struct CogGauge
 	bool locked = false;
 	// none | hud | ui — same triad as gizmos (gauges default hud; not exposed in the gauge editor).
 	std::string visibility = "hud";
-	CogBoxPosition position;
+	CogBoxDisplay display;
 	std::string sourceMod;
 	std::string varName;
 	CogGaugeSettings settings;
@@ -171,7 +173,7 @@ struct CogGizmo
 	std::string typeId = "cog-clock";
 	// none | hud (HUD Visible) | ui (UI Visible / menus too)
 	std::string visibility = "hud";
-	CogBoxPosition position{ 0.1f, 0.1f, 0.0f, 275.0f, 40.0f };
+	CogBoxDisplay display{ 0.1f, 0.1f, 0.0f, 275.0f, 40.0f, 100.0f };
 	// Owning mod of the gizmo type (empty for builtin types).
 	std::string sourceMod;
 	// Opaque JSON object of type settings (includes instance displayName + type options).

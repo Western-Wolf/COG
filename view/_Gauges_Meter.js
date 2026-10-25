@@ -146,7 +146,7 @@ function gaugeOverlayStacked(gauge) {
 
 function gaugeFontSizePx(gauge, iconSize) {
 	ensureGauge(gauge);
-	const autoBase = Math.max(1, Number(iconSize) || Number(gauge && gauge.position.height) || DEFAULT_GAUGE_HEIGHT);
+	const autoBase = Math.max(1, Number(iconSize) || Number(gauge && gauge.display.height) || DEFAULT_GAUGE_HEIGHT);
 	if (Number(gaugeSettings(gauge).fontSize) > 0) {
 		return Math.max(6, Math.round(Number(gaugeSettings(gauge).fontSize)));
 	}
@@ -685,7 +685,7 @@ function paintGaugeGearIcon(el, gauge, { iconSize, iconOffset = 0, arcLayout = n
 	const { src, gear } = gaugeLinked(gauge);
 	const iconEl = el.querySelector(".gauge-gear-icon");
 	const show = normalizeGaugePlacement(gaugeSettings(gauge).showIcon);
-	const rot = Number(gauge.position.rotation) || 0;
+	const rot = Number(gauge.display.rotation) || 0;
 	if (!iconEl) {
 		return;
 	}
@@ -768,7 +768,7 @@ function paintGaugeLabel(el, gauge, { iconSize, iconOffset = 0, arcLayout = null
 	const { src, gear } = gaugeLinked(gauge);
 	const labelEl = el.querySelector(".gauge-gear-label");
 	const show = normalizeGaugePlacement(gaugeSettings(gauge).showLabel);
-	const rot = Number(gauge.position.rotation) || 0;
+	const rot = Number(gauge.display.rotation) || 0;
 	if (!labelEl) {
 		return;
 	}
@@ -823,8 +823,8 @@ function paintGaugeLabel(el, gauge, { iconSize, iconOffset = 0, arcLayout = null
 		iconOffset,
 		stacked,
 		arcLayout,
-		barWidth: barWidth || Number(gauge.position.width) || 0,
-		barHeight: barHeight || Number(gauge.position.height) || 0,
+		barWidth: barWidth || Number(gauge.display.width) || 0,
+		barHeight: barHeight || Number(gauge.display.height) || 0,
 		iconPlacement,
 		gauge,
 		src,
@@ -874,7 +874,7 @@ function paintGaugeCount(el, gauge, { iconSize, iconOffset = 0, arcLayout = null
 	const { src, gear } = gaugeLinked(gauge);
 	const countEl = ensureGaugeCountEl(el);
 	const show = gaugeCountPlacement(gauge);
-	const rot = Number(gauge.position.rotation) || 0;
+	const rot = Number(gauge.display.rotation) || 0;
 	if (!gaugeCountVisible(gauge) || show === "none") {
 		countEl.hidden = true;
 		return;
@@ -932,8 +932,8 @@ function paintGaugeCount(el, gauge, { iconSize, iconOffset = 0, arcLayout = null
 		iconOffset,
 		stacked,
 		arcLayout,
-		barWidth: barWidth || Number(gauge.position.width) || 0,
-		barHeight: barHeight || Number(gauge.position.height) || 0,
+		barWidth: barWidth || Number(gauge.display.width) || 0,
+		barHeight: barHeight || Number(gauge.display.height) || 0,
 		iconPlacement,
 		gauge,
 		src,
@@ -1022,10 +1022,10 @@ function fillGaugeEditor(panel, gauge) {
 			const cur = live();
 			const cs = gaugeSettings(cur);
 			if (
-				Math.round(cur.position.width) === DEFAULT_GAUGE_WIDTH &&
-				Math.round(cur.position.height) === DEFAULT_GAUGE_HEIGHT
+				Math.round(cur.display.width) === DEFAULT_GAUGE_WIDTH &&
+				Math.round(cur.display.height) === DEFAULT_GAUGE_HEIGHT
 			) {
-				patch.position = { width: 120, height: 120 };
+				patch.display = { width: 120, height: 120 };
 			}
 			if (!cs.pictureIcon) {
 				patch.pictureIcon = defaultPictureIconPath();
@@ -1092,6 +1092,14 @@ function fillGaugeEditor(panel, gauge) {
 	});
 	topRow.appendChild(gearField);
 
+	const maxAlphaField = document.createElement("label");
+	maxAlphaField.className = "pos-field compact mid";
+	maxAlphaField.innerHTML = `<span>Max Alpha</span><input type="number" min="0" max="100" step="1" data-role="maxAlpha">`;
+	tagFieldLabel(maxAlphaField, "cog-max-alpha", "Max Alpha");
+	const maxAlphaInput = maxAlphaField.querySelector("input");
+	maxAlphaInput.value = String(Math.round(Number(gauge.display.maxAlpha) || 100));
+	topRow.appendChild(maxAlphaField);
+
 	const alwaysVis = document.createElement("label");
 	alwaysVis.className = "pos-field compact mid";
 	alwaysVis.innerHTML = `<span>Always Visible</span><input type="checkbox" data-role="alwaysVisible">`;
@@ -1104,6 +1112,14 @@ function fillGaugeEditor(panel, gauge) {
 	topRow.appendChild(alwaysVis);
 	panel.appendChild(topRow);
 
+	const displayLede = document.createElement("p");
+	displayLede.className = "lede";
+	if (typeof setTranslatedText === "function") {
+		setTranslatedText(displayLede, "cog-display", "Display");
+	} else {
+		displayLede.textContent = "Display";
+	}
+	panel.appendChild(displayLede);
 	const pos = document.createElement("div");
 	pos.className = "pos-row";
 	pos.innerHTML = `
@@ -1130,16 +1146,15 @@ function fillGaugeEditor(panel, gauge) {
 		const g = live();
 		const iconSize =
 			normalizeGaugeShape(gaugeSettings(g).shape) === "arc"
-				? Math.max(MIN_GAUGE_HEIGHT, Math.round(g.position.height))
-				: Math.round(g.position.height);
+				? Math.max(MIN_GAUGE_HEIGHT, Math.round(g.display.height))
+				: Math.round(g.display.height);
 		return gaugeLayoutBox(g, iconSize);
 	};
 	const editorPos = hudItemEditorPosPct(gauge, gaugeEditorBox().w, gaugeEditorBox().h);
 	xInput.value = fmtPct(editorPos.x);
 	yInput.value = fmtPct(editorPos.y);
-	rotInput.value = (Number(gauge.position.rotation) || 0).toFixed(1);
-	wInput.value = String(Math.round(gauge.position.width));
-	hInput.value = String(Math.round(gauge.position.height));
+	rotInput.value = (Number(gauge.display.rotation) || 0).toFixed(1);
+	hInput.value = String(Math.round(gauge.display.height));
 	bindNumberField(xInput, {
 		suffix: "%",
 		parse: (raw) => {
@@ -1195,27 +1210,43 @@ function fillGaugeEditor(panel, gauge) {
 		},
 		apply: (v) => {
 			const g = live();
-			patchGauge(gid, { position: { rotation: v } });
+			patchGauge(gid, { display: { rotation: v } });
 			const box = gaugeEditorBox();
 			clampHudItemToScreen(g, box.w, box.h);
-			patchGauge(gid, { position: { x: entityPosition(g).x, y: entityPosition(g).y } });
+			patchGauge(gid, { display: { x: entityDisplay(g).x, y: entityDisplay(g).y } });
 		},
 		format: (v) => (Number(v) || 0).toFixed(1),
-		current: () => live().position.rotation || 0
+		current: () => live().display.rotation || 0
 	});
 	bindNumberField(wInput, {
+	bindNumberField(maxAlphaInput, {
+		suffix: "%",
+		parse: (raw) => {
+			if (String(raw).trim() === "" || raw === "." || raw === "-") {
+				return null;
+			}
+			const v = Number(raw);
+			return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : null;
+		},
+		apply: (v) => patchGauge(gid, { display: { maxAlpha: v } }),
+		format: (v) => String(Math.round(Number(v) || 100)),
+		current: () => {
+			const a = Number(live().display.maxAlpha);
+			return Number.isFinite(a) ? a : 100;
+		}
+	});
 		suffix: "px",
 		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(MIN_GAUGE_WIDTH, Math.min(2000, Number(raw) || 0))),
-		apply: (v) => patchGauge(gid, { position: { width: v } }),
+		apply: (v) => patchGauge(gid, { display: { width: v } }),
 		format: (v) => String(Math.round(v)),
-		current: () => live().position.width
+		current: () => live().display.width
 	});
 	bindNumberField(hInput, {
 		suffix: "px",
 		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(MIN_GAUGE_HEIGHT, Math.min(512, Number(raw) || 0))),
-		apply: (v) => patchGauge(gid, { position: { height: v } }),
+		apply: (v) => patchGauge(gid, { display: { height: v } }),
 		format: (v) => String(Math.round(v)),
-		current: () => live().position.height
+		current: () => live().display.height
 	});
 
 	if (isFrame) {

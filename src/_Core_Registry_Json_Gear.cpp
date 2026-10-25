@@ -27,9 +27,10 @@ namespace CogRegistryJson
 		g.id = kDefaultGroupId;
 		g.locked = true;
 		g.visibility = "hud";
-		g.position.x = 0.1f;
-		g.position.y = 0.10f;
-		g.position.rotation = 0.0f;
+		g.display.x = 0.1f;
+		g.display.y = 0.10f;
+		g.display.rotation = 0.0f;
+		g.display.maxAlpha = 100.0f;
 		g.settings.displayName = "Default Group";
 		g.settings.gearSize = kDefaultGearSize;
 		g.settings.spacing = kDefaultSpacing;
@@ -141,20 +142,27 @@ namespace CogRegistryJson
 			g.visibility = "hud";
 		}
 		// Migration Code for Transition from v1.01 or earlier to v1.1:
-		// Legacy flat placement keys x/y/rotation move under nested "position" (never written back flat on save).
+		// Legacy flat placement keys x/y/rotation move under nested "display" (never written back flat on save).
 		// Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
 		{
-			const CogJson::Value* posObj = ctx.GetObject(obj, "position");
-			if (!posObj) {
+			const CogJson::Value* displayObj = ctx.GetObject(obj, "display");
+			if (!displayObj) {
 				NoteIfHasAny(
 					ctx, obj, { "x", "y", "rotation", "posAnchor" },
-					"flat placement / posAnchor → nested position (posAnchor ignored)");
+					"flat placement / posAnchor → nested display (posAnchor ignored)");
 			}
-			g.position.x = ReadPlacementFloat(obj, posObj, ctx, "x", g.position.x);
-			g.position.y = ReadPlacementFloat(obj, posObj, ctx, "y", g.position.y);
-			g.position.rotation = ReadPlacementFloat(obj, posObj, ctx, "rotation", 0.0f);
-			if (posObj) {
-				WarnUnknownKeys(ctx, *posObj, { "x", "y", "rotation" }, {}, "group.position");
+			g.display.x = ReadPlacementFloat(obj, displayObj, ctx, "x", g.display.x);
+			g.display.y = ReadPlacementFloat(obj, displayObj, ctx, "y", g.display.y);
+			g.display.rotation = ReadPlacementFloat(obj, displayObj, ctx, "rotation", 0.0f);
+			g.display.maxAlpha = ReadPlacementFloat(obj, displayObj, ctx, "maxAlpha", 100.0f);
+			if (g.display.maxAlpha < 0.0f) {
+				g.display.maxAlpha = 0.0f;
+			} else if (g.display.maxAlpha > 100.0f) {
+				g.display.maxAlpha = 100.0f;
+			}
+			if (displayObj) {
+				WarnUnknownKeys(
+					ctx, *displayObj, { "x", "y", "rotation", "maxAlpha" }, {}, "group.display");
 			}
 		}
 		// Migration Code for Transition from v1.01 or earlier to v1.1:
@@ -258,7 +266,7 @@ namespace CogRegistryJson
 		WarnUnknownKeys(
 			ctx,
 			obj,
-			{ "id", "locked", "visibility", "position", "settings" },
+			{ "id", "locked", "visibility", "display", "settings" },
 			{ "visible", "style", "displayName", "name", "gearSize", "spacing", "stack", "gearIds", "x", "y",
 			  "rotation", "posAnchor" },
 			"group");
@@ -507,7 +515,7 @@ namespace CogRegistryJson
 		}
 		w.EndArray();
 		w.EndObject();
-		AppendPositionXYR(w, g.position);
+		AppendDisplayXYR(w, g.display);
 		w.EndObject();
 	}
 

@@ -735,7 +735,7 @@ void CogRegistry::SetViewReady(bool ready)
 					<< " discovery=" << (GizmoSettingsBool(g, "showLocationDiscovery", true) ? 1 : 0)
 					<< " current=" << (GizmoSettingsBool(g, "showCurrentLocation", true) ? 1 : 0)
 					<< " icons=" << (GizmoSettingsBool(g, "showLocationIcons", true) ? 1 : 0)
-					<< " x=" << std::fixed << std::setprecision(3) << g.position.x << " y=" << g.position.y;
+					<< " x=" << std::fixed << std::setprecision(3) << g.display.x << " y=" << g.display.y;
 				visibleDetail += one.str();
 			}
 		}

@@ -392,14 +392,25 @@ namespace CogRegistryJson
 		g.typeId = ResolveGizmoInstanceTypeId(obj, ctx);
 		const bool hasVisibility = ctx.Has(obj, "visibility");
 		// Migration Code for Transition from v1.01 or earlier to v1.1:
-		// Legacy flat placement keys x/y/rotation/width/height move under nested "position" (never written back flat on save).
+		// Legacy flat placement keys x/y/rotation/width/height move under nested "display" (never written back flat on save).
 		// Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
-		const CogJson::Value* posObj = ctx.GetObject(obj, "position");
-		const bool hasWidth = HasPlacementKey(obj, posObj, ctx, "width");
-		const bool hasHeight = HasPlacementKey(obj, posObj, ctx, "height");
-		g.position.x = ReadPlacementFloat(obj, posObj, ctx, "x", 0.1f);
-		g.position.y = ReadPlacementFloat(obj, posObj, ctx, "y", 0.1f);
-		g.position.rotation = ReadPlacementFloat(obj, posObj, ctx, "rotation", 0.0f);
+		const CogJson::Value* displayObj = ctx.GetObject(obj, "display");
+		if (!displayObj) {
+			NoteIfHasAny(
+				ctx, obj, { "x", "y", "rotation", "width", "height", "posAnchor" },
+				"flat placement / posAnchor → nested display (posAnchor ignored)");
+		}
+		const bool hasWidth = HasPlacementKey(obj, displayObj, ctx, "width");
+		const bool hasHeight = HasPlacementKey(obj, displayObj, ctx, "height");
+		g.display.x = ReadPlacementFloat(obj, displayObj, ctx, "x", 0.1f);
+		g.display.y = ReadPlacementFloat(obj, displayObj, ctx, "y", 0.1f);
+		g.display.rotation = ReadPlacementFloat(obj, displayObj, ctx, "rotation", 0.0f);
+		g.display.maxAlpha = ReadPlacementFloat(obj, displayObj, ctx, "maxAlpha", 100.0f);
+		if (g.display.maxAlpha < 0.0f) {
+			g.display.maxAlpha = 0.0f;
+		} else if (g.display.maxAlpha > 100.0f) {
+			g.display.maxAlpha = 100.0f;
+		}
 		g.sourceMod = ctx.GetString(obj, "sourceMod");
 
 		CogJson::Value settings;
@@ -482,13 +493,18 @@ namespace CogRegistryJson
 				defaultH = 40.0f;
 			}
 		}
-		g.position.width = hasWidth ? ReadPlacementFloat(obj, posObj, ctx, "width", defaultW) : defaultW;
-		g.position.height = hasHeight ? ReadPlacementFloat(obj, posObj, ctx, "height", defaultH) : defaultH;
-		if (g.position.width < 32.0f) {
-			g.position.width = 32.0f;
+		g.display.width = hasWidth ? ReadPlacementFloat(obj, displayObj, ctx, "width", defaultW) : defaultW;
+		g.display.height = hasHeight ? ReadPlacementFloat(obj, displayObj, ctx, "height", defaultH) : defaultH;
+		if (g.display.width < 32.0f) {
+			g.display.width = 32.0f;
 		}
-		if (g.position.height < 6.0f) {
-			g.position.height = 6.0f;
+		if (g.display.height < 6.0f) {
+			g.display.height = 6.0f;
+		}
+		if (displayObj) {
+			WarnUnknownKeys(
+				ctx, *displayObj, { "x", "y", "rotation", "width", "height", "maxAlpha" }, {},
+				"gizmo.display");
 		}
 
 		g.settingsJson = CogJson::Stringify(settings, false);
@@ -553,7 +569,7 @@ namespace CogRegistryJson
 		}
 		// Instance title lives in settings.displayName (never written on root).
 		w.KeyRaw("settings", g.settingsJson.empty() ? "{}" : g.settingsJson);
-		AppendBoxPosition(w, g.position);
+		AppendBoxDisplay(w, g.display);
 		w.EndObject();
 	}
 

@@ -5,7 +5,7 @@ const GAUGE_BAR_CAP_SEAT_PCT = 0.25;
 const GAUGE_BAR_CAP_OUT_PCT = 0.05;
 
 function gaugeBarRotRad(gauge) {
-	return ((Number(gauge.position.rotation) || 0) * Math.PI) / 180;
+	return ((Number(gauge.display.rotation) || 0) * Math.PI) / 180;
 }
 
 function gaugeBarRotatePt(cx, cy, x, y, rad) {
@@ -22,7 +22,7 @@ function gaugeBarOverlayMargin(gauge, iconSize) {
 	const iconGap = Math.max(2, Math.round(iconSize * 0.1));
 	const lineGap = Math.max(2, Math.round(iconGap * 0.5));
 	const stackH = iconSize + iconGap + labelSize + lineGap + labelSize + lineGap;
-	const sideRoom = Math.max(48, Math.round((Number(gauge.position.width) || 120) * 0.55));
+	const sideRoom = Math.max(48, Math.round((Number(gauge.display.width) || 120) * 0.55));
 	return { stackH, sideRoom, iconGap, lineGap, labelSize };
 }
 
@@ -30,9 +30,9 @@ function gaugeBarCapLayout(gauge, capH) {
 	const hasCaps = gaugeUsesEndArt(gauge) && !!resolveGaugeEndArtHref(gauge);
 	const artPath = migrateEndCapPath(gaugeSettings(gauge).endCap);
 	const capW = hasCaps ? Math.max(1, Math.round(capH * endCapAspectRatio(artPath))) : 0;
-	const overlapPx = hasCaps ? (gauge.position.width * gaugeSettings(gauge).endCapOverlap) / 100 : 0;
-	const capSeatPx = hasCaps ? (gauge.position.width * GAUGE_BAR_CAP_SEAT_PCT) / 100 : 0;
-	const capOutPx = hasCaps ? (gauge.position.width * GAUGE_BAR_CAP_OUT_PCT) / 100 : 0;
+	const overlapPx = hasCaps ? (gauge.display.width * gaugeSettings(gauge).endCapOverlap) / 100 : 0;
+	const capSeatPx = hasCaps ? (gauge.display.width * GAUGE_BAR_CAP_SEAT_PCT) / 100 : 0;
+	const capOutPx = hasCaps ? (gauge.display.width * GAUGE_BAR_CAP_OUT_PCT) / 100 : 0;
 	const contactIn = hasCaps ? Math.round(overlapPx - capOutPx) : 0;
 	const seatIn = hasCaps ? Math.round(capSeatPx) : 0;
 	const capShift = hasCaps ? -capW + contactIn : 0;
@@ -43,8 +43,8 @@ function gaugeBarCapLayout(gauge, capH) {
 
 /** Bar-local endcap edges and axis centers for zone anchoring. */
 function gaugeBarCapGeometry(gauge, capLayout) {
-	const barW = Math.round(gauge.position.width);
-	const barH = Math.round(gauge.position.height);
+	const barW = Math.round(gauge.display.width);
+	const barH = Math.round(gauge.display.height);
 	const { hasCaps, capW, capH, capShift } = capLayout;
 	const zoneGap = Math.max(2, Math.round(capH * 0.1));
 	const centerX = barW / 2;
@@ -79,8 +79,8 @@ function gaugeBarCapGeometry(gauge, capLayout) {
 }
 
 function gaugeBarLayoutMetrics(gauge, iconSize, capGeom) {
-	const barW = Math.round(gauge.position.width);
-	const barH = Math.round(gauge.position.height);
+	const barW = Math.round(gauge.display.width);
+	const barH = Math.round(gauge.display.height);
 	const rad = gaugeBarRotRad(gauge);
 	const margin = gaugeBarOverlayMargin(gauge, iconSize);
 	const geom = capGeom || gaugeBarCapGeometry(gauge, gaugeBarCapLayout(gauge, iconSize || barH));
@@ -743,15 +743,15 @@ function patchGaugeBarLive(el, gauge, src, gear) {
 		sizeBarSheen(fill);
 	}
 	// Full paintGaugeBar is skipped on live ticks; still refresh icon path + tint.
-	const capH = Math.round(gauge.position.height);
+	const capH = Math.round(gauge.display.height);
 	const capLayout =
 		typeof gaugeBarCapLayout === "function" ? gaugeBarCapLayout(gauge, capH) : { capShift: 0 };
 	if (typeof paintGaugeGearIcon === "function") {
 		paintGaugeGearIcon(el, gauge, {
 			iconSize: capH,
 			iconOffset: Number(capLayout.capShift) || 0,
-			barWidth: gauge.position.width,
-			barHeight: gauge.position.height
+			barWidth: gauge.display.width,
+			barHeight: gauge.display.height
 		});
 	}
 }
@@ -799,8 +799,8 @@ function paintGaugeBar(el, gauge) {
 	}
 
 	const borderPct = gaugeSettings(gauge).borderThickness;
-	const borderPx = borderPct <= 0 ? 0 : (gauge.position.height * borderPct) / 100;
-	const capH = Math.round(gauge.position.height);
+	const borderPx = borderPct <= 0 ? 0 : (gauge.display.height * borderPct) / 100;
+	const capH = Math.round(gauge.display.height);
 	const capLayout = gaugeBarCapLayout(gauge, capH);
 	const { hasCaps, capW, capShift, seatIn } = capLayout;
 	const borderColor = gaugeBorderColor(gauge);
@@ -869,7 +869,7 @@ function paintGaugeBar(el, gauge) {
 
 	paintGaugeEndCaps(gauge, { capL, capR, capH, capW, capShift, borderColor });
 
-	const overlay = { iconSize: capH, iconOffset: capShift, barWidth: gauge.position.width, barHeight: gauge.position.height };
+	const overlay = { iconSize: capH, iconOffset: capShift, barWidth: gauge.display.width, barHeight: gauge.display.height };
 	ensureGaugeBarRotor(el);
 	const capGeom = gaugeBarCapGeometry(gauge, capLayout);
 	const barMetrics = gaugeBarLayoutMetrics(gauge, capH, capGeom);
@@ -882,23 +882,23 @@ function paintGaugeBar(el, gauge) {
 		iconSize: capH,
 		iconOffset: capShift,
 		barMetrics,
-		barWidth: gauge.position.width
+		barWidth: gauge.display.width
 	});
 	const upZone = layoutGaugeBarVerticalZone(el, gauge, "up", {
 		iconSize: capH,
 		barMetrics,
-		barWidth: gauge.position.width
+		barWidth: gauge.display.width
 	});
 	const downZone = layoutGaugeBarVerticalZone(el, gauge, "down", {
 		iconSize: capH,
 		barMetrics,
-		barWidth: gauge.position.width
+		barWidth: gauge.display.width
 	});
 	const sideRow = layoutGaugeBarSideRows(el, gauge, {
 		iconSize: capH,
 		iconOffset: capShift,
 		barMetrics,
-		barWidth: gauge.position.width
+		barWidth: gauge.display.width
 	});
 	nodes.center = el.querySelector(".gauge-bar-center");
 	nodes.zoneUp = el.querySelector(".gauge-bar-zone.is-up");

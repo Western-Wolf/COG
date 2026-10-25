@@ -118,10 +118,15 @@ body.is-focused #hud-front .hud-group.is-front {
 	z-index: 1;
 }
 
-.hud-group.is-preview > :not(.hud-handle) {
-	opacity: 0.55;
+/* Group line uses maxAlpha; gears set opacity themselves as relative × maxAlpha. */
+.hud-group > .hud-line {
+	opacity: var(--cog-max-alpha, 1);
 }
 
-.hud-group.is-preview > .hud-handle {
+.hud-group.is-preview > .hud-line {
+	opacity: calc(0.55 * var(--cog-max-alpha, 1));
+}
+
+.hud-group > .hud-handle {
 	opacity: 1;
 }

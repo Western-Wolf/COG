@@ -229,8 +229,8 @@ void CogRegistry::EndRegister(std::string mod)
 		std::lock_guard lock(_mutex);
 		_modBatchOpen.erase(mod);
 		_presentThisSession.insert(mod);
-		auto& sender = _senders[mod];
-		sender.strikes = 0;
+	auto& sender = _senders[mod];
+			sender.strikes = 0;
 		// Only prune this mod's missing varNames / typeIds. Global missing-plugin cleanup
 		// belongs to MaybeReconcileSenders (settle grace) — calling it here wiped
 		// ESL-flagged senders when LookupLoaded* briefly failed right after Register.
@@ -241,14 +241,14 @@ void CogRegistry::EndRegister(std::string mod)
 		if (dirty || filled) {
 			SaveConfigUnlocked();
 			layoutDirty = dirty || filled;
-		} else {
-			SaveSendersUnlocked();
-		}
+	} else {
+	SaveSendersUnlocked();
+}
 
 		std::size_t gearCount = 0;
 		std::size_t liveCount = 0;
 		std::size_t typeCount = 0;
-		for (const auto& gear : _gears) {
+	for (const auto& gear : _gears) {
 			if (gear.sourceMod == mod) {
 				++gearCount;
 			}
@@ -259,7 +259,7 @@ void CogRegistry::EndRegister(std::string mod)
 				++liveCount;
 			}
 		}
-		for (const auto& t : _gizmoTypes) {
+	for (const auto& t : _gizmoTypes) {
 			if (t.sourceMod == mod) {
 				++typeCount;
 			}

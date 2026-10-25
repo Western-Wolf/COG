@@ -622,12 +622,12 @@ function renderGears() {
 			const playAlpha = gearHudAlpha(item.src, item.gear, group);
 			const wouldHide = playAlpha < 1;
 			el.classList.toggle("is-preview", !!(preview && wouldHide));
-			if ((fadeMode || fillMode) && !preview) {
-				applyGearHideFadeOpacity(el, item.src, item.gear, group, false);
+			// Always: opacity = relativeAlpha × maxAlpha (Fade from Alpha keeps per-gear differences).
+			applyGearHideFadeOpacity(el, item.src, item.gear, group, preview);
+			if (fadeMode || fillMode) {
 				el.classList.toggle("is-fading-in", false);
 				el.classList.toggle("is-fading-out", false);
 			} else {
-				el.style.opacity = "";
 				el.classList.toggle("is-fading-in", fadingIn);
 				el.classList.toggle("is-fading-out", fadingOut);
 			}

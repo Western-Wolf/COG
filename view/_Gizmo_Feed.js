@@ -259,12 +259,13 @@ function defaultFeedGizmo(n) {
 		id: `gizmo_${Date.now().toString(36)}`,
 		typeId: "cog-feed",
 		visibility: "ui",
-		position: {
+		display: {
 			x: DEFAULT_HUD_X,
 			y: Math.min(0.92, DEFAULT_HUD_Y + 0.08),
 			rotation: 0,
 			width: DEFAULT_FEED_WIDTH,
-			height: DEFAULT_FEED_HEIGHT
+			height: DEFAULT_FEED_HEIGHT,
+			maxAlpha: 100
 		},
 		settings,
 		settingsJson: JSON.stringify(settings)
@@ -275,9 +276,9 @@ function ensureFeedGizmo(gizmo) {
 	ensureGizmoDisplayName(gizmo);
 	const s = ensureGizmoSettings(gizmo);
 	// Migration Code for Transition from v1.01 or earlier to v1.1:
-	// Legacy flat placement keys x/y/rotation/width/height move under nested "position" (never written back flat on save).
+	// Legacy flat placement keys x/y/rotation/width/height move under nested "display" (never written back flat on save).
 	// Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
-	migrateEntityPosition(gizmo, {
+	migrateEntityDisplay(gizmo, {
 		sized: true,
 		x: DEFAULT_HUD_X,
 		y: DEFAULT_HUD_Y,
@@ -1335,15 +1336,16 @@ function rebuildLevelProgressLineContent(row, gizmo) {
 function layoutGizmoFeed(el, gizmo) {
 	// Settings/geometry are ensured on load / editor patch — layout trusts them (B2).
 	// Avoid gizmoLayoutBox() here: it calls ensureGizmo and would re-normalize every sync.
-	const w = Math.max(MIN_GIZMO_WIDTH, Number(gizmo.position.width) || DEFAULT_FEED_WIDTH);
-	const h = Math.max(MIN_GIZMO_HEIGHT, Number(gizmo.position.height) || DEFAULT_FEED_HEIGHT);
+	const w = Math.max(MIN_GIZMO_WIDTH, Number(gizmo.display.width) || DEFAULT_FEED_WIDTH);
+	const h = Math.max(MIN_GIZMO_HEIGHT, Number(gizmo.display.height) || DEFAULT_FEED_HEIGHT);
 	const css = hudItemLayoutCss(gizmo, w, h);
 	el.style.width = `${w}px`;
 	el.style.height = `${h}px`;
 	el.style.left = `${css.x * 100}%`;
 	el.style.top = `${css.y * 100}%`;
-	el.style.transform = `rotate(${Number(gizmo.position.rotation) || 0}deg)`;
+	el.style.transform = `rotate(${Number(gizmo.display.rotation) || 0}deg)`;
 	el.style.transformOrigin = "50% 50%";
+	applyHostMaxAlpha(el, gizmo);
 	const font = Math.max(8, Math.round((gizmo.settings && gizmo.settings.fontSize) || DEFAULT_GIZMO_FONT_SIZE));
 	el.style.setProperty("--feed-font", `${font}px`);
 	el.style.setProperty(
@@ -1709,6 +1711,7 @@ function paintGizmoFeed(el, gizmo) {
 				);
 			}
 		}
+		// Relative only — parent gizmo content already applies × maxAlpha via CSS.
 		row.style.opacity = String(feedLineOpacity(line, gizmo, now));
 	}
 	for (const [key, child] of existing) {

@@ -285,15 +285,15 @@ function ensureGroup(group) {
 		delete group.visible;
 	}
 	// Migration Code for Transition from v1.01 or earlier to v1.1:
-	// Legacy flat placement keys x/y/rotation move under nested "position" (never written back flat on save).
-	migrateEntityPosition(group, { x: DEFAULT_HUD_X, y: DEFAULT_HUD_Y, rotation: 0 });
+	// Legacy flat placement keys x/y/rotation move under nested "display" (never written back flat on save).
+	migrateEntityDisplay(group, { x: DEFAULT_HUD_X, y: DEFAULT_HUD_Y, rotation: 0 });
 }
 
 function ensureGroupLine(group) {
 	ensureGroup(group);
 	const settings = ensureGroupSettings(group);
-	if (group.position.rotation == null) {
-		group.position.rotation = 0;
+	if (group.display.rotation == null) {
+		group.display.rotation = 0;
 	}
 	const size = Number(settings.gearSize);
 	if (!Number.isFinite(size) || size <= 1) {
@@ -393,7 +393,7 @@ function ensureDefaultGroup() {
 			id: DEFAULT_GROUP_ID,
 			locked: true,
 			visibility: snapshot.general && snapshot.general.showDefaultGroup ? "hud" : "none",
-			position: { x: DEFAULT_HUD_X, y: DEFAULT_HUD_Y, rotation: 0 },
+			display: { x: DEFAULT_HUD_X, y: DEFAULT_HUD_Y, rotation: 0, maxAlpha: 100 },
 			settings
 		});
 	}
@@ -512,7 +512,7 @@ function groupMetrics(group, count) {
 		lengthPx: groupLengthPx(group, count),
 		sizePx,
 		gapPx: pixelSpacing(group),
-		rot: Number(group.position.rotation) || 0
+		rot: Number(group.display.rotation) || 0
 	};
 }
 
@@ -545,8 +545,8 @@ function findHudGroupEl(id, preferredHost) {
 function layoutHudGroup(el, group, count) {
 	const n = count == null ? hudMembers(group, document.body.classList.contains("is-focused")).length : count;
 	const m = groupMetrics(group, n);
-	const left = `${(group.position.x ?? DEFAULT_HUD_X) * 100}%`;
-	const top = `${(group.position.y ?? DEFAULT_HUD_Y) * 100}%`;
+	const left = `${(group.display.x ?? DEFAULT_HUD_X) * 100}%`;
+	const top = `${(group.display.y ?? DEFAULT_HUD_Y) * 100}%`;
 	const minW = n <= 0 ? `${m.sizePx}px` : "";
 	const minH = `${m.sizePx}px`;
 	const fontSize = `${Math.max(8, m.sizePx * 0.32)}px`;
@@ -554,7 +554,8 @@ function layoutHudGroup(el, group, count) {
 	const counter = `${-m.rot}deg`;
 	const size = `${m.sizePx}px`;
 	const gap = `${m.gapPx}px`;
-	const sig = `${left}|${top}|${minW}|${minH}|${fontSize}|${rot}|${size}|${gap}|${n}`;
+	const maxA = String(maxAlphaFrac(group));
+	const sig = `${left}|${top}|${minW}|${minH}|${fontSize}|${rot}|${size}|${gap}|${n}|${maxA}`;
 	if (el.dataset.layoutSig === sig) {
 		return;
 	}
@@ -570,6 +571,7 @@ function layoutHudGroup(el, group, count) {
 	el.style.setProperty("--gear-gap", gap);
 	el.style.setProperty("--group-rot", rot);
 	el.style.setProperty("--counter-rot", counter);
+	applyHostMaxAlpha(el, group);
 	// Prefer CSS vars over inline transform — Ultralight often drops the latter on first paint.
 	el.style.transform = "";
 }
@@ -699,8 +701,8 @@ function beginGroupDrag(ev, groupId, mode) {
 		kind: "group",
 		id: group.id,
 		mode,
-		grabX: ev.clientX / w - (group.position.x ?? DEFAULT_HUD_X),
-		grabY: ev.clientY / h - (group.position.y ?? DEFAULT_HUD_Y)
+		grabX: ev.clientX / w - (group.display.x ?? DEFAULT_HUD_X),
+		grabY: ev.clientY / h - (group.display.y ?? DEFAULT_HUD_Y)
 	};
 	if (ev.currentTarget && ev.pointerId != null && ev.currentTarget.setPointerCapture) {
 		ev.currentTarget.setPointerCapture(ev.pointerId);
@@ -713,12 +715,12 @@ function onGroupPointerMove(ev) {
 		return;
 	}
 	if (drag.mode === "move") {
-		group.position.x = clampPct((ev.clientX / window.innerWidth - drag.grabX) * 100, 0, 100) / 100;
-		group.position.y = clampPct((ev.clientY / window.innerHeight - drag.grabY) * 100, 0, 100) / 100;
+		group.display.x = clampPct((ev.clientX / window.innerWidth - drag.grabX) * 100, 0, 100) / 100;
+		group.display.y = clampPct((ev.clientY / window.innerHeight - drag.grabY) * 100, 0, 100) / 100;
 	} else if (drag.mode === "rotate") {
-		const sx = (group.position.x ?? DEFAULT_HUD_X) * window.innerWidth;
-		const sy = (group.position.y ?? DEFAULT_HUD_Y) * window.innerHeight;
-		group.position.rotation = Math.atan2(ev.clientY - sy, ev.clientX - sx) * (180 / Math.PI);
+		const sx = (group.display.x ?? DEFAULT_HUD_X) * window.innerWidth;
+		const sy = (group.display.y ?? DEFAULT_HUD_Y) * window.innerHeight;
+		group.display.rotation = Math.atan2(ev.clientY - sy, ev.clientX - sx) * (180 / Math.PI);
 	}
 	syncHudGroup(group);
 }
@@ -743,8 +745,8 @@ function patchGroup(id, patch, skipHud, live) {
 			}
 			continue;
 		}
-		if (key === "position" && value && typeof value === "object" && !Array.isArray(value)) {
-			const pos = entityPosition(group);
+		if (key === "display" && value && typeof value === "object" && !Array.isArray(value)) {
+			const pos = entityDisplay(group);
 			for (const [pk, pv] of Object.entries(value)) {
 				if (pos[pk] !== pv) {
 					changed = true;
@@ -811,7 +813,7 @@ function addGroup() {
 		id,
 		locked: false,
 		visibility: "hud",
-		position: { x: DEFAULT_HUD_X, y: DEFAULT_HUD_Y, rotation: 0 },
+		display: { x: DEFAULT_HUD_X, y: DEFAULT_HUD_Y, rotation: 0, maxAlpha: 100 },
 		settings
 	});
 	selectEditorItem("group", id);
@@ -944,6 +946,7 @@ function renderGroups(body) {
 			</summary>
 			<div class="accordion-body">
 				<label class="section-label">Group settings</label>
+				<p class="lede" data-role="displayLede">Display</p>
 				<div class="pos-row">
 					<label class="pos-field"><span>X</span><input type="number" min="0" max="100" step="0.1" data-role="x"></label>
 					<label class="pos-field"><span>Y</span><input type="number" min="0" max="100" step="0.1" data-role="y"></label>
@@ -952,7 +955,7 @@ function renderGroups(body) {
 					<label class="pos-field"><span>Spacing</span><input type="number" min="0" max="256" step="1" data-role="spacing"></label>
 				</div>
 				<div class="style-row">
-					<label class="pos-field compact"><span>Stack</span>
+					<label class="pos-field compact mid"><span>Stack</span>
 						<select data-role="stack">
 							<option value="right">Right of icon</option>
 							<option value="left">Left of icon</option>
@@ -969,7 +972,7 @@ function renderGroups(body) {
 							<option value="total">Show total</option>
 						</select>
 					</label>
-					<label class="pos-field compact wide" data-role="fillFromHiddenRow">
+					<label class="pos-field compact mid" data-role="fillFromHiddenRow">
 						<span class="field-title-row" data-role="fillFromHiddenTitle"><span>Fill from Hidden</span></span>
 						<select data-role="fillFromHidden">
 							<option value="">Off</option>
@@ -980,6 +983,7 @@ function renderGroups(body) {
 							<option value="alphaDown">Alpha &amp; Down</option>
 						</select>
 					</label>
+					<label class="pos-field compact mid"><span>Max Alpha</span><input type="number" min="0" max="100" step="1" data-role="maxAlpha"></label>
 					<label><input type="checkbox" data-role="showLabel"> <span>Title</span></label>
 					<label><input type="checkbox" data-role="showIcon"> <span>Icon</span></label>
 					<label><input type="checkbox" data-role="showNumber"> <span>Show Number</span></label>
@@ -1100,10 +1104,12 @@ function renderGroups(body) {
 		const sectionLabel = details.querySelector(".section-label");
 		if (typeof setTranslatedText === "function") {
 			setTranslatedText(sectionLabel, "cog-group-settings", "Group settings");
+			setTranslatedText(details.querySelector('[data-role="displayLede"]'), "cog-display", "Display");
 		}
 		// X/Y are single letters — leave untagged.
 
 		tagFieldLabel(details.querySelector('[data-role="rotation"]')?.closest("label"), "cog-rotation", "Rotation");
+		tagFieldLabel(details.querySelector('[data-role="maxAlpha"]')?.closest("label"), "cog-max-alpha", "Max Alpha");
 		tagFieldLabel(details.querySelector('[data-role="gearSize"]')?.closest("label"), "cog-size", "Size");
 		tagFieldLabel(details.querySelector('[data-role="spacing"]')?.closest("label"), "cog-spacing", "Spacing");
 		const stackField = details.querySelector('[data-role="stack"]')?.closest("label");
@@ -1191,9 +1197,9 @@ function renderGroups(body) {
 				const v = Number(raw);
 				return Number.isFinite(v) ? clampPct(v, 0, 100) / 100 : null;
 			},
-			apply: (v) => patchGroup(group.id, { position: { x: v } }),
+			apply: (v) => patchGroup(group.id, { display: { x: v } }),
 			format: (v) => fmtPct(v * 100),
-			current: () => groupFor(group.id)?.position?.x ?? DEFAULT_HUD_X
+			current: () => groupFor(group.id)?.display?.x ?? DEFAULT_HUD_X
 		});
 		bindNumberField(details.querySelector('[data-role="y"]'), {
 			suffix: "%",
@@ -1204,9 +1210,9 @@ function renderGroups(body) {
 				const v = Number(raw);
 				return Number.isFinite(v) ? clampPct(v, 0, 100) / 100 : null;
 			},
-			apply: (v) => patchGroup(group.id, { position: { y: v } }),
+			apply: (v) => patchGroup(group.id, { display: { y: v } }),
 			format: (v) => fmtPct(v * 100),
-			current: () => groupFor(group.id)?.position?.y ?? DEFAULT_HUD_Y
+			current: () => groupFor(group.id)?.display?.y ?? DEFAULT_HUD_Y
 		});
 		bindNumberField(details.querySelector('[data-role="rotation"]'), {
 			suffix: "°",
@@ -1217,9 +1223,25 @@ function renderGroups(body) {
 				const v = Number(raw);
 				return Number.isFinite(v) ? v : null;
 			},
-			apply: (v) => patchGroup(group.id, { position: { rotation: v } }),
+			apply: (v) => patchGroup(group.id, { display: { rotation: v } }),
 			format: (v) => (Number(v) || 0).toFixed(1),
-			current: () => groupFor(group.id)?.position?.rotation || 0
+			current: () => groupFor(group.id)?.display?.rotation || 0
+		});
+		bindNumberField(details.querySelector('[data-role="maxAlpha"]'), {
+			suffix: "%",
+			parse: (raw) => {
+				if (String(raw).trim() === "" || raw === "." || raw === "-") {
+					return null;
+				}
+				const v = Number(raw);
+				return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : null;
+			},
+			apply: (v) => patchGroup(group.id, { display: { maxAlpha: v } }),
+			format: (v) => String(Math.round(Number(v) || 100)),
+			current: () => {
+				const a = Number(groupFor(group.id)?.display?.maxAlpha);
+				return Number.isFinite(a) ? a : 100;
+			}
 		});
 		bindNumberField(details.querySelector('[data-role="gearSize"]'), {
 			suffix: "px",
@@ -1241,11 +1263,13 @@ function renderGroups(body) {
 		const xInput = details.querySelector('[data-role="x"]');
 		const yInput = details.querySelector('[data-role="y"]');
 		const rotInput = details.querySelector('[data-role="rotation"]');
+		const maxAlphaInput = details.querySelector('[data-role="maxAlpha"]');
 		const sizeInput = details.querySelector('[data-role="gearSize"]');
 		const gapInput = details.querySelector('[data-role="spacing"]');
-		xInput.value = fmtPct((group.position.x ?? DEFAULT_HUD_X) * 100);
-		yInput.value = fmtPct((group.position.y ?? DEFAULT_HUD_Y) * 100);
-		rotInput.value = (Number(group.position.rotation) || 0).toFixed(1);
+		xInput.value = fmtPct((group.display.x ?? DEFAULT_HUD_X) * 100);
+		yInput.value = fmtPct((group.display.y ?? DEFAULT_HUD_Y) * 100);
+		rotInput.value = (Number(group.display.rotation) || 0).toFixed(1);
+		maxAlphaInput.value = String(Math.round(Number(group.display.maxAlpha) || 100));
 		sizeInput.value = String(pixelSize(group));
 		gapInput.value = String(pixelSpacing(group));
 		const catSel = details.querySelector(".filter-category");

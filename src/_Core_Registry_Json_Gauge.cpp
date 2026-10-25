@@ -128,29 +128,36 @@ namespace CogRegistryJson
 			g.visibility = "hud";
 		}
 		// Migration Code for Transition from v1.01 or earlier to v1.1:
-		// Legacy flat placement keys x/y/rotation/width/height move under nested "position" (never written back flat on save).
+		// Legacy flat placement keys x/y/rotation/width/height move under nested "display" (never written back flat on save).
 		// Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
 		{
-			const CogJson::Value* posObj = ctx.GetObject(obj, "position");
-			if (!posObj) {
+			const CogJson::Value* displayObj = ctx.GetObject(obj, "display");
+			if (!displayObj) {
 				NoteIfHasAny(
 					ctx, obj, { "x", "y", "rotation", "width", "height", "posAnchor" },
-					"flat placement / posAnchor → nested position (posAnchor ignored)");
+					"flat placement / posAnchor → nested display (posAnchor ignored)");
 			}
-			g.position.x = ReadPlacementFloat(obj, posObj, ctx, "x", 0.1f);
-			g.position.y = ReadPlacementFloat(obj, posObj, ctx, "y", 0.1f);
-			g.position.rotation = ReadPlacementFloat(obj, posObj, ctx, "rotation", 0.0f);
-			g.position.width = ReadPlacementFloat(obj, posObj, ctx, "width", 240.0f);
-			g.position.height = ReadPlacementFloat(obj, posObj, ctx, "height", 24.0f);
-			if (g.position.width < 8.0f) {
-				g.position.width = 8.0f;
+			g.display.x = ReadPlacementFloat(obj, displayObj, ctx, "x", 0.1f);
+			g.display.y = ReadPlacementFloat(obj, displayObj, ctx, "y", 0.1f);
+			g.display.rotation = ReadPlacementFloat(obj, displayObj, ctx, "rotation", 0.0f);
+			g.display.width = ReadPlacementFloat(obj, displayObj, ctx, "width", 240.0f);
+			g.display.height = ReadPlacementFloat(obj, displayObj, ctx, "height", 24.0f);
+			g.display.maxAlpha = ReadPlacementFloat(obj, displayObj, ctx, "maxAlpha", 100.0f);
+			if (g.display.width < 8.0f) {
+				g.display.width = 8.0f;
 			}
-			if (g.position.height < 4.0f) {
-				g.position.height = 4.0f;
+			if (g.display.height < 4.0f) {
+				g.display.height = 4.0f;
 			}
-			if (posObj) {
+			if (g.display.maxAlpha < 0.0f) {
+				g.display.maxAlpha = 0.0f;
+			} else if (g.display.maxAlpha > 100.0f) {
+				g.display.maxAlpha = 100.0f;
+			}
+			if (displayObj) {
 				WarnUnknownKeys(
-					ctx, *posObj, { "x", "y", "rotation", "width", "height" }, {}, "gauge.position");
+					ctx, *displayObj, { "x", "y", "rotation", "width", "height", "maxAlpha" }, {},
+					"gauge.display");
 			}
 		}
 		g.sourceMod = ctx.GetString(obj, "sourceMod");
@@ -389,7 +396,7 @@ namespace CogRegistryJson
 		WarnUnknownKeys(
 			ctx,
 			obj,
-			{ "id", "locked", "visibility", "position", "sourceMod", "varName", "settings" },
+			{ "id", "locked", "visibility", "display", "sourceMod", "varName", "settings" },
 			{ "visible", "gearMod", "gearName", "displayName", "name", "type", "shape", "borderColor",
 			  "borderThickness", "troughOpacity", "endCapMode", "endCap", "endCapOverlap", "showIcon",
 			  "showLabel", "showNumber", "fillDirection", "iconColorMode", "labelColorMode", "numberColorMode",
@@ -447,7 +454,7 @@ namespace CogRegistryJson
 		w.KeyString("pictureFull", s.pictureFull);
 		w.KeyString("pictureFade", s.pictureFade);
 		w.EndObject();
-		AppendBoxPosition(w, g.position);
+		AppendBoxDisplay(w, g.display);
 		w.EndObject();
 	}
 

@@ -85,8 +85,8 @@ function pushStockEntityTitles(fromLang, toLang) {
 				? matchStockInstanceTitle(cur, from)
 				: null;
 		if (!matched) {
-			return;
-		}
+		return;
+	}
 		const next = localizeStockName(cur, matched.key, to, from, { vars: matched.vars });
 		if (next !== cur) {
 			settings.displayName = next;
@@ -145,7 +145,7 @@ function safeCall(where, fn, fallback) {
 	} catch (e) {
 		if (typeof window.cogReportError === "function") {
 			window.cogReportError(where, e);
-		} else {
+	} else {
 			console.error(where, e);
 		}
 		return fallback;
@@ -198,7 +198,7 @@ function currentEditorKey() {
 		return `${g.id}:${s.displayName || ""}:${s.type || ""}:${s.shape || ""}`;
 	}).join("|");
 	const gizmos = (snapshot.gizmos || []).map((z) =>
-		`${z.id}:${z.displayName || ""}:${z.typeId || ""}:${z.visibility || ""}:${(z.position && z.position.width) || ""}:${(z.position && z.position.height) || ""}:${typeof z.settingsJson === "string" ? z.settingsJson : JSON.stringify(z.settings || {})}`
+		`${z.id}:${z.displayName || ""}:${z.typeId || ""}:${z.visibility || ""}:${(z.display && z.display.width) || ""}:${(z.display && z.display.height) || ""}:${typeof z.settingsJson === "string" ? z.settingsJson : JSON.stringify(z.settings || {})}`
 	).join("|");
 	return `${activeTab}|${helpMode ? "help" : "main"}|${helpSubTab}|${snapshot.general.showDefaultGroup}|${snapshot.general.editorKey}|${snapshot.general.hideToggleKey || ""}|${snapshot.general.hideIncludesFlash !== false}|${!!window.__cogHideKeyListening}|${snapshot.general.fillColor}|${snapshot.general.borderColor}|${snapshot.general.iconColor || themeIconColor()}|${snapshot.general.neutralIconMode}|${snapshot.general.gadgetFont}|${snapshot.general.language || ""}|${!!snapshot.general.highlightMissingTranslations}|${!!snapshot.general.updateStockTitlesOnTranslation}|${groups}|${gears}|${gauges}|${gizmos}|${typeof suppressionsFingerprint === "function" ? suppressionsFingerprint() : ""}`;
 }
@@ -382,8 +382,8 @@ function parkRenameFieldForEdit(details, nameInput) {
 	}
 	const home = nameInput.parentElement;
 	if (!home) {
-		return;
-	}
+				return;
+			}
 	const slot = document.createElement("span");
 	slot.className = "name-field-slot";
 	slot.setAttribute("aria-hidden", "true");

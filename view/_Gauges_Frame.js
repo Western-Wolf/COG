@@ -35,8 +35,8 @@ function frameShapeFocus(gauge) {
 
 /** Inner plate scale (0–1) so a uniform shrink about the shape focus keeps rim width even. */
 function frameRimScale(gauge, rimPx) {
-	const w = Math.max(1, Math.round(gauge.position.width));
-	const h = Math.max(1, Math.round(gauge.position.height));
+	const w = Math.max(1, Math.round(gauge.display.width));
+	const h = Math.max(1, Math.round(gauge.display.height));
 	const m = Math.min(w, h);
 	const rim = Math.max(0, Math.min(frameBorderInsetPx(rimPx), m / 2));
 	return Math.max(0, (m - 2 * rim) / m);
@@ -83,8 +83,8 @@ function frameInsideScale(gauge) {
 
 /** Gear content inset: border rim + Inside Size shrink (centered on shape focus). */
 function frameContentInsetPx(gauge, borderInset) {
-	const w = Math.max(1, Math.round(gauge.position.width));
-	const h = Math.max(1, Math.round(gauge.position.height));
+	const w = Math.max(1, Math.round(gauge.display.width));
+	const h = Math.max(1, Math.round(gauge.display.height));
 	const rim = frameBorderInsetPx(borderInset);
 	const inner = Math.max(0, Math.min(w, h) - rim * 2);
 	const shrink = (inner * (1 - frameInsideScale(gauge))) / 2;
@@ -100,8 +100,8 @@ function applyFrameContentInset(el, gauge, borderInset) {
 	const focus = frameShapeFocus(gauge);
 	// Keep a rectangular safe box, then shift so its center meets the shape focus.
 	content.style.inset = `${inset}px`;
-	const plateH = Math.max(1, Math.round(gauge.position.height) - inset * 2);
-	const plateW = Math.max(1, Math.round(gauge.position.width) - inset * 2);
+	const plateH = Math.max(1, Math.round(gauge.display.height) - inset * 2);
+	const plateW = Math.max(1, Math.round(gauge.display.width) - inset * 2);
 	const dx = (focus.x - 0.5) * plateW;
 	const dy = (focus.y - 0.5) * plateH;
 	content.style.transform = dx || dy ? `translate(${dx}px, ${dy}px)` : "";
@@ -203,12 +203,12 @@ function paintGaugeFrameChrome(el, gauge) {
 		return { inset: 0 };
 	}
 	const href = frameShapeHref(gauge);
-	const w = Math.max(1, Math.round(gauge.position.width));
-	const h = Math.max(1, Math.round(gauge.position.height));
+	const w = Math.max(1, Math.round(gauge.display.width));
+	const h = Math.max(1, Math.round(gauge.display.height));
 	const rim = Math.max(0, (Math.min(w, h) * (Number(gaugeSettings(gauge).frameBorderThickness) || 0)) / 100);
 	const inset = Math.min(rim, Math.min(w, h) / 2);
 	el.style.setProperty("--frame-plate-inset", "0px");
-	el.style.setProperty("--gauge-frame-rot", `${gauge.position.rotation || 0}deg`);
+	el.style.setProperty("--gauge-frame-rot", `${gauge.display.rotation || 0}deg`);
 	const borderColor = frameEffectiveBorderColor(gauge);
 	const fillColor = frameEffectiveFillColor(gauge);
 	// Outer silhouette (border colour) fills the gauge box.
@@ -357,8 +357,8 @@ function frameGearStructureSig(gauge, src, gear, inset) {
 		showBar ? 1 : 0,
 		showValue ? 1 : 0,
 		gaugeSettings(gauge).barTrough === true ? 1 : 0,
-		gauge.position.width,
-		gauge.position.height,
+		gauge.display.width,
+		gauge.display.height,
 		gaugeSettings(gauge).fontSize,
 		gaugeSettings(gauge).insideSize,
 		rim,
@@ -488,8 +488,8 @@ function paintGaugeFrameGear(el, gauge, src, gear, inset) {
 		1,
 		(willShowIcon ? 1 : 0) + (willShowNumber ? 1 : 0) + (willShowLabel ? 1 : 0)
 	);
-	const plateW = Math.max(8, Math.round(gauge.position.width) - rim * 2);
-	const plateH = Math.max(8, Math.round(gauge.position.height) - rim * 2);
+	const plateW = Math.max(8, Math.round(gauge.display.width) - rim * 2);
+	const plateH = Math.max(8, Math.round(gauge.display.height) - rim * 2);
 	const gapPx = Math.max(2, Math.round(Math.min(plateW, plateH) * 0.03));
 	const shareH = Math.max(8, (plateH - gapPx * (slotCount - 1)) / slotCount);
 	const alone = slotCount === 1;

@@ -597,17 +597,25 @@ function applyGearHideFadeOpacity(el, src, gear, group, preview) {
 	if (!el) {
 		return;
 	}
-	// Editor/focus preview: never apply hideAt fade opacity — always readable.
-	if (preview || document.body.classList.contains("is-focused")) {
-		el.style.opacity = "";
-		return;
+	const focused = preview || document.body.classList.contains("is-focused");
+	let rel = 1;
+	if (groupUsesHideFade(group, src, gear)) {
+		rel = gearHudAlpha(src, gear, group);
+		// Editor: keep a dim stand-in when fully hidden so the gear stays findable.
+		if (focused && rel <= 0) {
+			rel = 0.55;
+		}
+	} else if (focused && gearHudAlpha(src, gear, group) <= 0) {
+		rel = 0.55;
 	}
-	const alpha = gearHudAlpha(src, gear, group);
-	if (groupUsesHideFade(group, src, gear) && alpha > 0) {
-		el.style.opacity = String(alpha);
-	} else {
-		el.style.opacity = "";
+	const host = el.closest && el.closest(".hud-group");
+	if (host && host.classList.contains("is-preview")) {
+		rel *= 0.55;
 	}
+	// actual = relative × maxAlpha (preserves differences between gears under a low cap).
+	el.style.opacity = String(
+		typeof effectiveAlpha === "function" ? effectiveAlpha(rel, group) : rel
+	);
 }
 
 function fillFrontierMask(dirUp, progress) {

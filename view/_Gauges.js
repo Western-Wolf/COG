@@ -212,8 +212,8 @@ function beginGaugeDrag(ev, gaugeId, mode) {
 	const h = window.innerHeight || 1;
 	const iconSize =
 		normalizeGaugeShape(gaugeSettings(gauge).shape) === "arc"
-			? Math.max(MIN_GAUGE_HEIGHT, Math.round(gauge.position.height))
-			: Math.round(gauge.position.height);
+			? Math.max(MIN_GAUGE_HEIGHT, Math.round(gauge.display.height))
+			: Math.round(gauge.display.height);
 	const box = gaugeLayoutBox(gauge, iconSize);
 	const aabb = hudItemAabbPx(gauge, box.w, box.h, w, h);
 	drag = {
@@ -222,14 +222,14 @@ function beginGaugeDrag(ev, gaugeId, mode) {
 		mode,
 		grabAabbX: ev.clientX - aabb.left,
 		grabAabbY: ev.clientY - aabb.top,
-		grabX: ev.clientX / w - (gauge.position.x ?? DEFAULT_HUD_X),
-		grabY: ev.clientY / h - (gauge.position.y ?? DEFAULT_HUD_Y),
-		startWidth: gauge.position.width,
-		startHeight: gauge.position.height,
+		grabX: ev.clientX / w - (gauge.display.x ?? DEFAULT_HUD_X),
+		grabY: ev.clientY / h - (gauge.display.y ?? DEFAULT_HUD_Y),
+		startWidth: gauge.display.width,
+		startHeight: gauge.display.height,
 		startLayoutW: box.w,
 		startLayoutH: box.h,
-		startX: gauge.position.x,
-		startY: gauge.position.y,
+		startX: gauge.display.x,
+		startY: gauge.display.y,
 		pointerLocal: screenToGaugeLocal(ev.clientX, ev.clientY, gauge)
 	};
 	if (ev.currentTarget && ev.pointerId != null && ev.currentTarget.setPointerCapture) {
@@ -251,7 +251,7 @@ function screenToGaugeLocal(clientX, clientY, gauge) {
 	}
 	const dx = clientX - cx;
 	const dy = clientY - cy;
-	const rad = -((Number(gauge.position.rotation) || 0) * Math.PI) / 180;
+	const rad = -((Number(gauge.display.rotation) || 0) * Math.PI) / 180;
 	return {
 		x: dx * Math.cos(rad) - dy * Math.sin(rad),
 		y: dx * Math.sin(rad) + dy * Math.cos(rad)
@@ -269,16 +269,16 @@ function onGaugePointerMove(ev) {
 	if (drag.mode === "move") {
 		const iconSize =
 			normalizeGaugeShape(gaugeSettings(gauge).shape) === "arc"
-				? Math.max(MIN_GAUGE_HEIGHT, Math.round(gauge.position.height))
-				: Math.round(gauge.position.height);
+				? Math.max(MIN_GAUGE_HEIGHT, Math.round(gauge.display.height))
+				: Math.round(gauge.display.height);
 		const box = gaugeLayoutBox(gauge, iconSize);
-		const aabbSize = rotatedAabbSize(box.w, box.h, gauge.position.rotation || 0);
+		const aabbSize = rotatedAabbSize(box.w, box.h, gauge.display.rotation || 0);
 		let left = ev.clientX - (drag.grabAabbX || 0);
 		let top = ev.clientY - (drag.grabAabbY || 0);
 		left = Math.min(Math.max(0, left), Math.max(0, w - aabbSize.w));
 		top = Math.min(Math.max(0, top), Math.max(0, h - aabbSize.h));
-		gauge.position.x = left / w;
-		gauge.position.y = top / h;
+		gauge.display.x = left / w;
+		gauge.display.y = top / h;
 	} else if (drag.mode === "rotate") {
 		const el = findHudGaugeEl(gauge.id);
 		let sx;
@@ -291,7 +291,7 @@ function onGaugePointerMove(ev) {
 			const box = gaugeLayoutBox(gauge);
 			({ cx: sx, cy: sy } = hudItemCenterPx(gauge, box.w, box.h));
 		}
-		gauge.position.rotation = Math.atan2(ev.clientY - sy, ev.clientX - sx) * (180 / Math.PI);
+		gauge.display.rotation = Math.atan2(ev.clientY - sy, ev.clientX - sx) * (180 / Math.PI);
 		const box = gaugeLayoutBox(gauge);
 		clampHudItemToScreen(gauge, box.w, box.h);
 	} else if (String(drag.mode).startsWith("resize-")) {
@@ -329,17 +329,17 @@ function resizeGaugeFromPointer(gauge, ev) {
 	const newLayoutH = isArc ? newW / 2 : bottom - top;
 	const midLocalX = (left + right) / 2;
 	const midLocalY = (top + bottom) / 2;
-	const rad = ((Number(gauge.position.rotation) || 0) * Math.PI) / 180;
+	const rad = ((Number(gauge.display.rotation) || 0) * Math.PI) / 180;
 	const startAabb = rotatedAabbSize(
 		drag.startLayoutW || drag.startWidth,
 		drag.startLayoutH || startLayoutH,
-		gauge.position.rotation || 0
+		gauge.display.rotation || 0
 	);
 	const startCx = drag.startX * (window.innerWidth || 1) + startAabb.w / 2;
 	const startCy = drag.startY * (window.innerHeight || 1) + startAabb.h / 2;
 	const worldDx = midLocalX * Math.cos(rad) - midLocalY * Math.sin(rad);
 	const worldDy = midLocalX * Math.sin(rad) + midLocalY * Math.cos(rad);
-	gauge.position.width = Math.max(MIN_GAUGE_WIDTH, newW);
+	gauge.display.width = Math.max(MIN_GAUGE_WIDTH, newW);
 	if (isArc) {
 		let thickness = drag.startHeight;
 		if (axis.includes("n") || axis.includes("s")) {
@@ -349,16 +349,16 @@ function resizeGaugeFromPointer(gauge, ev) {
 				Math.min(newW / 2 - 1, (boxH / Math.max(newLayoutH, 1)) * drag.startHeight)
 			);
 		}
-		gauge.position.height = thickness;
+		gauge.display.height = thickness;
 	} else {
-		gauge.position.height = Math.max(MIN_GAUGE_HEIGHT, newLayoutH);
+		gauge.display.height = Math.max(MIN_GAUGE_HEIGHT, newLayoutH);
 	}
 	const newCx = startCx + worldDx;
 	const newCy = startCy + worldDy;
 	const outBox = gaugeLayoutBox(gauge);
-	const outAabb = rotatedAabbSize(outBox.w, outBox.h, gauge.position.rotation || 0);
-	gauge.position.x = (newCx - outAabb.w / 2) / (window.innerWidth || 1);
-	gauge.position.y = (newCy - outAabb.h / 2) / (window.innerHeight || 1);
+	const outAabb = rotatedAabbSize(outBox.w, outBox.h, gauge.display.rotation || 0);
+	gauge.display.x = (newCx - outAabb.w / 2) / (window.innerWidth || 1);
+	gauge.display.y = (newCy - outAabb.h / 2) / (window.innerHeight || 1);
 	clampHudItemToScreen(gauge, outBox.w, outBox.h);
 }
 
@@ -650,12 +650,13 @@ function defaultGauge(n) {
 		id: `gauge_${Date.now().toString(36)}`,
 		locked: false,
 		visibility: "hud",
-		position: {
+		display: {
 			x: DEFAULT_HUD_X,
 			y: DEFAULT_HUD_Y,
 			rotation: 0,
 			width: DEFAULT_GAUGE_WIDTH,
-			height: DEFAULT_GAUGE_HEIGHT
+			height: DEFAULT_GAUGE_HEIGHT,
+			maxAlpha: 100
 		},
 		sourceMod: "",
 		varName: "",
@@ -670,9 +671,9 @@ function ensureGauge(gauge) {
 	gauge.locked = !!gauge.locked;
 	ensureEntityVisibility(gauge);
 	// Migration Code for Transition from v1.01 or earlier to v1.1:
-	// Legacy flat placement keys x/y/rotation/width/height move under nested "position" (never written back flat on save).
+	// Legacy flat placement keys x/y/rotation/width/height move under nested "display" (never written back flat on save).
 	// Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
-	migrateEntityPosition(gauge, {
+	migrateEntityDisplay(gauge, {
 		sized: true,
 		x: DEFAULT_HUD_X,
 		y: DEFAULT_HUD_Y,
@@ -869,8 +870,8 @@ function patchGauge(id, patch, skipHud, live) {
 			}
 			continue;
 		}
-		if (key === "position" && value && typeof value === "object" && !Array.isArray(value)) {
-			const pos = entityPosition(gauge);
+		if (key === "display" && value && typeof value === "object" && !Array.isArray(value)) {
+			const pos = entityDisplay(gauge);
 			for (const [pk, pv] of Object.entries(value)) {
 				if (pos[pk] !== pv) {
 					changed = true;
@@ -941,22 +942,23 @@ function findHudGaugeEl(id, preferredHost) {
 function gaugeLayoutBox(gauge, iconSize = 0) {
 	ensureGauge(gauge);
 	if (normalizeGaugeType(gaugeSettings(gauge).type) === "frame") {
-		return { w: Math.round(gauge.position.width), h: Math.round(gauge.position.height) };
+		return { w: Math.round(gauge.display.width), h: Math.round(gauge.display.height) };
 	}
 	if (normalizeGaugeShape(gaugeSettings(gauge).shape) === "arc") {
-		const band = Math.max(MIN_GAUGE_HEIGHT, Math.round(gauge.position.height));
+		const band = Math.max(MIN_GAUGE_HEIGHT, Math.round(gauge.display.height));
 		const arcCore = gaugeArcMetrics(gauge);
 		const capLayout = gaugeArcCapLayout(gauge, band);
 		const arcGeom = gaugeArcCapGeometry(gauge, capLayout, arcCore);
 		const metrics = gaugeArcLayoutMetrics(gauge, band, arcGeom, arcCore);
 		return { w: metrics.layoutW, h: metrics.layoutH };
 	}
-	const metrics = gaugeBarLayoutMetrics(gauge, iconSize || gauge.position.height);
+	const metrics = gaugeBarLayoutMetrics(gauge, iconSize || gauge.display.height);
 	return { w: metrics.layoutW, h: metrics.layoutH };
 }
 
 function layoutHudGauge(el, gauge) {
 	ensureGauge(gauge);
+	applyHostMaxAlpha(el, gauge);
 	if (normalizeGaugeType(gaugeSettings(gauge).type) === "frame") {
 		const { w, h } = gaugeLayoutBox(gauge);
 		const css = hudItemLayoutCss(gauge, w, h);
@@ -965,7 +967,7 @@ function layoutHudGauge(el, gauge) {
 		el.style.width = `${w}px`;
 		el.style.height = `${h}px`;
 		el.style.setProperty("--gauge-rot", "0deg");
-		el.style.setProperty("--gauge-frame-rot", `${gauge.position.rotation || 0}deg`);
+		el.style.setProperty("--gauge-frame-rot", `${gauge.display.rotation || 0}deg`);
 		delete el.dataset.barLayout;
 		delete el.dataset.arcLayout;
 		return;
@@ -974,9 +976,9 @@ function layoutHudGauge(el, gauge) {
 	const isBar = shape === "bar";
 	const isArc = shape === "arc";
 	const iconSize = isBar
-		? Math.round(gauge.position.height)
+		? Math.round(gauge.display.height)
 		: isArc
-			? Math.max(MIN_GAUGE_HEIGHT, Math.round(gauge.position.height))
+			? Math.max(MIN_GAUGE_HEIGHT, Math.round(gauge.display.height))
 			: 0;
 	const { w, h } = gaugeLayoutBox(gauge, iconSize);
 	const css = hudItemLayoutCss(gauge, w, h);
@@ -994,7 +996,7 @@ function layoutHudGauge(el, gauge) {
 		rotor.style.top = `${metrics.rotorTop}px`;
 		rotor.style.width = `${metrics.barW}px`;
 		rotor.style.height = `${metrics.barH}px`;
-		rotor.style.setProperty("--gauge-rot", `${gauge.position.rotation || 0}deg`);
+		rotor.style.setProperty("--gauge-rot", `${gauge.display.rotation || 0}deg`);
 		el.dataset.barLayout = JSON.stringify({
 			layoutW: metrics.layoutW,
 			layoutH: metrics.layoutH,
@@ -1016,7 +1018,7 @@ function layoutHudGauge(el, gauge) {
 		rotor.style.top = `${metrics.rotorTop}px`;
 		rotor.style.width = `${metrics.arcW}px`;
 		rotor.style.height = `${metrics.arcH}px`;
-		rotor.style.setProperty("--gauge-rot", `${gauge.position.rotation || 0}deg`);
+		rotor.style.setProperty("--gauge-rot", `${gauge.display.rotation || 0}deg`);
 		ensureGaugeArcZones(el);
 		el.dataset.arcLayout = JSON.stringify({
 			layoutW: metrics.layoutW,
@@ -1028,7 +1030,7 @@ function layoutHudGauge(el, gauge) {
 		});
 		delete el.dataset.barLayout;
 	} else {
-		el.style.setProperty("--gauge-rot", `${gauge.position.rotation || 0}deg`);
+		el.style.setProperty("--gauge-rot", `${gauge.display.rotation || 0}deg`);
 		delete el.dataset.barLayout;
 		delete el.dataset.arcLayout;
 	}
@@ -1064,11 +1066,11 @@ function gaugeStyleSig(gauge) {
 		s.shape,
 		s.displayMode,
 		s.frameShape,
-		gauge.position.x,
-		gauge.position.y,
-		gauge.position.width,
-		gauge.position.height,
-		gauge.position.rotation,
+		gauge.display.x,
+		gauge.display.y,
+		gauge.display.width,
+		gauge.display.height,
+		gauge.display.rotation,
 		s.borderColor,
 		s.borderThickness,
 		s.troughOpacity,

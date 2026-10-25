@@ -123,12 +123,13 @@ function defaultSuppressorGizmo(n) {
 		id: `gizmo_${Date.now().toString(36)}`,
 		typeId: "cog-suppressor",
 		visibility: "none",
-		position: {
+		display: {
 			x: DEFAULT_HUD_X,
 			y: DEFAULT_HUD_Y,
 			rotation: 0,
 			width: DEFAULT_SUPPRESSOR_SIZE,
-			height: DEFAULT_SUPPRESSOR_SIZE
+			height: DEFAULT_SUPPRESSOR_SIZE,
+			maxAlpha: 100
 		},
 		settings,
 		settingsJson: JSON.stringify(settings)
@@ -140,9 +141,9 @@ function ensureSuppressorGizmo(gizmo) {
 	const s = ensureGizmoSettings(gizmo);
 	gizmo.typeId = "cog-suppressor";
 	// Migration Code for Transition from v1.01 or earlier to v1.1:
-	// Legacy flat placement keys x/y/rotation/width/height move under nested "position" (never written back flat on save).
+	// Legacy flat placement keys x/y/rotation/width/height move under nested "display" (never written back flat on save).
 	// Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
-	migrateEntityPosition(gizmo, {
+	migrateEntityDisplay(gizmo, {
 		sized: true,
 		x: DEFAULT_HUD_X,
 		y: DEFAULT_HUD_Y,
@@ -186,12 +187,13 @@ function buildGizmoSuppressorEl(gizmo, preview) {
 
 function layoutHudGizmoSuppressor(el, gizmo) {
 	ensureSuppressorGizmo(gizmo);
-	const css = hudItemLayoutCss(gizmo, gizmo.position.width, gizmo.position.height);
+	const css = hudItemLayoutCss(gizmo, gizmo.display.width, gizmo.display.height);
 	el.style.left = css.x * 100 + "%";
 	el.style.top = css.y * 100 + "%";
-	el.style.width = gizmo.position.width + "px";
-	el.style.height = gizmo.position.height + "px";
-	el.style.setProperty("--gizmo-rot", (gizmo.position.rotation || 0) + "deg");
+	el.style.width = gizmo.display.width + "px";
+	el.style.height = gizmo.display.height + "px";
+	el.style.setProperty("--gizmo-rot", (gizmo.display.rotation || 0) + "deg");
+	applyHostMaxAlpha(el, gizmo);
 }
 
 function paintGizmoSuppressor(el, gizmo) {

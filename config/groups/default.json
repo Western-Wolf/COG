@@ -13,9 +13,10 @@
 		"stack": "below",
 		"gearIds": []
 	},
-	"position": {
+	"display": {
 		"x": 0.1,
 		"y": 0.1,
-		"rotation": 0
+		"rotation": 0,
+		"maxAlpha": 100
 	}
 }

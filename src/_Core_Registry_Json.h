@@ -99,8 +99,8 @@ namespace CogRegistryJson
 		const CogJson::Value* posObj,
 		CogJson::ParseContext& ctx,
 		const char* key);
-	void AppendPositionXYR(CogJson::Writer& w, const CogPosition& p);
-	void AppendBoxPosition(CogJson::Writer& w, const CogBoxPosition& p);
+	void AppendDisplayXYR(CogJson::Writer& w, const CogDisplay& p);
+	void AppendBoxDisplay(CogJson::Writer& w, const CogBoxDisplay& p);
 	void NoteMigration(CogJson::ParseContext& ctx, std::string_view detail);
 	bool NoteIfHas(CogJson::ParseContext& ctx, const CogJson::Value& obj, const char* key, std::string_view detail);
 	bool NoteIfHasAny(

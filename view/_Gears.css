@@ -108,12 +108,10 @@
 	flex-direction: column-reverse;
 }
 
-.gear.is-preview {
-	opacity: 0.55;
-}
+/* Gear opacity is set in JS as relativeAlpha × maxAlpha (see applyGearHideFadeOpacity). */
 
 .gear.is-fading-in {
-	animation: cog-fade-in 0.25s ease-out both;
+	animation: cog-gear-fade-in 0.25s ease-out both;
 }
 
 .gear.is-fading-out {

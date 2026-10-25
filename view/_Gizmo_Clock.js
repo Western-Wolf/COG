@@ -50,7 +50,7 @@ function clockArcHollowMetrics(arcLayout, iconSize, iconGap, arcGeom = null) {
 /** Fit arc hollow label/count to width and vertical room (preferred is still 50% of band). */
 
 function clockArcRotRad(gauge) {
-	return ((Number(gauge.position.rotation) || 0) * Math.PI) / 180;
+	return ((Number(gauge.display.rotation) || 0) * Math.PI) / 180;
 }
 
 function clockArcRotatePt(cx, cy, x, y, rad) {
@@ -63,7 +63,7 @@ function clockArcRotatePt(cx, cy, x, y, rad) {
 }
 
 function clockArcFontSizePx(item, iconSize) {
-	const itemH = item && item.position ? item.position.height : item && item.height;
+	const itemH = item && item.display ? item.display.height : item && item.height;
 	const autoBase = Math.max(1, Number(iconSize) || Number(itemH) || 24);
 	if (Number(item && item.fontSize) > 0) {
 		return Math.max(6, Math.round(Number(item.fontSize)));
@@ -76,13 +76,13 @@ function clockArcOverlayMargin(item, iconSize) {
 	const iconGap = Math.max(2, Math.round(iconSize * 0.1));
 	const lineGap = Math.max(2, Math.round(iconGap * 0.5));
 	const stackH = iconSize + iconGap + labelSize + lineGap + labelSize + lineGap;
-	const itemW = item && item.position ? item.position.width : item && item.width;
+	const itemW = item && item.display ? item.display.width : item && item.width;
 	const sideRoom = Math.max(48, Math.round((Number(itemW) || 120) * 0.55));
 	return { stackH, sideRoom, iconGap, lineGap, labelSize };
 }
 
 function clockArcCapLayout(gauge, band) {
-	const W = Math.round(gauge.position.width);
+	const W = Math.round(gauge.display.width);
 	const hasCaps = gaugeUsesEndArt(gauge) && !!resolveGaugeEndArtHref(gauge);
 	const artPath = migrateEndCapPath(gauge.endCap);
 	const capH = Math.max(MIN_GIZMO_HEIGHT, Math.round(band));
@@ -598,12 +598,13 @@ function defaultClockGizmo(n) {
 		id: `gizmo_${Date.now().toString(36)}`,
 		typeId: "cog-clock",
 		visibility: "hud",
-		position: {
+		display: {
 			x: DEFAULT_HUD_X,
 			y: DEFAULT_HUD_Y,
 			rotation: 0,
 			width: DEFAULT_GIZMO_WIDTH_CELESTIAL,
-			height: DEFAULT_GIZMO_HEIGHT_CELESTIAL
+			height: DEFAULT_GIZMO_HEIGHT_CELESTIAL,
+			maxAlpha: 100
 		},
 		settings,
 		settingsJson: JSON.stringify(settings)
@@ -622,9 +623,9 @@ function ensureClockGizmo(gizmo) {
 	const defW = mode === "celestial" ? DEFAULT_GIZMO_WIDTH_CELESTIAL : DEFAULT_GIZMO_WIDTH_TEXT;
 	const defH = mode === "celestial" ? DEFAULT_GIZMO_HEIGHT_CELESTIAL : DEFAULT_GIZMO_HEIGHT_TEXT;
 	// Migration Code for Transition from v1.01 or earlier to v1.1:
-	// Legacy flat placement keys x/y/rotation/width/height move under nested "position" (never written back flat on save).
+	// Legacy flat placement keys x/y/rotation/width/height move under nested "display" (never written back flat on save).
 	// Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
-	migrateEntityPosition(gizmo, {
+	migrateEntityDisplay(gizmo, {
 		sized: true,
 		x: DEFAULT_HUD_X,
 		y: DEFAULT_HUD_Y,
@@ -729,7 +730,7 @@ function gizmoClockIconSize(gizmo) {
 		return 0;
 	}
 	if (normalizeGizmoDisplayMode(gizmo.settings.displayMode) === "celestial") {
-		return Math.max(MIN_GIZMO_HEIGHT, Math.round(gizmo.position.height));
+		return Math.max(MIN_GIZMO_HEIGHT, Math.round(gizmo.display.height));
 	}
 	return Math.max(16, Math.round(gizmoFontSizePx(gizmo) * 1.15));
 }
@@ -768,8 +769,8 @@ function gizmoTextBlockHeight(gizmo) {
 }
 
 function gizmoArcMetricsFromGizmo(gizmo) {
-	const W = Math.round(gizmo.position.width);
-	const band = Math.max(MIN_GIZMO_HEIGHT, Math.round(gizmo.position.height));
+	const W = Math.round(gizmo.display.width);
+	const band = Math.max(MIN_GIZMO_HEIGHT, Math.round(gizmo.display.height));
 	const ro = W / 2;
 	const ri = Math.max(1, ro - band);
 	const cx = W / 2;
@@ -780,9 +781,9 @@ function gizmoArcMetricsFromGizmo(gizmo) {
 function celestialArcLayoutGauge(gizmo) {
 	ensureGizmo(gizmo);
 	return {
-		position: {
-			width: gizmo.position.width,
-			rotation: gizmo.position.rotation || 0
+		display: {
+			width: gizmo.display.width,
+			rotation: gizmo.display.rotation || 0
 		},
 		endCapMode: gizmo.settings.endCapMode,
 		endCap: gizmo.settings.endCap,
@@ -1066,7 +1067,7 @@ function gizmoLayoutBoxClock(gizmo) {
 		const metrics = clockArcLayoutMetrics(capGauge, band, arcGeom, arcCore);
 		return { w: metrics.layoutW, h: metrics.layoutH };
 	}
-	return { w: gizmo.position.width, h: Math.max(gizmo.position.height, blockH) };
+	return { w: gizmo.display.width, h: Math.max(gizmo.display.height, blockH) };
 }
 
 function addClockGizmo() {
@@ -1091,7 +1092,7 @@ function layoutHudGizmoClock(el, gizmo) {
 	el.style.top = `${css.y * 100}%`;
 	el.style.width = `${box.w}px`;
 	el.style.height = `${box.h}px`;
-	el.style.setProperty("--gizmo-rot", `${gizmo.position.rotation || 0}deg`);
+	el.style.setProperty("--gizmo-rot", `${gizmo.display.rotation || 0}deg`);
 	el.classList.toggle("is-celestial", mode === "celestial");
 	if (mode === "celestial") {
 		el.style.setProperty("--gizmo-rot", "0deg");
@@ -1106,7 +1107,7 @@ function layoutHudGizmoClock(el, gizmo) {
 		rotor.style.top = `${metrics.rotorTop}px`;
 		rotor.style.width = `${metrics.arcW}px`;
 		rotor.style.height = `${metrics.arcH}px`;
-		rotor.style.setProperty("--gizmo-celestial-rot", `${gizmo.position.rotation || 0}deg`);
+		rotor.style.setProperty("--gizmo-celestial-rot", `${gizmo.display.rotation || 0}deg`);
 		el.dataset.gizmoArcLayout = JSON.stringify({
 			layoutW: metrics.layoutW,
 			layoutH: metrics.layoutH,
@@ -1116,7 +1117,7 @@ function layoutHudGizmoClock(el, gizmo) {
 			arcH: metrics.arcH
 		});
 	} else {
-		el.style.setProperty("--gizmo-rot", `${gizmo.position.rotation || 0}deg`);
+		el.style.setProperty("--gizmo-rot", `${gizmo.display.rotation || 0}deg`);
 		delete el.dataset.gizmoArcLayout;
 	}
 	const textHost = el.querySelector(".gizmo-clock-text");
@@ -1142,6 +1143,7 @@ function layoutHudGizmoClock(el, gizmo) {
 			iconHost.style.height = `${iconSize}px`;
 		}
 	}
+	applyHostMaxAlpha(el, gizmo);
 }
 
 function paintGizmoClockIcon(el, gizmo, src) {
@@ -1352,7 +1354,7 @@ function paintCelestialArc(el, gizmo) {
 	const cel = clockCelestial();
 	const bodySize = Math.max(12, Math.round(band * 0.9));
 	const secundaSize = Math.round(bodySize * 0.7);
-	const gizmoRot = Number(gizmo.position.rotation) || 0;
+	const gizmoRot = Number(gizmo.display.rotation) || 0;
 	if (cel) {
 		placeCelestialBody(
 			layer,
@@ -1596,8 +1598,8 @@ function fillClockGizmoEditor(panel, gizmo) {
 	modeSel.addEventListener("change", () => {
 		const mode = normalizeGizmoDisplayMode(modeSel.value);
 		const patch = { displayMode: mode };
-		if (mode === "celestial" && live().position.width === DEFAULT_GIZMO_WIDTH_TEXT) {
-			patch.position = {
+		if (mode === "celestial" && live().display.width === DEFAULT_GIZMO_WIDTH_TEXT) {
+			patch.display = {
 				width: DEFAULT_GIZMO_WIDTH_CELESTIAL,
 				height: DEFAULT_GIZMO_HEIGHT_CELESTIAL
 			};
@@ -1613,7 +1615,7 @@ function fillClockGizmoEditor(panel, gizmo) {
 	displaySection.className = "gizmo-display-settings";
 	const displayLede = document.createElement("p");
 	displayLede.className = "lede";
-	setTranslatedText(displayLede, "cog-display", "Display");
+	setTranslatedText(displayLede, "cog-clock-face", "Clock face");
 	displaySection.appendChild(displayLede);
 	const displayHint = document.createElement("p");
 	displayHint.className = "hint";
@@ -1876,8 +1878,8 @@ window.CogRegisterGizmoRenderer("cog-clock", {
 			return Math.round(s.fontSize);
 		}
 		if (normalizeGizmoDisplayMode(s.displayMode) === "celestial") {
-			return Math.max(10, Math.round(gizmo.position.height * 0.85 * AUTO_FONT_SIZE_SCALE));
+			return Math.max(10, Math.round(gizmo.display.height * 0.85 * AUTO_FONT_SIZE_SCALE));
 		}
-		return Math.max(12, Math.round(gizmo.position.height * 0.38 * AUTO_FONT_SIZE_SCALE));
+		return Math.max(12, Math.round(gizmo.display.height * 0.38 * AUTO_FONT_SIZE_SCALE));
 	}
 });

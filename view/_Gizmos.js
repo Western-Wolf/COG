@@ -350,9 +350,9 @@ function ensureCustomGizmo(gizmo) {
 	const defW = Math.max(MIN_GIZMO_WIDTH, Number(typeDef && typeDef.defaultWidth) || 240);
 	const defH = Math.max(MIN_GIZMO_HEIGHT, Number(typeDef && typeDef.defaultHeight) || 48);
 	// Migration Code for Transition from v1.01 or earlier to v1.1:
-	// Legacy flat placement keys x/y/rotation/width/height move under nested "position" (never written back flat on save).
+	// Legacy flat placement keys x/y/rotation/width/height move under nested "display" (never written back flat on save).
 	// Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
-	migrateEntityPosition(gizmo, {
+	migrateEntityDisplay(gizmo, {
 		sized: true,
 		x: DEFAULT_HUD_X,
 		y: DEFAULT_HUD_Y,
@@ -412,12 +412,13 @@ function addGizmoFromType(typeDef) {
 			typeId,
 			sourceMod: typeDef.sourceMod || "",
 			visibility: normalizeGizmoVisibility(typeDef.defaultVisibility || "hud"),
-			position: {
+			display: {
 				x: DEFAULT_HUD_X,
 				y: DEFAULT_HUD_Y,
 				rotation: 0,
 				width: Math.max(MIN_GIZMO_WIDTH, Number(typeDef.defaultWidth) || 240),
-				height: Math.max(MIN_GIZMO_HEIGHT, Number(typeDef.defaultHeight) || 48)
+				height: Math.max(MIN_GIZMO_HEIGHT, Number(typeDef.defaultHeight) || 48),
+				maxAlpha: 100
 			},
 			settings,
 			settingsJson: JSON.stringify(settings)
@@ -427,13 +428,14 @@ function addGizmoFromType(typeDef) {
 
 function layoutHudGizmoCustom(el, gizmo) {
 	ensureCustomGizmo(gizmo);
-	const box = { w: gizmo.position.width, h: gizmo.position.height };
+	const box = { w: gizmo.display.width, h: gizmo.display.height };
 	const css = hudItemLayoutCss(gizmo, box.w, box.h);
 	el.style.left = css.x * 100 + "%";
 	el.style.top = css.y * 100 + "%";
-	el.style.width = gizmo.position.width + "px";
-	el.style.height = gizmo.position.height + "px";
-	el.style.setProperty("--gizmo-rot", (gizmo.position.rotation || 0) + "deg");
+	el.style.width = gizmo.display.width + "px";
+	el.style.height = gizmo.display.height + "px";
+	el.style.setProperty("--gizmo-rot", (gizmo.display.rotation || 0) + "deg");
+	applyHostMaxAlpha(el, gizmo);
 }
 
 function paintGizmoCustom(el, gizmo) {
@@ -729,9 +731,9 @@ function appendGizmoPositionSizeEditor(panel, gizmo) {
 	const posLede = document.createElement("p");
 	posLede.className = "lede";
 	if (typeof setTranslatedText === "function") {
-		setTranslatedText(posLede, "cog-position-and-size", "Position & size");
+		setTranslatedText(posLede, "cog-display", "Display");
 	} else {
-		posLede.textContent = "Position & size";
+		posLede.textContent = "Display";
 	}
 	panel.appendChild(posLede);
 	const posA = document.createElement("div");
@@ -743,6 +745,7 @@ function appendGizmoPositionSizeEditor(panel, gizmo) {
 	const posB = document.createElement("div");
 	posB.className = "pos-row";
 	posB.innerHTML = `
+		<label class="pos-field"><span>Max Alpha</span><input type="text" data-role="maxAlpha" inputmode="decimal"></label>
 		<label class="pos-field"><span>Width</span><input type="text" data-role="width" inputmode="numeric"></label>
 		<label class="pos-field"><span>Height</span><input type="text" data-role="height" inputmode="numeric"></label>`;
 	panel.appendChild(posA);
@@ -750,20 +753,23 @@ function appendGizmoPositionSizeEditor(panel, gizmo) {
 	const xInput = posA.querySelector('[data-role="x"]');
 	const yInput = posA.querySelector('[data-role="y"]');
 	const rotInput = posA.querySelector('[data-role="rotation"]');
+	const maxAlphaInput = posB.querySelector('[data-role="maxAlpha"]');
 	const wInput = posB.querySelector('[data-role="width"]');
 	const hInput = posB.querySelector('[data-role="height"]');
 	// X/Y are single letters — leave untagged.
 
 	tagFieldLabel(rotInput.closest("label"), "cog-rotation", "Rotation");
+	tagFieldLabel(maxAlphaInput.closest("label"), "cog-max-alpha", "Max Alpha");
 	tagFieldLabel(wInput.closest("label"), "cog-width", "Width");
 	tagFieldLabel(hInput.closest("label"), "cog-height", "Height");
 	const box = gizmoLayoutBox(gizmo);
 	const editorPos = hudItemEditorPosPct(gizmo, box.w, box.h);
 	xInput.value = fmtPct(editorPos.x);
 	yInput.value = fmtPct(editorPos.y);
-	rotInput.value = (Number(gizmo.position.rotation) || 0).toFixed(1);
-	wInput.value = String(Math.round(gizmo.position.width));
-	hInput.value = String(Math.round(gizmo.position.height));
+	rotInput.value = (Number(gizmo.display.rotation) || 0).toFixed(1);
+	maxAlphaInput.value = String(Math.round(Number(gizmo.display.maxAlpha) || 100));
+	wInput.value = String(Math.round(gizmo.display.width));
+	hInput.value = String(Math.round(gizmo.display.height));
 	bindNumberField(xInput, {
 		suffix: "%",
 		parse: (raw) => {
@@ -819,28 +825,44 @@ function appendGizmoPositionSizeEditor(panel, gizmo) {
 		},
 		apply: (v) => {
 			const g = live();
-			patchGizmo(gid, { position: { rotation: v } });
+			patchGizmo(gid, { display: { rotation: v } });
 			const box = gizmoLayoutBox(g);
 			clampHudItemToScreen(g, box.w, box.h);
-			const pos = entityPosition(g);
-			patchGizmo(gid, { position: { x: pos.x, y: pos.y } });
+			const pos = entityDisplay(g);
+			patchGizmo(gid, { display: { x: pos.x, y: pos.y } });
 		},
 		format: (v) => (Number(v) || 0).toFixed(1),
-		current: () => live().position.rotation || 0
+		current: () => live().display.rotation || 0
+	});
+	bindNumberField(maxAlphaInput, {
+		suffix: "%",
+		parse: (raw) => {
+			if (String(raw).trim() === "" || raw === "." || raw === "-") {
+				return null;
+			}
+			const v = Number(raw);
+			return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : null;
+		},
+		apply: (v) => patchGizmo(gid, { display: { maxAlpha: v } }),
+		format: (v) => String(Math.round(Number(v) || 100)),
+		current: () => {
+			const a = Number(live().display.maxAlpha);
+			return Number.isFinite(a) ? a : 100;
+		}
 	});
 	bindNumberField(wInput, {
 		suffix: "px",
 		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(MIN_GIZMO_WIDTH, Math.min(2000, Number(raw) || 0))),
-		apply: (v) => patchGizmo(gid, { position: { width: v } }),
+		apply: (v) => patchGizmo(gid, { display: { width: v } }),
 		format: (v) => String(Math.round(v)),
-		current: () => live().position.width
+		current: () => live().display.width
 	});
 	bindNumberField(hInput, {
 		suffix: "px",
 		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(MIN_GIZMO_HEIGHT, Math.min(512, Number(raw) || 0))),
-		apply: (v) => patchGizmo(gid, { position: { height: v } }),
+		apply: (v) => patchGizmo(gid, { display: { height: v } }),
 		format: (v) => String(Math.round(v)),
-		current: () => live().position.height
+		current: () => live().display.height
 	});
 }
 
@@ -893,7 +915,7 @@ function gizmoLayoutBox(gizmo) {
 	if (api && typeof api.layoutBox === "function") {
 		return api.layoutBox(gizmo);
 	}
-	return { w: gizmo.position.width, h: gizmo.position.height };
+	return { w: gizmo.display.width, h: gizmo.display.height };
 }
 
 function gizmoFor(id) {
@@ -944,8 +966,8 @@ function patchGizmo(id, patch, skipHud, live) {
 			}
 			continue;
 		}
-		if (key === "position" && value && typeof value === "object" && !Array.isArray(value)) {
-			const pos = entityPosition(gizmo);
+		if (key === "display" && value && typeof value === "object" && !Array.isArray(value)) {
+			const pos = entityDisplay(gizmo);
 			for (const [pk, pv] of Object.entries(value)) {
 				if (pos[pk] !== pv) {
 					changed = true;
@@ -1020,6 +1042,7 @@ function layoutHudGizmo(el, gizmo) {
 	const api = gizmoRendererApi(gizmo.typeId);
 	if (api && typeof api.layout === "function") {
 		api.layout(el, gizmo);
+		applyHostMaxAlpha(el, gizmo);
 		return;
 	}
 	layoutHudGizmoCustom(el, gizmo);
@@ -1034,6 +1057,7 @@ function syncHudGizmo(gizmo) {
 	const api = gizmoRendererApi(gizmo.typeId);
 	if (api && typeof api.layout === "function") {
 		api.layout(el, gizmo);
+		applyHostMaxAlpha(el, gizmo);
 	} else {
 		layoutHudGizmoCustom(el, gizmo);
 	}
@@ -1377,14 +1401,14 @@ function beginGizmoDrag(ev, gizmoId, mode) {
 		mode,
 		grabAabbX: ev.clientX - aabb.left,
 		grabAabbY: ev.clientY - aabb.top,
-		grabX: ev.clientX / w - (gizmo.position.x ?? DEFAULT_HUD_X),
-		grabY: ev.clientY / h - (gizmo.position.y ?? DEFAULT_HUD_Y),
-		startWidth: gizmo.position.width,
-		startHeight: gizmo.position.height,
+		grabX: ev.clientX / w - (gizmo.display.x ?? DEFAULT_HUD_X),
+		grabY: ev.clientY / h - (gizmo.display.y ?? DEFAULT_HUD_Y),
+		startWidth: gizmo.display.width,
+		startHeight: gizmo.display.height,
 		startLayoutW: box.w,
 		startLayoutH: box.h,
-		startX: gizmo.position.x,
-		startY: gizmo.position.y,
+		startX: gizmo.display.x,
+		startY: gizmo.display.y,
 		pointerLocal: screenToGizmoLocal(ev.clientX, ev.clientY, gizmo)
 	};
 	if (ev.currentTarget && ev.pointerId != null && ev.currentTarget.setPointerCapture) {
@@ -1406,7 +1430,7 @@ function screenToGizmoLocal(clientX, clientY, gizmo) {
 	}
 	const dx = clientX - cx;
 	const dy = clientY - cy;
-	const rad = -((Number(gizmo.position.rotation) || 0) * Math.PI) / 180;
+	const rad = -((Number(gizmo.display.rotation) || 0) * Math.PI) / 180;
 	return {
 		x: dx * Math.cos(rad) - dy * Math.sin(rad),
 		y: dx * Math.sin(rad) + dy * Math.cos(rad)
@@ -1442,17 +1466,17 @@ function resizeGizmoFromPointer(gizmo, ev) {
 	const newLayoutH = isCelestial ? newW / 2 : bottom - top;
 	const midLocalX = (left + right) / 2;
 	const midLocalY = (top + bottom) / 2;
-	const rad = ((Number(gizmo.position.rotation) || 0) * Math.PI) / 180;
+	const rad = ((Number(gizmo.display.rotation) || 0) * Math.PI) / 180;
 	const startAabb = rotatedAabbSize(
 		drag.startLayoutW || drag.startWidth,
 		drag.startLayoutH || startLayoutH,
-		gizmo.position.rotation || 0
+		gizmo.display.rotation || 0
 	);
 	const startCx = drag.startX * (window.innerWidth || 1) + startAabb.w / 2;
 	const startCy = drag.startY * (window.innerHeight || 1) + startAabb.h / 2;
 	const worldDx = midLocalX * Math.cos(rad) - midLocalY * Math.sin(rad);
 	const worldDy = midLocalX * Math.sin(rad) + midLocalY * Math.cos(rad);
-	gizmo.position.width = Math.max(MIN_GIZMO_WIDTH, newW);
+	gizmo.display.width = Math.max(MIN_GIZMO_WIDTH, newW);
 	if (isCelestial) {
 		let thickness = drag.startHeight;
 		if (axis.includes("n") || axis.includes("s")) {
@@ -1462,16 +1486,16 @@ function resizeGizmoFromPointer(gizmo, ev) {
 				Math.min(newW / 2 - 1, (boxH / Math.max(newLayoutH, 1)) * drag.startHeight)
 			);
 		}
-		gizmo.position.height = thickness;
+		gizmo.display.height = thickness;
 	} else {
-		gizmo.position.height = Math.max(MIN_GIZMO_HEIGHT, newLayoutH);
+		gizmo.display.height = Math.max(MIN_GIZMO_HEIGHT, newLayoutH);
 	}
 	const newCx = startCx + worldDx;
 	const newCy = startCy + worldDy;
 	const outBox = gizmoLayoutBox(gizmo);
-	const outAabb = rotatedAabbSize(outBox.w, outBox.h, gizmo.position.rotation || 0);
-	gizmo.position.x = (newCx - outAabb.w / 2) / (window.innerWidth || 1);
-	gizmo.position.y = (newCy - outAabb.h / 2) / (window.innerHeight || 1);
+	const outAabb = rotatedAabbSize(outBox.w, outBox.h, gizmo.display.rotation || 0);
+	gizmo.display.x = (newCx - outAabb.w / 2) / (window.innerWidth || 1);
+	gizmo.display.y = (newCy - outAabb.h / 2) / (window.innerHeight || 1);
 	clampHudItemToScreen(gizmo, outBox.w, outBox.h);
 }
 
@@ -1485,13 +1509,13 @@ function onGizmoPointerMove(ev) {
 	const h = window.innerHeight || 1;
 	if (drag.mode === "move") {
 		const box = gizmoLayoutBox(gizmo);
-		const aabbSize = rotatedAabbSize(box.w, box.h, gizmo.position.rotation || 0);
+		const aabbSize = rotatedAabbSize(box.w, box.h, gizmo.display.rotation || 0);
 		let left = ev.clientX - (drag.grabAabbX || 0);
 		let top = ev.clientY - (drag.grabAabbY || 0);
 		left = Math.min(Math.max(0, left), Math.max(0, w - aabbSize.w));
 		top = Math.min(Math.max(0, top), Math.max(0, h - aabbSize.h));
-		gizmo.position.x = left / w;
-		gizmo.position.y = top / h;
+		gizmo.display.x = left / w;
+		gizmo.display.y = top / h;
 	} else if (drag.mode === "rotate") {
 		const el = findHudGizmoEl(gizmo.id);
 		let sx;
@@ -1504,7 +1528,7 @@ function onGizmoPointerMove(ev) {
 			const box = gizmoLayoutBox(gizmo);
 			({ cx: sx, cy: sy } = hudItemCenterPx(gizmo, box.w, box.h));
 		}
-		gizmo.position.rotation = Math.atan2(ev.clientY - sy, ev.clientX - sx) * (180 / Math.PI);
+		gizmo.display.rotation = Math.atan2(ev.clientY - sy, ev.clientX - sx) * (180 / Math.PI);
 		const box = gizmoLayoutBox(gizmo);
 		clampHudItemToScreen(gizmo, box.w, box.h);
 	} else if (String(drag.mode).startsWith("resize-")) {

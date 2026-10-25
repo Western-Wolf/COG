@@ -1,8 +1,8 @@
 // COG overlay - Meter arc shape (loads after _Gauges.js / _Gauges_Meter.js).
 
 function gaugeArcMetrics(gauge) {
-	const W = Math.round(gauge.position.width);
-	const band = Math.max(MIN_GAUGE_HEIGHT, Math.round(gauge.position.height));
+	const W = Math.round(gauge.display.width);
+	const band = Math.max(MIN_GAUGE_HEIGHT, Math.round(gauge.display.height));
 	const ro = W / 2;
 	const ri = Math.max(1, ro - band);
 	const cx = W / 2;
@@ -11,7 +11,7 @@ function gaugeArcMetrics(gauge) {
 }
 
 function gaugeArcCapLayout(gauge, band) {
-	const W = Math.round(gauge.position.width);
+	const W = Math.round(gauge.display.width);
 	const hasCaps = gaugeUsesEndArt(gauge) && !!resolveGaugeEndArtHref(gauge);
 	const artPath = migrateEndCapPath(gaugeSettings(gauge).endCap);
 	const capH = Math.max(MIN_GAUGE_HEIGHT, Math.round(band));

@@ -746,48 +746,62 @@ namespace CogRegistryJson
 
 
 	// Migration Code for Transition from v1.01 or earlier to v1.1:
-	// Legacy flat placement keys x/y/rotation[/width/height] move under nested "position" (never written back flat on save).
+	// Legacy flat placement keys x/y/rotation[/width/height] move under nested "display" (never written back flat on save).
 	// Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
 	float ReadPlacementFloat(
 		const CogJson::Value& obj,
-		const CogJson::Value* posObj,
+		const CogJson::Value* displayObj,
 		CogJson::ParseContext& ctx,
 		const char* key,
 		float fallback)
 	{
-		if (posObj && ctx.Has(*posObj, key)) {
-			return ctx.GetFloat(*posObj, key, fallback);
+		if (displayObj && ctx.Has(*displayObj, key)) {
+			return ctx.GetFloat(*displayObj, key, fallback);
 		}
 		return ctx.GetFloat(obj, key, fallback);
 	}
 
 
-	bool HasPlacementKey(const CogJson::Value& obj, const CogJson::Value* posObj, CogJson::ParseContext& ctx, const char* key)
+	bool HasPlacementKey(const CogJson::Value& obj, const CogJson::Value* displayObj, CogJson::ParseContext& ctx, const char* key)
 	{
-		return (posObj && ctx.Has(*posObj, key)) || ctx.Has(obj, key);
+		return (displayObj && ctx.Has(*displayObj, key)) || ctx.Has(obj, key);
 	}
 
 
-	void AppendPositionXYR(CogJson::Writer& w, const CogPosition& p)
+	float ClampMaxAlpha(float v)
 	{
-		w.Key("position");
+		if (v < 0.0f) {
+			return 0.0f;
+		}
+		if (v > 100.0f) {
+			return 100.0f;
+		}
+		return v;
+	}
+
+
+	void AppendDisplayXYR(CogJson::Writer& w, const CogDisplay& p)
+	{
+		w.Key("display");
 		w.BeginObject();
 		w.KeyNumber("x", p.x);
 		w.KeyNumber("y", p.y);
 		w.KeyNumber("rotation", p.rotation);
+		w.KeyNumber("maxAlpha", ClampMaxAlpha(p.maxAlpha));
 		w.EndObject();
 	}
 
 
-	void AppendBoxPosition(CogJson::Writer& w, const CogBoxPosition& p)
+	void AppendBoxDisplay(CogJson::Writer& w, const CogBoxDisplay& p)
 	{
-		w.Key("position");
+		w.Key("display");
 		w.BeginObject();
 		w.KeyNumber("x", p.x);
 		w.KeyNumber("y", p.y);
 		w.KeyNumber("rotation", p.rotation);
 		w.KeyNumber("width", p.width);
 		w.KeyNumber("height", p.height);
+		w.KeyNumber("maxAlpha", ClampMaxAlpha(p.maxAlpha));
 		w.EndObject();
 	}
 

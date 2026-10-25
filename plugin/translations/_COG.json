@@ -311,6 +311,10 @@
     "en-CA": "Click to clear this hotkey",
     "fr-CA": "Cliquez pour effacer ce raccourci"
   },
+  "cog-clock-face": {
+    "en-CA": "Clock face",
+    "fr-CA": "Cadran"
+  },
   "cog-color-ramp-at-cap": {
     "en-CA": "Already has a 100% stop — lower one first to add another.",
     "fr-CA": "Un arrêt à 100 % existe déjà — abaissez-en un d'abord pour en ajouter un autre."
@@ -1083,6 +1087,10 @@
     "en-CA": "Max",
     "fr-CA": "Max"
   },
+  "cog-max-alpha": {
+    "en-CA": "Max Alpha",
+    "fr-CA": "Alpha max"
+  },
   "cog-max-remaining": {
     "en-CA": "Max remaining",
     "fr-CA": "Max restant"
@@ -1279,10 +1287,6 @@
     "en-CA": "Picture Rotation",
     "fr-CA": "Rotation de l'image"
   },
-  "cog-position-and-size": {
-    "en-CA": "Position & size",
-    "fr-CA": "Position et taille"
-  },
   "cog-press-a-key": {
     "en-CA": "Press a key…",
     "fr-CA": "Appuyez sur une touche…"
@@ -1298,6 +1302,14 @@
   "cog-progress-bar-hint": {
     "en-CA": "Shared bar colour, width, and number format for Active Effects timers and Skills Level Progress.",
     "fr-CA": "Couleur, largeur et format numérique partagés de la barre pour les minuteries des effets actifs et la progression de niveau des compétences."
+  },
+  "cog-push-stock-titles": {
+    "en-CA": "Update stock titles on translation",
+    "fr-CA": "Mettre à jour les titres par défaut à la traduction"
+  },
+  "cog-push-stock-titles-tip": {
+    "en-CA": "When changing language, rewrite gears, groups, gauges, and gizmos that still use the default name.",
+    "fr-CA": "Lors d’un changement de langue, réécrire les engrenages, groupes, jauges et gadgets qui portent encore le nom par défaut."
   },
   "cog-registered-gears": {
     "en-CA": "Registered Gears",
@@ -1647,94 +1659,6 @@
     "en-CA": "Words to show",
     "fr-CA": "Mots à afficher"
   },
-  "name:Default Group": {
-    "en-CA": "Default Group",
-    "fr-CA": "Groupe par défaut"
-  },
-  "name:Stat": {
-    "en-CA": "Stat",
-    "fr-CA": "Stat"
-  },
-  "name:Mount": {
-    "en-CA": "Mount",
-    "fr-CA": "Monture"
-  },
-  "name:Equipment": {
-    "en-CA": "Equipment",
-    "fr-CA": "Équipement"
-  },
-  "name:Werewolf": {
-    "en-CA": "Werewolf",
-    "fr-CA": "Loup-garou"
-  },
-  "name:Vampire": {
-    "en-CA": "Vampire",
-    "fr-CA": "Vampire"
-  },
-  "name:Survival": {
-    "en-CA": "Survival",
-    "fr-CA": "Survie"
-  },
-  "name:Charge": {
-    "en-CA": "Charge",
-    "fr-CA": "Charge"
-  },
-  "name:Resistance": {
-    "en-CA": "Resistance",
-    "fr-CA": "Résistance"
-  },
-  "name:iWant Integration": {
-    "en-CA": "iWant Integration",
-    "fr-CA": "Intégration iWant"
-  },
-  "name:Example": {
-    "en-CA": "Example",
-    "fr-CA": "Exemple"
-  },
-  "name:Clock": {
-    "en-CA": "Clock",
-    "fr-CA": "Horloge"
-  },
-  "name:Shout Meter": {
-    "en-CA": "Shout Meter",
-    "fr-CA": "Compteur de cri"
-  },
-  "name:Feed": {
-    "en-CA": "Feed",
-    "fr-CA": "Fil"
-  },
-  "name:Suppressor": {
-    "en-CA": "Suppressor",
-    "fr-CA": "Suppresseur"
-  },
-  "name:Example (Gear Updated)": {
-    "en-CA": "Example (Gear Updated)",
-    "fr-CA": "Exemple (engrenage mis à jour)"
-  },
-  "name:Example (Push Updated)": {
-    "en-CA": "Example (Push Updated)",
-    "fr-CA": "Exemple (poussée mise à jour)"
-  },
-  "name:Health": {
-    "en-CA": "Health",
-    "fr-CA": "Santé"
-  },
-  "name:Stamina": {
-    "en-CA": "Stamina",
-    "fr-CA": "Vigueur"
-  },
-  "name:Mount Stamina": {
-    "en-CA": "Mount Stamina",
-    "fr-CA": "Vigueur de monture"
-  },
-  "name:Magicka": {
-    "en-CA": "Magicka",
-    "fr-CA": "Magie"
-  },
-  "name:Carry Weight": {
-    "en-CA": "Carry Weight",
-    "fr-CA": "Capacité de charge"
-  },
   "name:Arrows (Equipped)": {
     "en-CA": "Arrows (Equipped)",
     "fr-CA": "Flèches (équipées)"
@@ -1743,41 +1667,65 @@
     "en-CA": "Bolts (Equipped)",
     "fr-CA": "Carreaux (équipés)"
   },
-  "name:Transformation": {
-    "en-CA": "Transformation",
-    "fr-CA": "Transformation"
-  },
-  "name:Vampiric Hunger": {
-    "en-CA": "Vampiric Hunger",
-    "fr-CA": "Faim vampirique"
-  },
-  "name:Oxygen": {
-    "en-CA": "Oxygen",
-    "fr-CA": "Oxygène"
-  },
   "name:Bow Draw": {
     "en-CA": "Bow Draw",
     "fr-CA": "Visée à l'arc"
   },
-  "name:Spell Casting": {
-    "en-CA": "Spell Casting",
-    "fr-CA": "Lancement de sort"
+  "name:Carry Weight": {
+    "en-CA": "Carry Weight",
+    "fr-CA": "Capacité de charge"
   },
-  "name:Weapon Charge": {
-    "en-CA": "Weapon Charge",
-    "fr-CA": "Charge d'arme"
+  "name:Charge": {
+    "en-CA": "Charge",
+    "fr-CA": "Charge"
   },
-  "name:Secondary Weapon Charge": {
-    "en-CA": "Secondary Weapon Charge",
-    "fr-CA": "Charge d'arme secondaire"
+  "name:Clock": {
+    "en-CA": "Clock",
+    "fr-CA": "Horloge"
   },
-  "name:Shout Cooldown": {
-    "en-CA": "Shout Cooldown",
-    "fr-CA": "Recharge de cri"
+  "name:Clock {num}": {
+    "en-CA": "Clock {num}",
+    "fr-CA": "Horloge {num}"
   },
-  "name:Howl Cooldown": {
-    "en-CA": "Howl Cooldown",
-    "fr-CA": "Recharge de hurlement"
+  "name:Default Group": {
+    "en-CA": "Default Group",
+    "fr-CA": "Groupe par défaut"
+  },
+  "name:Disease Resistance": {
+    "en-CA": "Disease Resistance",
+    "fr-CA": "Résistance aux maladies"
+  },
+  "name:Equipment": {
+    "en-CA": "Equipment",
+    "fr-CA": "Équipement"
+  },
+  "name:Example": {
+    "en-CA": "Example",
+    "fr-CA": "Exemple"
+  },
+  "name:Example (Gear Updated)": {
+    "en-CA": "Example (Gear Updated)",
+    "fr-CA": "Exemple (engrenage mis à jour)"
+  },
+  "name:Example (Gear Updated) {num}": {
+    "en-CA": "Example (Gear Updated) {num}",
+    "fr-CA": "Exemple (engrenage mis à jour) {num}"
+  },
+  "name:Example (Push Updated)": {
+    "en-CA": "Example (Push Updated)",
+    "fr-CA": "Exemple (poussée mise à jour)"
+  },
+  "name:Example (Push Updated) {num}": {
+    "en-CA": "Example (Push Updated) {num}",
+    "fr-CA": "Exemple (poussée mise à jour) {num}"
+  },
+  "name:Feed": {
+    "en-CA": "Feed",
+    "fr-CA": "Fil"
+  },
+  "name:Feed {num}": {
+    "en-CA": "Feed {num}",
+    "fr-CA": "Fil {num}"
   },
   "name:Fire Resistance": {
     "en-CA": "Fire Resistance",
@@ -1787,68 +1735,124 @@
     "en-CA": "Frost Resistance",
     "fr-CA": "Résistance au gel"
   },
-  "name:Shock Resistance": {
-    "en-CA": "Shock Resistance",
-    "fr-CA": "Résistance à la foudre"
-  },
-  "name:Poison Resistance": {
-    "en-CA": "Poison Resistance",
-    "fr-CA": "Résistance au poison"
-  },
-  "name:Magic Resistance": {
-    "en-CA": "Magic Resistance",
-    "fr-CA": "Résistance à la magie"
-  },
-  "name:Disease Resistance": {
-    "en-CA": "Disease Resistance",
-    "fr-CA": "Résistance aux maladies"
-  },
-  "name:Septims": {
-    "en-CA": "Septims",
-    "fr-CA": "Septims"
-  },
-  "name:Stones of Barenziah": {
-    "en-CA": "Stones of Barenziah",
-    "fr-CA": "Pierres de Barenziah"
+  "name:Gauge {num}": {
+    "en-CA": "Gauge {num}",
+    "fr-CA": "Jauge {num}"
   },
   "name:Group {num}": {
     "en-CA": "Group {num}",
     "fr-CA": "Groupe {num}"
   },
-  "name:Gauge {num}": {
-    "en-CA": "Gauge {num}",
-    "fr-CA": "Jauge {num}"
+  "name:Health": {
+    "en-CA": "Health",
+    "fr-CA": "Santé"
   },
-  "name:Clock {num}": {
-    "en-CA": "Clock {num}",
-    "fr-CA": "Horloge {num}"
+  "name:Howl Cooldown": {
+    "en-CA": "Howl Cooldown",
+    "fr-CA": "Recharge de hurlement"
   },
-  "name:Feed {num}": {
-    "en-CA": "Feed {num}",
-    "fr-CA": "Fil {num}"
+  "name:Magic Resistance": {
+    "en-CA": "Magic Resistance",
+    "fr-CA": "Résistance à la magie"
+  },
+  "name:Magicka": {
+    "en-CA": "Magicka",
+    "fr-CA": "Magie"
+  },
+  "name:Mount": {
+    "en-CA": "Mount",
+    "fr-CA": "Monture"
+  },
+  "name:Mount Stamina": {
+    "en-CA": "Mount Stamina",
+    "fr-CA": "Vigueur de monture"
+  },
+  "name:Oxygen": {
+    "en-CA": "Oxygen",
+    "fr-CA": "Oxygène"
+  },
+  "name:Poison Resistance": {
+    "en-CA": "Poison Resistance",
+    "fr-CA": "Résistance au poison"
+  },
+  "name:Resistance": {
+    "en-CA": "Resistance",
+    "fr-CA": "Résistance"
+  },
+  "name:Secondary Weapon Charge": {
+    "en-CA": "Secondary Weapon Charge",
+    "fr-CA": "Charge d'arme secondaire"
+  },
+  "name:Septims": {
+    "en-CA": "Septims",
+    "fr-CA": "Septims"
+  },
+  "name:Shock Resistance": {
+    "en-CA": "Shock Resistance",
+    "fr-CA": "Résistance à la foudre"
+  },
+  "name:Shout Cooldown": {
+    "en-CA": "Shout Cooldown",
+    "fr-CA": "Recharge de cri"
+  },
+  "name:Shout Meter": {
+    "en-CA": "Shout Meter",
+    "fr-CA": "Compteur de cri"
   },
   "name:Shout Meter {num}": {
     "en-CA": "Shout Meter {num}",
     "fr-CA": "Compteur de cri {num}"
   },
+  "name:Spell Casting": {
+    "en-CA": "Spell Casting",
+    "fr-CA": "Lancement de sort"
+  },
+  "name:Stamina": {
+    "en-CA": "Stamina",
+    "fr-CA": "Vigueur"
+  },
+  "name:Stat": {
+    "en-CA": "Stat",
+    "fr-CA": "Stat"
+  },
+  "name:Stones of Barenziah": {
+    "en-CA": "Stones of Barenziah",
+    "fr-CA": "Pierres de Barenziah"
+  },
+  "name:Suppressor": {
+    "en-CA": "Suppressor",
+    "fr-CA": "Suppresseur"
+  },
   "name:Suppressor {num}": {
     "en-CA": "Suppressor {num}",
     "fr-CA": "Suppresseur {num}"
   },
-  "name:Example (Gear Updated) {num}": {
-    "en-CA": "Example (Gear Updated) {num}",
-    "fr-CA": "Exemple (engrenage mis à jour) {num}"
+  "name:Survival": {
+    "en-CA": "Survival",
+    "fr-CA": "Survie"
   },
-  "name:Example (Push Updated) {num}": {
-    "en-CA": "Example (Push Updated) {num}",
-    "fr-CA": "Exemple (poussée mise à jour) {num}"
+  "name:Transformation": {
+    "en-CA": "Transformation",
+    "fr-CA": "Transformation"
   },
-  "cog-push-stock-titles": {
-    "en-CA": "Update stock titles on translation",
-    "fr-CA": "Mettre à jour les titres par défaut à la traduction"
+  "name:Vampire": {
+    "en-CA": "Vampire",
+    "fr-CA": "Vampire"
   },
-  "cog-push-stock-titles-tip": {
-    "en-CA": "When changing language, rewrite gears, groups, gauges, and gizmos that still use the default name.",
-    "fr-CA": "Lors d’un changement de langue, réécrire les engrenages, groupes, jauges et gadgets qui portent encore le nom par défaut."
+  "name:Vampiric Hunger": {
+    "en-CA": "Vampiric Hunger",
+    "fr-CA": "Faim vampirique"
+  },
+  "name:Weapon Charge": {
+    "en-CA": "Weapon Charge",
+    "fr-CA": "Charge d'arme"
+  },
+  "name:Werewolf": {
+    "en-CA": "Werewolf",
+    "fr-CA": "Loup-garou"
+  },
+  "name:iWant Integration": {
+    "en-CA": "iWant Integration",
+    "fr-CA": "Intégration iWant"
   }
 }

@@ -16,12 +16,17 @@
 	opacity: 1;
 }
 
-/* visibility "none" in editor — same translucency as hidden Default Group. */
+/* 100% / 55% visibility × maxAlpha (editor + HUD). Handles stay fully opaque for editing. */
+.hud-gauge > :not(.hud-handle):not(.gauge-frame-handle-layer) {
+	opacity: var(--cog-max-alpha, 1);
+}
+
 .hud-gauge.is-preview > :not(.hud-handle):not(.gauge-frame-handle-layer) {
-	opacity: 0.55;
+	opacity: calc(0.55 * var(--cog-max-alpha, 1));
 }
 
 .hud-gauge.is-preview .gauge-frame-handle-layer,
+.hud-gauge > .hud-handle,
 .hud-gauge.is-preview > .hud-handle {
 	opacity: 1;
 }

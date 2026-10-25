@@ -1564,6 +1564,15 @@ button.action:hover,
 	margin-top: 0.55em;
 }
 
+/* Display row: Stack / Fill from Hidden / Max Alpha share one mid width. */
+.group-acc .style-row > .pos-field.compact.mid:has([data-role="stack"]),
+.group-acc .style-row > .pos-field.compact.mid[data-role="fillFromHiddenRow"],
+.group-acc .style-row > .pos-field.compact.mid:has([data-role="maxAlpha"]) {
+	flex: 0 1 9.5em;
+	min-width: 8.25em;
+	max-width: 11em;
+}
+
 .gear-edit-picker {
 	display: block;
 	margin-top: 0.55em;

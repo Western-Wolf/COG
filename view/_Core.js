@@ -536,47 +536,72 @@ function rotatedAabbSize(boxW, boxH, rotDeg) {
 }
 
 /**
- * Ensure entity.position exists and return it.
+ * Ensure entity.display exists and return it.
  * Call ensureGroup / ensureGauge / ensureGizmo first when migrating legacy flat keys.
  */
-function entityPosition(e) {
+function entityDisplay(e) {
 	if (!e || typeof e !== "object") {
 		return null;
 	}
-	if (!e.position || typeof e.position !== "object" || Array.isArray(e.position)) {
-		e.position = {};
+	if (!e.display || typeof e.display !== "object" || Array.isArray(e.display)) {
+		e.display = {};
 	}
-	return e.position;
+	return e.display;
+}
+
+/** Cap opacity fraction 0..1 from display.maxAlpha (0–100%, default 100). */
+function maxAlphaFrac(entity) {
+	const d = entity && entity.display;
+	const raw = d && d.maxAlpha != null ? Number(d.maxAlpha) : 100;
+	const pct = Number.isFinite(raw) ? Math.max(0, Math.min(100, raw)) : 100;
+	return pct / 100;
+}
+
+/** actualAlpha = relativeAlpha (0..1) × maxAlpha. */
+function effectiveAlpha(relativeAlpha, entity) {
+	const a = Math.max(0, Math.min(1, Number(relativeAlpha) || 0));
+	return a * maxAlphaFrac(entity);
+}
+
+/**
+ * Set --cog-max-alpha on a HUD host (groups/gauges/gizmos).
+ * CSS uses it for host content (1 × maxAlpha / 0.55 × maxAlpha); JS multiplies the same way per-element.
+ */
+function applyHostMaxAlpha(el, entity) {
+	if (!el) {
+		return;
+	}
+	el.style.setProperty("--cog-max-alpha", String(maxAlphaFrac(entity)));
 }
 
 /**
  * Migration Code for Transition from v1.01 or earlier to v1.1:
- * Legacy flat placement keys x/y/rotation[/width/height] move under nested "position" (never written back flat on save).
+ * Legacy flat placement keys x/y/rotation[/width/height] move under nested "display" (never written back flat on save).
  * Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
  *
  * @param {object} entity
- * @param {{ x?: number, y?: number, rotation?: number, width?: number, height?: number, minW?: number, minH?: number, sized?: boolean }} defaults
+ * @param {{ x?: number, y?: number, rotation?: number, width?: number, height?: number, maxAlpha?: number, minW?: number, minH?: number, sized?: boolean }} defaults
  */
-function migrateEntityPosition(entity, defaults = {}) {
+function migrateEntityDisplay(entity, defaults = {}) {
 	if (!entity || typeof entity !== "object") {
 		return null;
 	}
 	const hadNested =
-		entity.position && typeof entity.position === "object" && !Array.isArray(entity.position);
-	const bag = hadNested ? { ...entity.position } : {};
+		entity.display && typeof entity.display === "object" && !Array.isArray(entity.display);
+	const bag = hadNested ? { ...entity.display } : {};
 	const flatKeys = ["x", "y", "rotation", "width", "height", "posAnchor"];
 	const hadFlat = flatKeys.some((k) => Object.prototype.hasOwnProperty.call(entity, k));
 	const label = entity.id || entity.typeId || "?";
-	noteMigrationIf(!hadNested && hadFlat, `${label} flat placement → nested position`);
+	noteMigrationIf(!hadNested && hadFlat, `${label} flat placement → nested display`);
 	noteMigrationIf(
 		Object.prototype.hasOwnProperty.call(entity, "posAnchor") ||
 			Object.prototype.hasOwnProperty.call(bag, "posAnchor"),
 		`${label} ignored legacy posAnchor`
 	);
-	const knownPos = defaults.sized
-		? ["x", "y", "rotation", "width", "height"]
-		: ["x", "y", "rotation"];
-	stripUnknownKeys(bag, knownPos, "position", { id: label, legacySet: ["posAnchor"] });
+	const knownDisplay = defaults.sized
+		? ["x", "y", "rotation", "width", "height", "maxAlpha"]
+		: ["x", "y", "rotation", "maxAlpha"];
+	stripUnknownKeys(bag, knownDisplay, "display", { id: label, legacySet: ["posAnchor"] });
 	const pick = (key, fallback) => {
 		if (Number.isFinite(Number(bag[key]))) {
 			return Number(bag[key]);
@@ -586,38 +611,39 @@ function migrateEntityPosition(entity, defaults = {}) {
 		}
 		return fallback;
 	};
-	const pos = {
+	const display = {
 		x: pick("x", defaults.x ?? DEFAULT_HUD_X),
 		y: pick("y", defaults.y ?? DEFAULT_HUD_Y),
-		rotation: pick("rotation", defaults.rotation ?? 0)
+		rotation: pick("rotation", defaults.rotation ?? 0),
+		maxAlpha: Math.max(0, Math.min(100, pick("maxAlpha", defaults.maxAlpha ?? 100)))
 	};
 	if (defaults.sized) {
 		const minW = defaults.minW ?? 0;
 		const minH = defaults.minH ?? 0;
-		pos.width = Math.max(minW, pick("width", defaults.width ?? 0));
-		pos.height = Math.max(minH, pick("height", defaults.height ?? 0));
+		display.width = Math.max(minW, pick("width", defaults.width ?? 0));
+		display.height = Math.max(minH, pick("height", defaults.height ?? 0));
 	}
-	entity.position = pos;
+	entity.display = display;
 	delete entity.x;
 	delete entity.y;
 	delete entity.rotation;
 	delete entity.width;
 	delete entity.height;
 	delete entity.posAnchor;
-	return pos;
+	return display;
 }
 
 /**
  * CSS left/top are the unrotated layout box; with transform-origin 50% 50%, the visual
  * footprint is a larger AABB when rotated.
  *
- * Persisted gizmo/gauge position.x/y are visual AABB top-left fractions.
+ * Persisted gizmo/gauge display.x/y are visual AABB top-left fractions.
  * Groups still use layout CSS fractions. Helpers convert AABB ↔ layout for paint/drag.
  */
 function hudItemAabbPx(item, boxW, boxH, screenW, screenH) {
 	const sw = screenW || window.innerWidth || 1;
 	const sh = screenH || window.innerHeight || 1;
-	const pos = entityPosition(item) || {};
+	const pos = entityDisplay(item) || {};
 	const left = (pos.x ?? DEFAULT_HUD_X) * sw;
 	const top = (pos.y ?? DEFAULT_HUD_Y) * sh;
 	const aabb = rotatedAabbSize(boxW, boxH, pos.rotation || 0);
@@ -640,7 +666,7 @@ function hudItemLayoutFromAabbLeftTop(left, top, boxW, boxH, rotDeg, screenW, sc
 function hudItemLayoutCss(item, boxW, boxH) {
 	const sw = window.innerWidth || 1;
 	const sh = window.innerHeight || 1;
-	const pos = entityPosition(item) || {};
+	const pos = entityDisplay(item) || {};
 	return hudItemLayoutFromAabbLeftTop(
 		(pos.x ?? DEFAULT_HUD_X) * sw,
 		(pos.y ?? DEFAULT_HUD_Y) * sh,
@@ -654,7 +680,7 @@ function hudItemLayoutCss(item, boxW, boxH) {
 
 /** Editor X/Y % = persisted AABB top-left on screen. */
 function hudItemEditorPosPct(item, boxW, boxH) {
-	const pos = entityPosition(item) || {};
+	const pos = entityDisplay(item) || {};
 	return {
 		x: (pos.x ?? DEFAULT_HUD_X) * 100,
 		y: (pos.y ?? DEFAULT_HUD_Y) * 100
@@ -662,7 +688,7 @@ function hudItemEditorPosPct(item, boxW, boxH) {
 }
 
 function applyHudItemEditorPosPct(item, boxW, boxH, xPct, yPct) {
-	const pos = entityPosition(item);
+	const pos = entityDisplay(item);
 	pos.x = clampPct(Number(xPct), 0, 100) / 100;
 	pos.y = clampPct(Number(yPct), 0, 100) / 100;
 	clampHudItemToScreen(item, boxW, boxH);
@@ -670,16 +696,17 @@ function applyHudItemEditorPosPct(item, boxW, boxH, xPct, yPct) {
 
 /** Compute editor AABB X/Y without mutating the live item (so patch* can detect the change). */
 function hudItemEditorPosPatch(item, boxW, boxH, xPct, yPct) {
-	const src = entityPosition(item) || {};
+	const src = entityDisplay(item) || {};
 	const probe = {
-		position: {
+		display: {
 			x: src.x,
 			y: src.y,
-			rotation: src.rotation
+			rotation: src.rotation,
+			maxAlpha: src.maxAlpha
 		}
 	};
 	applyHudItemEditorPosPct(probe, boxW, boxH, xPct, yPct);
-	return { position: { x: probe.position.x, y: probe.position.y } };
+	return { display: { x: probe.display.x, y: probe.display.y } };
 }
 
 /** Keep the rotated visual footprint on-screen (allows negative layout CSS when rotated). */
@@ -689,7 +716,7 @@ function clampHudItemToScreen(item, boxW, boxH) {
 	const aabb = hudItemAabbPx(item, boxW, boxH, sw, sh);
 	const left = Math.min(Math.max(0, aabb.left), Math.max(0, sw - aabb.w));
 	const top = Math.min(Math.max(0, aabb.top), Math.max(0, sh - aabb.h));
-	const pos = entityPosition(item);
+	const pos = entityDisplay(item);
 	pos.x = left / sw;
 	pos.y = top / sh;
 }

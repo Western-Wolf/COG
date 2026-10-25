@@ -76,12 +76,13 @@ function defaultShoutMeterGizmo(n) {
 		id: `gizmo_${Date.now().toString(36)}`,
 		typeId: "cog-shout-meter",
 		visibility: "hud",
-		position: {
+		display: {
 			x: DEFAULT_HUD_X,
 			y: DEFAULT_HUD_Y,
 			rotation: 0,
 			width: DEFAULT_GIZMO_SHOUT_WIDTH,
-			height: DEFAULT_GIZMO_SHOUT_HEIGHT
+			height: DEFAULT_GIZMO_SHOUT_HEIGHT,
+			maxAlpha: 100
 		},
 		settings,
 		settingsJson: JSON.stringify(settings)
@@ -91,9 +92,9 @@ function ensureShoutMeterGizmo(gizmo) {
 	ensureGizmoDisplayName(gizmo);
 	const s = ensureGizmoSettings(gizmo);
 	// Migration Code for Transition from v1.01 or earlier to v1.1:
-	// Legacy flat placement keys x/y/rotation/width/height move under nested "position" (never written back flat on save).
+	// Legacy flat placement keys x/y/rotation/width/height move under nested "display" (never written back flat on save).
 	// Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
-	migrateEntityPosition(gizmo, {
+	migrateEntityDisplay(gizmo, {
 		sized: true,
 		x: DEFAULT_HUD_X,
 		y: DEFAULT_HUD_Y,
@@ -326,7 +327,7 @@ function layoutHudGizmoShoutMeter(el, gizmo) {
 	el.style.top = `${css.y * 100}%`;
 	el.style.width = `${box.w}px`;
 	el.style.height = `${box.h}px`;
-	el.style.setProperty("--gizmo-rot", `${gizmo.position.rotation || 0}deg`);
+	el.style.setProperty("--gizmo-rot", `${gizmo.display.rotation || 0}deg`);
 	const body = el.querySelector(".shout-meter-body");
 	if (body) {
 		const align = normalizeClockTextAlign(gizmo.settings.textAlign);
@@ -337,6 +338,7 @@ function layoutHudGizmoShoutMeter(el, gizmo) {
 	if (textHost) {
 		textHost.style.fontSize = `${gizmoFontSizePx(gizmo)}px`;
 	}
+	applyHostMaxAlpha(el, gizmo);
 }
 
 function paintGizmoShoutMeter(el, gizmo) {
@@ -619,6 +621,6 @@ window.CogRegisterGizmoRenderer("cog-shout-meter", {
 		if (s.fontSize > 0) {
 			return Math.round(s.fontSize);
 		}
-		return Math.max(16, Math.round(gizmo.position.height * 0.72));
+		return Math.max(16, Math.round(gizmo.display.height * 0.72));
 	}
 });
