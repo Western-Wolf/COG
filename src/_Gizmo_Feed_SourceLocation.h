@@ -7,6 +7,10 @@ namespace CogFeed
 {
 	void LoadLocationIconRules();
 
-	/** Resolve icon from <gizmoStorage>/location/*.txt (name = place text, kind = discovery|current). */
+	/**
+	 * Fully resolve a location icon for Notify: disk rules under
+	 * <gizmoStorage>/location/*.txt (name / kind), else the visible Feed's
+	 * locationDiscoveryIcon or currentLocationIcon setting.
+	 */
 	[[nodiscard]] std::string ResolveLocationIcon(std::string_view placeText, std::string_view kind);
 }

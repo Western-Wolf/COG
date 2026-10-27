@@ -877,6 +877,19 @@ void CogRegistry::SaveGizmoTypesUnlocked() const
 			continue;
 		}
 		const auto stem = FileStem(type.typeId);
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Pre-cog-* builtin ids (clock/feed/shout-meter/suppressor) must not reload as customs.
+		{
+			const auto normalized = NormalizeGizmoType(type.typeId);
+			if (type.typeId != normalized && IsBuiltinGizmoTypeId(normalized)) {
+				logger::info(
+					"COG: Migration Code for Transition from v1.01 or earlier to v1.1: skipped legacy gizmo type file '{}' (now '{}')",
+					type.typeId,
+					normalized);
+				repaired = true;
+				continue;
+			}
+		}
 		stems.insert(stem);
 		ids.push_back(type.typeId);
 		WriteAll(dir / (stem + ".json"), GizmoTypeToJson(type));
@@ -1226,6 +1239,12 @@ void CogRegistry::LoadConfig()
 		// fields can fall back to the type, then universal defaults.
 		LoadGizmoTypeFiles(repaired);
 		RegisterBuiltinGizmoTypesUnlocked();
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Builtin typeIds renamed to cog-* (clock/feed/shout-meter/suppressor → cog-…).
+		// Stale pre-rename type JSON was still loaded as customs and duplicated the gallery.
+		if (MigrateLegacyBuiltinGizmoTypeIdsUnlocked()) {
+			repaired = true;
+		}
 		LoadGizmoFiles(repaired);
 		LoadTranslationsUnlocked();
 		ReconcileGroupMembership();

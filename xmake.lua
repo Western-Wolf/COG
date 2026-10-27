@@ -242,11 +242,14 @@ target("COG")
 		os.mkdir(path.join(deploy_root, "Scripts"))
 		os.mkdir(path.join(deploy_root, "Source", "Scripts"))
 		local api_pex = path.join(cog_dir, "papyrus/pex/COG_API.pex")
+		local feed_api_pex = path.join(cog_dir, "papyrus/pex/COG_Feed_API.pex")
 		local builtin_pex = path.join(cog_dir, "papyrus/pex/COG_Builtin.pex")
-		if os.isfile(api_pex) and os.isfile(builtin_pex) then
+		if os.isfile(api_pex) and os.isfile(feed_api_pex) and os.isfile(builtin_pex) then
 			os.cp(api_pex, path.join(deploy_root, "Scripts"))
+			os.cp(feed_api_pex, path.join(deploy_root, "Scripts"))
 			os.cp(builtin_pex, path.join(deploy_root, "Scripts"))
 			os.cp(path.join(cog_dir, "papyrus/COG_API.psc"), path.join(deploy_root, "Source", "Scripts"))
+			os.cp(path.join(cog_dir, "papyrus/COG_Feed_API.psc"), path.join(deploy_root, "Source", "Scripts"))
 			os.cp(path.join(cog_dir, "papyrus/COG_Builtin.psc"), path.join(deploy_root, "Source", "Scripts"))
 		else
 			print("warning: Papyrus .pex missing under _cog/papyrus/pex/ — Scripts not updated. Run tools/release.ps1 (or compile Papyrus first).")

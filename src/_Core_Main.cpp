@@ -3,11 +3,13 @@
 #include "_Gears_LiveStats.h"
 #include "_Gears_Inventory.h"
 #include "_Gizmo_Feed.h"
-#include "_Gizmo_Feed_ActiveEffects.h"
-#include "_Gizmo_Feed_Inventory.h"
-#include "_Gizmo_Feed_LocationIcons.h"
-#include "_Gizmo_Feed_NotificationIcons.h"
-#include "_Gizmo_Feed_Skills.h"
+#include "_Gizmo_Feed_API.h"
+#include "_Gizmo_Feed_SourceActiveEffects.h"
+#include "_Gizmo_Feed_SourceInventory.h"
+#include "_Gizmo_Feed_SourceLocation.h"
+#include "_Gizmo_Feed_Log.h"
+#include "_Gizmo_Feed_SourceNotifications.h"
+#include "_Gizmo_Feed_SourceSkills.h"
 #include "_API_Core.h"
 #include "_Core_Registry.h"
 #include "_Core_HudSuppress.h"
@@ -212,6 +214,12 @@ namespace
 			return;
 		}
 		logger::info("JS -> SKSE: {}", msg);
+		if (msg.rfind("feedExpire:", 0) == 0) {
+			const auto id = static_cast<std::int32_t>(std::strtol(msg.c_str() + 11, nullptr, 10));
+			CogUi::RunOnMainThread([id]() { CogFeed::ExpireReceipt(id); });
+			return;
+		}
+		logger::info("JS -> SKSE: {}", msg);
 	}
 
 	void SKSEMessageHandler(SKSE::MessagingInterface::Message* message)
@@ -277,7 +285,7 @@ SKSE_PLUGIN_LOAD(const SKSE::LoadInterface* a_skse)
 {
 	REL::Module::reset();
 	SKSE::Init(a_skse, { .trampoline = true, .trampolineSize = 1 << 11 });
-
+	CogFeedLog::Init();
 	LogSessionBanner();
 
 	auto* papyrus = SKSE::GetPapyrusInterface();

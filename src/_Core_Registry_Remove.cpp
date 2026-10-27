@@ -206,7 +206,7 @@ void CogRegistry::Unregister(std::int32_t receipt)
 	const auto typeId = typeIt->second;
 	_gizmoTypeReceipts.erase(typeIt);
 	_gizmoTypeReceiptIndex.erase(typeId);
-	std::unordered_set<std::string> removedTypes;
+	std::unordered_set<std::string> removedRaw;
 	_gizmoTypes.erase(
 		std::remove_if(
 			_gizmoTypes.begin(),
@@ -216,11 +216,22 @@ void CogRegistry::Unregister(std::int32_t receipt)
 					return false;
 				}
 				logger::info("Discarded gizmo type '{}' — Unregister({})", t.typeId, receipt);
-				removedTypes.insert(NormalizeGizmoType(t.typeId));
+				removedRaw.insert(t.typeId);
 				return true;
 			}),
 		_gizmoTypes.end());
-	const bool culled = CullGizmosOfTypesUnlocked(removedTypes);
+	std::unordered_set<std::string> cullTypes;
+	for (const auto& raw : removedRaw) {
+		const auto normalized = NormalizeGizmoType(raw);
+		const bool stillHave = std::any_of(
+			_gizmoTypes.begin(),
+			_gizmoTypes.end(),
+			[&](const CogGizmoType& t) { return NormalizeGizmoType(t.typeId) == normalized; });
+		if (!stillHave) {
+			cullTypes.insert(normalized);
+		}
+	}
+	const bool culled = CullGizmosOfTypesUnlocked(cullTypes);
 	SaveGizmoTypesUnlocked();
 	if (culled) {
 		SaveConfigUnlocked();
@@ -449,10 +460,7 @@ bool CogRegistry::ReconcileGaugeBindingsUnlocked()
 
 bool CogRegistry::PruneModGizmoTypesUnlocked(const std::string& mod)
 {
-	if (mod.empty() || mod == "COG") {
-		return false;
-	}
-	std::unordered_set<std::string> removedTypes;
+	std::unordered_set<std::string> removedRaw;
 	bool dropped = false;
 	for (auto it = _gizmoTypes.begin(); it != _gizmoTypes.end();) {
 		if (it->sourceMod != mod) {
@@ -471,11 +479,24 @@ bool CogRegistry::PruneModGizmoTypesUnlocked(const std::string& mod)
 			"Discarded gizmo type '{}' — {} missing after EndRegister",
 			it->typeId,
 			it->sourceMod);
-		removedTypes.insert(NormalizeGizmoType(it->typeId));
+		removedRaw.insert(it->typeId);
 		it = _gizmoTypes.erase(it);
 		dropped = true;
 	}
-	dropped = CullGizmosOfTypesUnlocked(removedTypes) || dropped;
+	// Only cull instances when no remaining type maps to the same normalized id
+	// (legacy clock → cog-clock must not wipe live cog-clock gizmos).
+	std::unordered_set<std::string> cullTypes;
+	for (const auto& raw : removedRaw) {
+		const auto normalized = NormalizeGizmoType(raw);
+		const bool stillHave = std::any_of(
+			_gizmoTypes.begin(),
+			_gizmoTypes.end(),
+			[&](const CogGizmoType& t) { return NormalizeGizmoType(t.typeId) == normalized; });
+		if (!stillHave) {
+			cullTypes.insert(normalized);
+		}
+	}
+	dropped = CullGizmosOfTypesUnlocked(cullTypes) || dropped;
 	return dropped;
 }
 
@@ -483,10 +504,7 @@ bool CogRegistry::PruneModGizmoTypesUnlocked(const std::string& mod)
 
 bool CogRegistry::DropAllModGizmoTypesUnlocked(const std::string& mod)
 {
-	if (mod.empty() || mod == "COG") {
-		return false;
-	}
-	std::unordered_set<std::string> removedTypes;
+	std::unordered_set<std::string> removedRaw;
 	bool dropped = false;
 	for (auto it = _gizmoTypes.begin(); it != _gizmoTypes.end();) {
 		if (it->sourceMod != mod) {
@@ -498,7 +516,7 @@ bool CogRegistry::DropAllModGizmoTypesUnlocked(const std::string& mod)
 			continue;
 		}
 		logger::info("Discarded gizmo type '{}' — sender '{}' is absent", it->typeId, mod);
-		removedTypes.insert(NormalizeGizmoType(it->typeId));
+		removedRaw.insert(it->typeId);
 		if (auto rit = _gizmoTypeReceiptIndex.find(it->typeId); rit != _gizmoTypeReceiptIndex.end()) {
 			_gizmoTypeReceipts.erase(rit->second);
 			_gizmoTypeReceiptIndex.erase(rit);
@@ -508,8 +526,19 @@ bool CogRegistry::DropAllModGizmoTypesUnlocked(const std::string& mod)
 	}
 	// Instances tagged with this sourceMod (even if types never re-registered this session).
 	dropped = CullGizmosOfSourceModUnlocked(mod) || dropped;
+	std::unordered_set<std::string> cullTypes;
+	for (const auto& raw : removedRaw) {
+		const auto normalized = NormalizeGizmoType(raw);
+		const bool stillHave = std::any_of(
+			_gizmoTypes.begin(),
+			_gizmoTypes.end(),
+			[&](const CogGizmoType& t) { return NormalizeGizmoType(t.typeId) == normalized; });
+		if (!stillHave) {
+			cullTypes.insert(normalized);
+		}
+	}
 	// Plus any instances of types we just dropped (covers empty sourceMod on older JSON).
-	dropped = CullGizmosOfTypesUnlocked(removedTypes) || dropped;
+	dropped = CullGizmosOfTypesUnlocked(cullTypes) || dropped;
 	return dropped;
 }
 

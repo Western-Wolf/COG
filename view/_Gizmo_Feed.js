@@ -217,8 +217,8 @@ function defaultFeedGizmo(n) {
 		showLocation: false,
 		showActiveEffects: false,
 		showSkills: false,
-		effectsMinSec: 1,
-		effectsMaxSec: 180,
+		timerMinSec: 1,
+		timerMaxSec: 180,
 		showEffectIcons: true,
 		showEffectText: true,
 		showEffectTimer: true,
@@ -242,10 +242,12 @@ function defaultFeedGizmo(n) {
 		currentLocationIcon: DEFAULT_FEED_CURRENT_LOCATION_ICON,
 		locationDiscoveryColor: DEFAULT_GIZMO_GOLD,
 		currentLocationColor: DEFAULT_GIZMO_GOLD,
-		skillIcon: DEFAULT_FEED_SKILL_ICON,
-		levelIcon: DEFAULT_FEED_LEVEL_ICON,
-		skillsColor: DEFAULT_GIZMO_GOLD,
+		showSkillProgress: true,
 		showLevelProgress: true,
+		skillProgressIcon: DEFAULT_FEED_SKILL_ICON,
+		levelProgressIcon: DEFAULT_FEED_LEVEL_ICON,
+		skillProgressColor: DEFAULT_GIZMO_GOLD,
+		levelProgressColor: DEFAULT_GIZMO_GOLD,
 		backdropColor: DEFAULT_FEED_BACKDROP_COLOR,
 		backdropOpacity: DEFAULT_FEED_BACKDROP_OPACITY,
 		backdropDirection: DEFAULT_FEED_BACKDROP_DIRECTION,
@@ -274,6 +276,38 @@ function defaultFeedGizmo(n) {
 
 function ensureFeedGizmo(gizmo) {
 	ensureGizmoDisplayName(gizmo);
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// skillsColor/skillIcon/levelIcon → skillProgress* + levelProgress* (split like Location).
+	// Must run before mergeSettingsFromTypeSchema fills the new keys with defaults.
+	{
+		const raw = parseGizmoSettingsObject(gizmo);
+		let migrated = false;
+		if (raw.skillsColor != null && String(raw.skillsColor).trim() !== "") {
+			raw.skillProgressColor = raw.skillsColor;
+			raw.levelProgressColor = raw.skillsColor;
+			migrated = true;
+		}
+		if (raw.skillIcon != null && String(raw.skillIcon).trim() !== "") {
+			raw.skillProgressIcon = raw.skillIcon;
+			migrated = true;
+		}
+		if (raw.levelIcon != null && String(raw.levelIcon).trim() !== "") {
+			raw.levelProgressIcon = raw.levelIcon;
+			migrated = true;
+		}
+		if (Object.prototype.hasOwnProperty.call(raw, "skillsColor") ||
+			Object.prototype.hasOwnProperty.call(raw, "skillIcon") ||
+			Object.prototype.hasOwnProperty.call(raw, "levelIcon")) {
+			delete raw.skillsColor;
+			delete raw.skillIcon;
+			delete raw.levelIcon;
+			migrated = true;
+		}
+		if (migrated) {
+			gizmo.settings = raw;
+			gizmo.settingsJson = JSON.stringify(raw);
+		}
+	}
 	const s = ensureGizmoSettings(gizmo);
 	// Migration Code for Transition from v1.01 or earlier to v1.1:
 	// Legacy flat placement keys x/y/rotation/width/height move under nested "display" (never written back flat on save).
@@ -353,6 +387,18 @@ function ensureFeedGizmo(gizmo) {
 		Math.min(
 			100,
 			Number.isFinite(Number(s.backdropOpacity)) ? Number(s.backdropOpacity) : DEFAULT_FEED_BACKDROP_OPACITY
+	s.showSkillProgress = s.showSkillProgress !== false;
+	s.showLevelProgress = s.showLevelProgress !== false;
+	s.skillProgressIcon = normalizeFeedSkillIcon(s.skillProgressIcon);
+	s.levelProgressIcon = normalizeFeedLevelIcon(s.levelProgressIcon);
+	s.skillProgressColor = optionalHex(s.skillProgressColor);
+	s.levelProgressColor = optionalHex(s.levelProgressColor);
+	s.backdropColor = optionalHex(s.backdropColor);
+	s.backdropOpacity = Math.max(
+		0,
+		Math.min(
+			100,
+			Number.isFinite(Number(s.backdropOpacity)) ? Number(s.backdropOpacity) : DEFAULT_FEED_BACKDROP_OPACITY
 		)
 	);
 	s.backdropDirection = normalizeFeedBackdropDirection(s.backdropDirection || DEFAULT_FEED_BACKDROP_DIRECTION);
@@ -378,8 +424,10 @@ let locationFeedLines = [];
 let locationFeedSeq = 1;
 let skillFeedLines = [];
 let skillFeedSeq = 1;
-/** Live character level progress for Skills section (sticky line). */
+/** Live character level progress for Skills section (values from Notify meter). */
 let levelProgressLive = null;
+/** When the meter last received an update — used to flash it without a skill toast. */
+let levelProgressPulseAt = 0;
 /** Timed active effects: live map + fading leftovers after expiry. */
 let activeEffectLive = new Map();
 let activeEffectFading = new Map();
@@ -420,11 +468,11 @@ function feedProgressBarWidth(settings) {
 
 function effectPassesTimeWindow(effect, gizmo, opts) {
 	const fading = !!(opts && opts.fading);
-	let minS = Number(gizmo && gizmo.settings.effectsMinSec);
+	let minS = Number(gizmo && gizmo.settings.timerMinSec);
 	if (!Number.isFinite(minS)) {
 		minS = 1;
 	}
-	let maxS = Number(gizmo && gizmo.settings.effectsMaxSec);
+	let maxS = Number(gizmo && gizmo.settings.timerMaxSec);
 	if (!Number.isFinite(maxS)) {
 		maxS = 0;
 	}
@@ -449,61 +497,108 @@ function effectPassesTimeWindow(effect, gizmo, opts) {
 	return true;
 }
 
-window.applyActiveEffects = (jsonStr) => {
-	try {
-		const now = performance.now();
-		const list = typeof jsonStr === "string" ? JSON.parse(jsonStr || "[]") : jsonStr;
-		const next = new Map();
-		if (Array.isArray(list)) {
-			for (const raw of list) {
-				if (!raw || raw.id == null) {
-					continue;
-				}
-				const id = String(raw.id);
-				const duration = Number(raw.duration) || 0;
-				const elapsed = Number(raw.elapsed) || 0;
-				const remaining =
-					Number.isFinite(Number(raw.remaining)) ? Number(raw.remaining) : duration - elapsed;
-				const percent = Number.isFinite(Number(raw.percent))
-					? Number(raw.percent)
-					: duration > 0
-						? Math.max(0, Math.min(100, (remaining / duration) * 100))
-						: 0;
-				next.set(id, {
-					id,
-					name: String(raw.name || "Effect"),
-					duration,
-					elapsed,
-					remaining,
-					percent,
-					icon: normalizeIconRelPath(raw.icon) || "",
-					transform: raw.transform === true,
-					seenAt: now
-				});
-				activeEffectFading.delete(id);
-			}
-		}
-		for (const [id, prev] of activeEffectLive) {
-			if (!next.has(id) && !activeEffectFading.has(id)) {
-				activeEffectFading.set(id, { ...prev, removedAt: now });
-			}
-		}
-		activeEffectLive = next;
-		const fadeCap = 4000;
-		for (const [id, entry] of [...activeEffectFading]) {
-			if (now - entry.removedAt > fadeCap) {
-				activeEffectFading.delete(id);
-			}
-		}
-		paintAllFeeds();
-	} catch (e) {
-		if (typeof window.cogReportError === "function") {
-			window.cogReportError("applyActiveEffects", e);
-		} else {
-			console.error("applyActiveEffects", e);
-		}
+function feedExpireReceipt(id) {
+	const n = Number(id);
+	if (!Number.isFinite(n) || n <= 0) {
+		return;
 	}
-};
+	if (typeof window.cogToSKSE === "function") {
+		window.cogToSKSE(`feedExpire:${Math.round(n)}`);
+	}
+}
+
+function applyNotifyFeedEvent(incoming, noPaint) {
+	const op = String(incoming.op || "upsert").toLowerCase();
+	const id = incoming.id != null ? Number(incoming.id) : null;
+	const source = String(incoming.source || "general").toLowerCase();
+	if (op === "dismiss") {
+		if (id != null && activeEffectLive.has(String(id))) {
+			const prev = activeEffectLive.get(String(id));
+			activeEffectLive.delete(String(id));
+			activeEffectFading.set(String(id), { ...prev, removedAt: performance.now() });
+			// Meter receipts expire after fade (collectFeedLines), not immediately.
+			return;
+		}
+		if (id != null && levelProgressLive && Number(levelProgressLive.id) === id) {
+			levelProgressLive = null;
+			levelProgressPulseAt = 0;
+		}
+		// Non-meter / level-progress: expire as soon as dismissed (no fade map).
+		feedExpireReceipt(id);
+		return;
+	}
+	const text = String(incoming.text || "");
+	const color = incoming.color;
+	const icon = incoming.icon;
+	const hasMeter =
+		Number.isFinite(Number(incoming.current)) && Number.isFinite(Number(incoming.max));
+	const meterType = String(incoming.type || "").toLowerCase();
+
+	if (hasMeter && meterType === "timer") {
+		const duration = Number(incoming.max) || 0;
+		const remaining = Number(incoming.current) || 0;
+		const percent =
+			duration > 0 ? Math.max(0, Math.min(100, (remaining / duration) * 100)) : 0;
+		const key = String(id);
+		activeEffectLive.set(key, {
+			id: key,
+			name: text || "Effect",
+			duration,
+			elapsed: Math.max(0, duration - remaining),
+			remaining,
+			percent,
+			icon: normalizeIconRelPath(icon) || "",
+			transform: false,
+			seenAt: performance.now()
+		});
+		activeEffectFading.delete(key);
+		return;
+	}
+	if (hasMeter && (source === "cog-feedskills" || source.indexOf("skill") >= 0)) {
+		const xp = Number(incoming.current) || 0;
+		const threshold = Number(incoming.max) || 1;
+		const progress = threshold > 0 ? Math.max(0, Math.min(1, xp / threshold)) : 0;
+		// Source owns the label (e.g. "Level 12"); keep a numeric level only for demos / legacy.
+		const levelMatch = /^Level\s+(\d+)\s*$/i.exec(text.trim());
+		levelProgressLive = {
+			id,
+			name: text || "Level",
+			level: levelMatch ? Number(levelMatch[1]) : 1,
+			xp,
+			threshold,
+			progress,
+			percent: progress * 100,
+			icon: normalizeIconRelPath(icon) || ""
+		};
+		// Flash with toast lifetime; do not treat the meter as a permanent feed line.
+		levelProgressPulseAt = performance.now();
+		return;
+	}
+
+	if (source === "cog-feedinventory") {
+		enqueueInventoryFeedLine(text, 0, true, icon, id, false, {
+			...noPaint,
+			color: color || ""
+		});
+		return;
+	}
+	if (source === "cog-feedlocation") {
+		// Icon/colour are fully resolved by the location source; kind only affects demo filters.
+		enqueueLocationFeedLine(text, "discovery", id, icon, {
+			...noPaint,
+			color: color || ""
+		});
+		return;
+	}
+	if (source === "cog-feedskills") {
+		enqueueSkillFeedLine(text, "skill", icon, "", id, {
+			...noPaint,
+			color: color || ""
+		});
+		return;
+	}
+	enqueueNotificationFeedLine(text, color, id, icon, noPaint);
+}
 
 const NOTIFICATION_FEED_PREVIEW_DEMO_COLOR = "#c4a35a";
 const NOTIFICATION_FEED_PREVIEW_DEMO_ICON = "Actions/shout.svg";
@@ -511,7 +606,7 @@ const NOTIFICATION_FEED_PREVIEW_DEMO_ICON = "Actions/shout.svg";
 function notificationFeedPreviewSamples(gizmo) {
 	const allowIcon = gizmo.settings.allowModNotificationIcon !== false;
 	const allowColor = gizmo.settings.allowModNotificationColor !== false;
-	const showIcons = gizmo.settings.showNotificationIcons === true;
+	const showIcons = gizmo.settings.showNotificationIcons !== false;
 
 	const samples = [
 	{ text: "Something happened.", color: "", icon: "" },
@@ -655,6 +750,9 @@ function enqueueNotificationFeedLine(text, color, id, icon, opts) {
 
 function formatInventoryChangeText(count, added) {
 	const n = Math.abs(Math.round(Number(count) || 0));
+	if (n <= 0) {
+		return "";
+	}
 	return added ? `(+${n})` : `(-${n})`;
 }
 
@@ -667,6 +765,7 @@ function enqueueInventoryFeedLine(name, count, added, icon, id, stolen, opts) {
 		added: added !== false,
 		stolen: added !== false && stolen === true,
 		icon: normalizeIconRelPath(icon) || "",
+		color: opts && opts.color ? String(opts.color) : "",
 		addedAt: now
 	};
 	if (!entry.name) {
@@ -686,6 +785,7 @@ function enqueueLocationFeedLine(text, kind, id, icon, opts) {
 		text: String(text || "").trim(),
 		kind: normalizeLocationKind(kind),
 		icon: normalizeIconRelPath(icon) || "",
+		color: opts && opts.color ? String(opts.color) : "",
 		addedAt: now
 	};
 	if (!entry.text) {
@@ -705,6 +805,7 @@ function enqueueSkillFeedLine(text, kind, icon, skillName, id, opts) {
 		text: String(text || "").trim(),
 		kind: normalizeSkillKind(kind),
 		icon: normalizeIconRelPath(icon) || "",
+		color: opts && opts.color ? String(opts.color) : "",
 		skillName: String(skillName || "").trim(),
 		addedAt: now
 	};
@@ -718,40 +819,6 @@ function enqueueSkillFeedLine(text, kind, icon, skillName, id, opts) {
 	}
 }
 
-window.applyLevelProgress = (jsonStr) => {
-	try {
-		const incoming = typeof jsonStr === "string" ? JSON.parse(jsonStr || "{}") : jsonStr;
-		if (!incoming || typeof incoming !== "object") {
-			levelProgressLive = null;
-			paintAllFeeds();
-			return;
-		}
-		const level = Math.max(1, Math.round(Number(incoming.level) || 1));
-		const xp = Number(incoming.xp);
-		const threshold = Number(incoming.threshold);
-		let progress = Number(incoming.progress);
-		if (!Number.isFinite(progress)) {
-			progress =
-				Number.isFinite(xp) && Number.isFinite(threshold) && threshold > 0 ? xp / threshold : 0;
-		}
-		progress = Math.max(0, Math.min(1, progress));
-		levelProgressLive = {
-			level,
-			xp: Number.isFinite(xp) ? xp : 0,
-			threshold: Number.isFinite(threshold) && threshold > 0 ? threshold : 1,
-			progress,
-			percent: progress * 100
-		};
-		paintAllFeeds();
-	} catch (e) {
-		if (typeof window.cogReportError === "function") {
-			window.cogReportError("applyLevelProgress", e);
-		} else {
-			console.error("applyLevelProgress", e);
-		}
-	}
-};
-
 window.applyFeedEvents = (jsonStr) => {
 	try {
 		const list = typeof jsonStr === "string" ? JSON.parse(jsonStr || "[]") : jsonStr;
@@ -762,7 +829,9 @@ window.applyFeedEvents = (jsonStr) => {
 					continue;
 				}
 				const channel = String(incoming.channel || "").toLowerCase();
-				if (channel === "notification") {
+				if (channel === "notify") {
+					applyNotifyFeedEvent(incoming, noPaint);
+				} else if (channel === "notification") {
 					enqueueNotificationFeedLine(
 						incoming.text,
 						incoming.color,
@@ -975,6 +1044,7 @@ function feedVisibleLines(gizmo, now, preview) {
 				added: line.added,
 				stolen: line.stolen === true,
 				icon: line.icon || "",
+				color: line.color || "",
 				demo: line.demo === true,
 				addedAt: line.addedAt
 			});
@@ -1008,11 +1078,15 @@ function feedVisibleLines(gizmo, now, preview) {
 				continue;
 			}
 			const locKind = normalizeLocationKind(line.kind);
-			if (locKind === "discovery" && gizmo.settings.showLocationDiscovery === false) {
-				continue;
-			}
-			if (locKind === "current" && gizmo.settings.showCurrentLocation === false) {
-				continue;
+			// Live lines are gated in C++ before Notify; kind on the toast may be omitted.
+			// Demo previews still honour discovery / current checkboxes.
+			if (line.demo) {
+				if (locKind === "discovery" && gizmo.settings.showLocationDiscovery === false) {
+					continue;
+				}
+				if (locKind === "current" && gizmo.settings.showCurrentLocation === false) {
+					continue;
+				}
 			}
 			merged.push({
 				kind: "location",
@@ -1021,6 +1095,7 @@ function feedVisibleLines(gizmo, now, preview) {
 				text: line.text,
 				locationKind: locKind,
 				icon: line.icon || "",
+				color: line.color || "",
 				demo: line.demo === true,
 				addedAt: line.addedAt
 			});
@@ -1083,8 +1158,10 @@ function feedVisibleLines(gizmo, now, preview) {
 		}
 		// Do not mix fading leftovers with demos (ghost bars beside Fortify/Restore).
 		if (!usingDemos) {
-			for (const effect of activeEffectFading.values()) {
+			for (const [fid, effect] of [...activeEffectFading]) {
 				if (now - effect.removedAt >= effectFade) {
+					activeEffectFading.delete(fid);
+					feedExpireReceipt(effect.id != null ? effect.id : fid);
 					continue;
 				}
 				pushEffect(effect, false);
@@ -1093,11 +1170,18 @@ function feedVisibleLines(gizmo, now, preview) {
 	}
 
 	if (gizmo.settings.showSkills) {
+		const showSkillProg = gizmo.settings.showSkillProgress !== false;
+		const showLevelProg = gizmo.settings.showLevelProgress !== false;
 		let source = skillFeedLines;
 		if (editorOpen) {
 			const aliveReal = skillFeedLines.filter((line) => now - line.addedAt < life);
 			if (!aliveReal.length) {
-				source = SKILL_FEED_PREVIEW.map((sample, i) => ({
+				source = SKILL_FEED_PREVIEW.filter((sample) => {
+					if (normalizeSkillKind(sample.kind) === "level") {
+						return showLevelProg;
+					}
+					return showSkillProg;
+				}).map((sample, i) => ({
 					...sample,
 					demo: true,
 					addedAt: now - holdAge - i
@@ -1108,15 +1192,27 @@ function feedVisibleLines(gizmo, now, preview) {
 		}
 		for (const line of source) {
 			if (!line.demo && now - line.addedAt >= life) {
-			continue;
-		}
+				continue;
+			}
+			const skillKind = normalizeSkillKind(line.kind);
+			// Live lines are gated in C++ before Notify; kind may be omitted on Notify path.
+			// Demo previews still honour skill / level progress checkboxes.
+			if (line.demo) {
+				if (skillKind === "level" && !showLevelProg) {
+					continue;
+				}
+				if (skillKind !== "level" && !showSkillProg) {
+					continue;
+				}
+			}
 			merged.push({
 				kind: "skill",
 				key: `s-${line.id}`,
 				id: line.id,
 				text: line.text,
-				skillKind: normalizeSkillKind(line.kind),
+				skillKind,
 				icon: line.icon || "",
+				color: line.color || "",
 				skillName: line.skillName || "",
 				demo: line.demo === true,
 				addedAt: line.addedAt
@@ -1126,8 +1222,12 @@ function feedVisibleLines(gizmo, now, preview) {
 
 	merged.sort((a, b) => a.addedAt - b.addedAt || String(a.key).localeCompare(String(b.key)));
 
-	// Level progress is a normal line: insert beside the newest skill, then apply maxVisible.
-	if (gizmo.settings.showSkills && gizmo.settings.showLevelProgress !== false) {
+	// Level progress rides the newest skill toast's lifetime. With Skill Progress off, a
+	// meter Notify still flashes for one feed duration via levelProgressPulseAt.
+	if (
+		gizmo.settings.showSkills &&
+		gizmo.settings.showLevelProgress !== false
+	) {
 		let newestSkillIdx = -1;
 		let newestAt = -Infinity;
 		for (let i = 0; i < merged.length; i++) {
@@ -1136,27 +1236,37 @@ function feedVisibleLines(gizmo, now, preview) {
 				newestSkillIdx = i;
 			}
 		}
-		if (newestSkillIdx >= 0) {
-			let progress = levelProgressLive;
-			if (editorOpen && !progress) {
-				progress = { level: 12, xp: 45, threshold: 100, progress: 0.45, percent: 45 };
-			}
+		const pulseAlive =
+			levelProgressLive &&
+			levelProgressPulseAt > 0 &&
+			now - levelProgressPulseAt < life;
+		let progress = levelProgressLive;
+		if (editorOpen && !progress) {
+			progress = { name: "Level 12", level: 12, xp: 45, threshold: 100, progress: 0.45, percent: 45 };
+		}
+		if (newestSkillIdx >= 0 || pulseAlive || (editorOpen && progress)) {
 			if (!progress) {
-				progress = { level: 1, xp: 0, threshold: 1, progress: 0, percent: 0 };
+				progress = { name: "Level 1", level: 1, xp: 0, threshold: 1, progress: 0, percent: 0 };
 			}
-			const skillLine = merged[newestSkillIdx];
-			merged.splice(newestSkillIdx + 1, 0, {
+			const skillLine = newestSkillIdx >= 0 ? merged[newestSkillIdx] : null;
+			const entry = {
 				kind: "level-progress",
 				key: "level-progress",
 				id: "level-progress",
-				name: `Level ${progress.level}`,
+				name: progress.name || `Level ${progress.level}`,
 				percent: Number(progress.percent) || progress.progress * 100 || 0,
 				progress: Number(progress.progress) || 0,
 				xp: Number(progress.xp) || 0,
 				threshold: Number(progress.threshold) || 1,
-				demo: skillLine.demo === true || (editorOpen && !levelProgressLive),
-				addedAt: skillLine.addedAt
-			});
+				icon: progress.icon || "",
+				demo: (skillLine && skillLine.demo === true) || (editorOpen && !levelProgressLive),
+				addedAt: skillLine ? skillLine.addedAt : levelProgressPulseAt || now - holdAge
+			};
+			if (newestSkillIdx >= 0) {
+				merged.splice(newestSkillIdx + 1, 0, entry);
+			} else {
+				merged.push(entry);
+			}
 		}
 	}
 
@@ -1322,7 +1432,7 @@ function rebuildEffectLineContent(row, gizmo) {
 }
 
 function rebuildLevelProgressLineContent(row, gizmo) {
-	const showIcons = gizmo.settings.showSkillIcons === true;
+	const showIcons = gizmo.settings.showSkillIcons !== false;
 	const numberFormat = normalizeFeedNumberFormat(gizmo.settings.numberFormat);
 	const showBar = numberFormatShowsBar(numberFormat);
 	rebuildFeedMeterLineContent(row, gizmo, {
@@ -1386,10 +1496,10 @@ function paintGizmoFeed(el, gizmo) {
 		gizmo.settings.currentLocationColor || gizmo.settings.textColor,
 		DEFAULT_GIZMO_GOLD
 	);
-	const showNotifIcons = gizmo.settings.showNotificationIcons === true;
-	const showInvIcons = gizmo.settings.showInventoryIcons === true;
-	const showLocIcons = gizmo.settings.showLocationIcons === true;
-	const showSkillIcons = gizmo.settings.showSkillIcons === true;
+	const showNotifIcons = gizmo.settings.showNotificationIcons !== false;
+	const showInvIcons = gizmo.settings.showInventoryIcons !== false;
+	const showLocIcons = gizmo.settings.showLocationIcons !== false;
+	const showSkillIcons = gizmo.settings.showSkillIcons !== false;
 	const iconPlace = normalizeFeedIconPlacement(gizmo.settings.iconPlacement);
 	const showEffectIcons = gizmo.settings.showEffectIcons === true;
 	const showEffectText = gizmo.settings.showEffectText !== false;
@@ -1415,10 +1525,17 @@ function paintGizmoFeed(el, gizmo) {
 		iconPlace
 	].join("|");
 	const fallbackEffectIcon = normalizeFeedEffectIcon(gizmo.settings.effectIcon);
-	const fallbackSkillIcon = normalizeFeedSkillIcon(gizmo.settings.skillIcon);
-	const fallbackLevelIcon = normalizeFeedLevelIcon(gizmo.settings.levelIcon);
+	const fallbackSkillIcon = normalizeFeedSkillIcon(gizmo.settings.skillProgressIcon);
+	const fallbackLevelIcon = normalizeFeedLevelIcon(gizmo.settings.levelProgressIcon);
 	const effectsPaint = normalizeHexColor(gizmo.settings.effectsColor || gizmo.settings.textColor, DEFAULT_GIZMO_GOLD);
-	const skillsPaint = normalizeHexColor(gizmo.settings.skillsColor || gizmo.settings.textColor, DEFAULT_GIZMO_GOLD);
+	const skillProgressPaint = normalizeHexColor(
+		gizmo.settings.skillProgressColor || gizmo.settings.textColor,
+		DEFAULT_GIZMO_GOLD
+	);
+	const levelProgressPaint = normalizeHexColor(
+		gizmo.settings.levelProgressColor || gizmo.settings.textColor,
+		DEFAULT_GIZMO_GOLD
+	);
 	const fillColor = normalizeHexColor(
 		optionalHex(gizmo.settings.barColor) ||
 			(snapshot.general && snapshot.general.fillColor) ||
@@ -1459,9 +1576,8 @@ function paintGizmoFeed(el, gizmo) {
 			}
 			const paint =
 				wantKind === "location"
-					? line.locationKind === "current"
-						? currentPaint
-						: discoveryPaint
+					? optionalHex(line.color) ||
+						(line.locationKind === "current" ? currentPaint : discoveryPaint)
 					: gizmo.settings.allowModNotificationColor !== false && line.color
 						? line.color
 						: notifDefault;
@@ -1499,6 +1615,10 @@ function paintGizmoFeed(el, gizmo) {
 			}
 		} else if (wantKind === "skill") {
 			const showIcons = showSkillIcons;
+			const skillKind = normalizeSkillKind(line.skillKind);
+			const skillsPaint =
+				optionalHex(line.color) ||
+				(skillKind === "level" ? levelProgressPaint : skillProgressPaint);
 			const needsRebuild =
 				!row ||
 				row.dataset.showIcons !== (showIcons ? "1" : "0") ||
@@ -1522,11 +1642,9 @@ function paintGizmoFeed(el, gizmo) {
 			if (showIcons) {
 				const iconHost = row.querySelector(".notification-line-icon");
 				if (iconHost) {
-					const skillKind = normalizeSkillKind(line.skillKind);
 					const iconRel =
-						skillKind === "level"
-							? fallbackLevelIcon
-							: normalizeIconRelPath(line.icon) || fallbackSkillIcon;
+						normalizeIconRelPath(line.icon) ||
+						(skillKind === "level" ? fallbackLevelIcon : fallbackSkillIcon);
 					const href = resolveDisplayIconHref(iconRel);
 					paintMaskedFace(iconHost, "notification-line-icon-face", {
 						color: skillsPaint,
@@ -1560,14 +1678,16 @@ function paintGizmoFeed(el, gizmo) {
 			const nameEl = row.querySelector(".effect-line-name");
 			if (nameEl) {
 				nameEl.textContent = line.name || "Level";
-				nameEl.style.color = skillsPaint;
+				nameEl.style.color = levelProgressPaint;
 			}
 			if (showSkillIcons) {
 				const iconHost = row.querySelector(".effect-line-icon");
 				if (iconHost) {
-					const href = resolveDisplayIconHref(fallbackLevelIcon);
+					const href = resolveDisplayIconHref(
+						normalizeIconRelPath(line.icon) || fallbackLevelIcon
+					);
 					paintMaskedFace(iconHost, "notification-line-icon-face", {
-						color: skillsPaint,
+						color: levelProgressPaint,
 						href
 					});
 				}
@@ -1582,12 +1702,12 @@ function paintGizmoFeed(el, gizmo) {
 				}
 				bar.style.setProperty("--effect-bar-width", `${progressBarWidth}%`);
 				bar.style.setProperty("--cog-fill", fillColor);
-				bar.style.setProperty("--cog-border", skillsPaint);
+				bar.style.setProperty("--cog-border", levelProgressPaint);
 			}
 			const timerEl = row.querySelector(".effect-line-timer");
 			if (timerEl) {
 				timerEl.textContent = formatFeedLevelProgressValue(line, showProgressTotal);
-				timerEl.style.color = skillsPaint;
+				timerEl.style.color = levelProgressPaint;
 			}
 			const backdropEl = row.querySelector(".notification-line-backdrop");
 			if (backdropEl) {
@@ -1687,7 +1807,9 @@ function paintGizmoFeed(el, gizmo) {
 				const iconRel = normalizeIconRelPath(line.icon) || fallbackInvIcon;
 				const href = resolveDisplayIconHref(iconRel);
 				const changeText = formatInventoryChangeText(line.count, line.added);
-				const paint = !line.added ? removePaint : line.stolen ? stolenPaint : addPaint;
+				const paint =
+					optionalHex(line.color) ||
+					(!line.added ? removePaint : line.stolen ? stolenPaint : addPaint);
 				for (const child of contentEl.children) {
 					const slot = child.dataset.slot;
 					if (slot === "icon") {
@@ -1795,9 +1917,17 @@ const FEED_SECTION_HIDE_NOTES = {
 		"cog-feed-location-hide-note-discovery",
 		"When enabled, this section diverts location discovery from hud.questUpdates."
 	],
-	skills: [
-		"cog-feed-skills-hide-note",
-		"When enabled, this section diverts skill / level-up banners from hud.questUpdates."
+	skillsBoth: [
+		"cog-feed-skills-hide-note-both",
+		"When enabled, this section diverts skill / level-up banners from hud.questUpdates. Level Up Menu is never blocked."
+	],
+	skillsSkill: [
+		"cog-feed-skills-hide-note-skill",
+		"When enabled, this section diverts skill banners from hud.questUpdates. Level Up Menu is never blocked."
+	],
+	skillsLevel: [
+		"cog-feed-skills-hide-note-level",
+		"When enabled, this section diverts level-up banners from hud.questUpdates. Level Up Menu is never blocked."
 	]
 };
 const FEED_SECTION_ICON_NOTES = {
@@ -2105,11 +2235,11 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		setTranslatedText(
 			progressHint,
 			"cog-progress-bar-hint",
-			"Shared bar colour, width, and number format for Active Effects timers and Skills Level Progress."
+			"Shared bar colour, width, number format, and timer window for Active Effects and Skills Level Progress."
 		);
 	} else {
 		progressHint.textContent =
-			"Shared bar colour, width, and number format for Active Effects timers and Skills Level Progress.";
+			"Shared bar colour, width, number format, and timer window for Active Effects and Skills Level Progress.";
 	}
 	progressSection.appendChild(progressHint);
 	const progressRow = document.createElement("div");
@@ -2164,6 +2294,37 @@ function fillFeedGizmoEditor(panel, gizmo) {
 	});
 	progressRow.appendChild(numberFormatField);
 	progressSection.appendChild(progressRow);
+	const timerRow = document.createElement("div");
+	timerRow.className = "style-row";
+	const timerMinField = document.createElement("label");
+	timerMinField.className = "pos-field compact effects-remaining";
+	timerMinField.innerHTML = `<span>Min remaining</span><input type="number" min="0" max="600" step="1" data-role="timerMinSec">`;
+	tagFieldLabel(timerMinField, "cog-min-remaining", "Min remaining");
+	const timerMinInput = timerMinField.querySelector("input");
+	timerMinInput.value = fmtDec(gizmo.settings.timerMinSec, 0);
+	bindNumberField(timerMinInput, {
+		suffix: "s",
+		parse: (raw) => (String(raw).trim() === "" ? 1 : Math.max(0, Math.min(600, Number(raw) || 0))),
+		apply: (v) => patchGizmo(gid, { timerMinSec: v == null ? 1 : v }),
+		decimals: 0,
+		current: () => (gizmoFor(gid) || gizmo).settings.timerMinSec
+	});
+	const timerMaxField = document.createElement("label");
+	timerMaxField.className = "pos-field compact effects-remaining";
+	timerMaxField.innerHTML = `<span>Max remaining</span><input type="number" min="0" max="3600" step="10" data-role="timerMaxSec">`;
+	tagFieldLabel(timerMaxField, "cog-max-remaining", "Max remaining");
+	const timerMaxInput = timerMaxField.querySelector("input");
+	timerMaxInput.value = fmtDec(gizmo.settings.timerMaxSec, 0);
+	bindNumberField(timerMaxInput, {
+		suffix: "s",
+		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(3600, Number(raw) || 0))),
+		apply: (v) => patchGizmo(gid, { timerMaxSec: v }),
+		decimals: 0,
+		current: () => (gizmoFor(gid) || gizmo).settings.timerMaxSec
+	});
+	timerRow.appendChild(timerMinField);
+	timerRow.appendChild(timerMaxField);
+	progressSection.appendChild(timerRow);
 	panel.appendChild(progressSection);
 
 	appendEditorRule(panel);
@@ -2291,58 +2452,15 @@ function fillFeedGizmoEditor(panel, gizmo) {
 			setTranslatedText(
 				fxHint,
 				"cog-feed-effects-hint",
-				"Timed player effects only. They stay until the timer ends, then fade. You can filter by minimum and maximum remaining time.",
+				"Timed player effects only. They stay until the timer ends, then fade. Timer min/max are under Progress Bar.",
 				FEED_TYPE_ID
 			);
 		} else {
 			fxHint.textContent =
-				"Timed player effects only. They stay until the timer ends, then fade. You can filter by minimum and maximum remaining time.";
+				"Timed player effects only. They stay until the timer ends, then fade. Timer min/max are under Progress Bar.";
 		}
 		fxSection.appendChild(fxHint);
 
-		const fxRow = document.createElement("div");
-		fxRow.className = "style-row";
-		const fxColor = makeOptionalColorField(
-			"Text Colour",
-			gizmo.settings.effectsColor,
-			optionalHex(gizmo.settings.textColor) || DEFAULT_GIZMO_GOLD,
-			(hex, live) => patchGizmo(gid, { effectsColor: hex }, false, live)
-		);
-		fxColor.classList.add("compact");
-		tagFieldLabel(fxColor, "cog-text-colour", "Text Colour");
-		fxRow.appendChild(fxColor);
-		const minField = document.createElement("label");
-		minField.className = "pos-field compact effects-remaining";
-		minField.innerHTML = `<span>Min remaining</span><input type="number" min="0" max="600" step="1" data-role="effectsMinSec">`;
-		tagFieldLabel(minField, "cog-min-remaining", "Min remaining");
-		const minInput = minField.querySelector("input");
-		minInput.value = fmtDec(gizmo.settings.effectsMinSec, 0);
-		bindNumberField(minInput, {
-			suffix: "s",
-			parse: (raw) => (String(raw).trim() === "" ? 1 : Math.max(0, Math.min(600, Number(raw) || 0))),
-			apply: (v) => patchGizmo(gid, { effectsMinSec: v == null ? 1 : v }),
-			decimals: 0,
-			current: () => (gizmoFor(gid) || gizmo).settings.effectsMinSec
-		});
-		const maxField = document.createElement("label");
-		maxField.className = "pos-field compact effects-remaining";
-		maxField.innerHTML = `<span>Max remaining</span><input type="number" min="0" max="3600" step="10" data-role="effectsMaxSec">`;
-		tagFieldLabel(maxField, "cog-max-remaining", "Max remaining");
-		const maxInput = maxField.querySelector("input");
-		maxInput.value = fmtDec(gizmo.settings.effectsMaxSec, 0);
-		bindNumberField(maxInput, {
-			suffix: "s",
-			parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(3600, Number(raw) || 0))),
-			apply: (v) => patchGizmo(gid, { effectsMaxSec: v }),
-			decimals: 0,
-			current: () => (gizmoFor(gid) || gizmo).settings.effectsMaxSec
-		});
-		fxRow.appendChild(minField);
-		fxRow.appendChild(maxField);
-		fxSection.appendChild(fxRow);
-
-		const togglesRow = document.createElement("div");
-		togglesRow.className = "style-row";
 		const makeFxCheck = (role, tag, fallback, checked, patchKey) => {
 			const field = document.createElement("label");
 			field.className = "check-row compact";
@@ -2365,7 +2483,19 @@ function fillFeedGizmoEditor(panel, gizmo) {
 			});
 			return field;
 		};
-		togglesRow.appendChild(
+
+		const fxRow = document.createElement("div");
+		fxRow.className = "style-row";
+		const fxColor = makeOptionalColorField(
+			"Text Colour",
+			gizmo.settings.effectsColor,
+			optionalHex(gizmo.settings.textColor) || DEFAULT_GIZMO_GOLD,
+			(hex, live) => patchGizmo(gid, { effectsColor: hex }, false, live)
+		);
+		fxColor.classList.add("compact");
+		tagFieldLabel(fxColor, "cog-text-colour", "Text Colour");
+		fxRow.appendChild(fxColor);
+		fxRow.appendChild(
 			makeFxCheck(
 				"showEffectText",
 				"cog-show-text",
@@ -2374,7 +2504,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 				"showEffectText"
 			)
 		);
-		togglesRow.appendChild(
+		fxRow.appendChild(
 			makeFxCheck(
 				"showEffectTimer",
 				"cog-show-timer",
@@ -2383,7 +2513,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 				"showEffectTimer"
 			)
 		);
-		togglesRow.appendChild(
+		fxRow.appendChild(
 			makeFxCheck(
 				"showEffectIcons",
 				"cog-show-icons",
@@ -2392,7 +2522,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 				"showEffectIcons"
 			)
 		);
-		fxSection.appendChild(togglesRow);
+		fxSection.appendChild(fxRow);
 
 		const transformRow = document.createElement("div");
 		transformRow.className = "style-row";
@@ -2491,7 +2621,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		const invIconsInput = document.createElement("input");
 		invIconsInput.type = "checkbox";
 		invIconsInput.dataset.role = "showInventoryIcons";
-		invIconsInput.checked = gizmo.settings.showInventoryIcons === true;
+		invIconsInput.checked = gizmo.settings.showInventoryIcons !== false;
 		invIconsField.appendChild(invIconsInput);
 		invIconsField.appendChild(document.createTextNode(" "));
 		const invIconsSpan = document.createElement("span");
@@ -2637,7 +2767,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		const locIconsInput = document.createElement("input");
 		locIconsInput.type = "checkbox";
 		locIconsInput.dataset.role = "showLocationIcons";
-		locIconsInput.checked = gizmo.settings.showLocationIcons === true;
+		locIconsInput.checked = gizmo.settings.showLocationIcons !== false;
 		locIconsField.appendChild(locIconsInput);
 		locIconsField.appendChild(document.createTextNode(" "));
 		const locIconsSpan = document.createElement("span");
@@ -2680,96 +2810,145 @@ function fillFeedGizmoEditor(panel, gizmo) {
 			skillsLede.textContent = "Skills";
 		}
 		skillsSection.appendChild(skillsLede);
-		const skillsHint = document.createElement("p");
-		skillsHint.className = "hint";
-		if (typeof setTranslatedText === "function") {
-			setTranslatedText(skillsHint, "cog-level-up-menu-never-blocked", "Level Up Menu is never blocked.");
-		} else {
-			skillsHint.textContent = "Level Up Menu is never blocked.";
-		}
-		skillsSection.appendChild(skillsHint);
 
-		const iconRow = document.createElement("div");
-		iconRow.className = "style-row";
-		const skillsColor = makeOptionalColorField(
-			"Text Colour",
-			gizmo.settings.skillsColor,
-			optionalHex(gizmo.settings.textColor) || DEFAULT_GIZMO_GOLD,
-			(hex, live) => patchGizmo(gid, { skillsColor: hex }, false, live)
+		const useDefaultLabel = typeof t === "function" ? t("cog-use-default", "Use default") : "Use default";
+		const makeSkillIconRow = (colorValue, colorFallback, iconValue, normalizeIcon, patchColor, patchIcon) => {
+			const row = document.createElement("div");
+			row.className = "style-row feed-location-row is-nested";
+			const color = makeOptionalColorField(
+				"Colour",
+				colorValue,
+				colorFallback || DEFAULT_GIZMO_GOLD,
+				(hex, live) => patchGizmo(gid, { [patchColor]: hex }, false, live)
+			);
+			color.classList.add("compact");
+			tagFieldLabel(color, "cog-colour", "Colour");
+			row.appendChild(color);
+			const iconCtrl = makeIconControl({
+				label: "Icon",
+				value: iconValue,
+				showName: true,
+				clearLabel: useDefaultLabel,
+				onCommit: (icon) => {
+					patchGizmo(gid, { [patchIcon]: normalizeIcon(icon) });
+				}
+			});
+			tagFieldLabel(iconCtrl, "cog-icon", "Icon");
+			row.appendChild(iconCtrl);
+			return row;
+		};
+
+		const appendSkillType = (
+			role,
+			tag,
+			fallback,
+			checked,
+			patchCheck,
+			colorValue,
+			colorFallback,
+			iconValue,
+			normalizeIcon,
+			patchColor,
+			patchIcon
+		) => {
+			const block = document.createElement("div");
+			block.className = "feed-location-type";
+			const field = document.createElement("label");
+			field.className = "check-row compact";
+			const input = document.createElement("input");
+			input.type = "checkbox";
+			input.dataset.role = role;
+			input.checked = checked;
+			field.appendChild(input);
+			field.appendChild(document.createTextNode(" "));
+			const span = document.createElement("span");
+			if (typeof setTranslatedText === "function") {
+				setTranslatedText(span, tag, fallback);
+			} else {
+				span.textContent = fallback;
+			}
+			field.appendChild(span);
+			input.addEventListener("change", () => {
+				patchGizmo(gid, { [patchCheck]: input.checked });
+				renderEditor(true);
+			});
+			block.appendChild(field);
+			if (checked) {
+				block.appendChild(
+					makeSkillIconRow(
+						colorValue,
+						colorFallback,
+						iconValue,
+						normalizeIcon,
+						patchColor,
+						patchIcon
+					)
+				);
+			}
+			skillsSection.appendChild(block);
+		};
+
+		const skillColorFallback =
+			optionalHex(gizmo.settings.textColor) || DEFAULT_GIZMO_GOLD;
+		appendSkillType(
+			"showSkillProgress",
+			"cog-skill-progress",
+			"Skill Progress",
+			gizmo.settings.showSkillProgress !== false,
+			"showSkillProgress",
+			gizmo.settings.skillProgressColor,
+			skillColorFallback,
+			gizmo.settings.skillProgressIcon || DEFAULT_FEED_SKILL_ICON,
+			normalizeFeedSkillIcon,
+			"skillProgressColor",
+			"skillProgressIcon"
 		);
-		skillsColor.classList.add("compact");
-		tagFieldLabel(skillsColor, "cog-text-colour", "Text Colour");
-		iconRow.appendChild(skillsColor);
-		const skillsUseDefault = typeof t === "function" ? t("cog-use-default", "Use default") : "Use default";
-		const skillIconCtrl = makeIconControl({
-			label: "Default Skill Icon",
-			value: gizmo.settings.skillIcon || DEFAULT_FEED_SKILL_ICON,
-			showName: true,
-			clearLabel: skillsUseDefault,
-			onCommit: (icon) => {
-				patchGizmo(gid, { skillIcon: normalizeFeedSkillIcon(icon || DEFAULT_FEED_SKILL_ICON) });
-			}
-		});
-		tagFieldLabel(skillIconCtrl, "cog-default-skill-icon", "Default Skill Icon");
-		iconRow.appendChild(skillIconCtrl);
-		const levelIconCtrl = makeIconControl({
-			label: "Default Level Icon",
-			value: gizmo.settings.levelIcon || DEFAULT_FEED_LEVEL_ICON,
-			showName: true,
-			clearLabel: skillsUseDefault,
-			onCommit: (icon) => {
-				patchGizmo(gid, { levelIcon: normalizeFeedLevelIcon(icon || DEFAULT_FEED_LEVEL_ICON) });
-			}
-		});
-		tagFieldLabel(levelIconCtrl, "cog-default-level-icon", "Default Level Icon");
-		iconRow.appendChild(levelIconCtrl);
-		skillsSection.appendChild(iconRow);
+		appendSkillType(
+			"showLevelProgress",
+			"cog-level-progress",
+			"Level Progress",
+			gizmo.settings.showLevelProgress !== false,
+			"showLevelProgress",
+			gizmo.settings.levelProgressColor,
+			skillColorFallback,
+			gizmo.settings.levelProgressIcon || DEFAULT_FEED_LEVEL_ICON,
+			normalizeFeedLevelIcon,
+			"levelProgressColor",
+			"levelProgressIcon"
+		);
 
-		const togglesRow = document.createElement("div");
-		togglesRow.className = "style-row";
-		const iconsField = document.createElement("label");
-		iconsField.className = "check-row compact";
-		const iconsInput = document.createElement("input");
-		iconsInput.type = "checkbox";
-		iconsInput.dataset.role = "showSkillIcons";
-		iconsInput.checked = gizmo.settings.showSkillIcons === true;
-		iconsField.appendChild(iconsInput);
-		iconsField.appendChild(document.createTextNode(" "));
-		const iconsSpan = document.createElement("span");
+		const skillIconsField = document.createElement("label");
+		skillIconsField.className = "check-row compact";
+		const skillIconsInput = document.createElement("input");
+		skillIconsInput.type = "checkbox";
+		skillIconsInput.dataset.role = "showSkillIcons";
+		skillIconsInput.checked = gizmo.settings.showSkillIcons !== false;
+		skillIconsField.appendChild(skillIconsInput);
+		skillIconsField.appendChild(document.createTextNode(" "));
+		const skillIconsSpan = document.createElement("span");
 		if (typeof setTranslatedText === "function") {
-			setTranslatedText(iconsSpan, "cog-show-icons", "Show Icons");
+			setTranslatedText(skillIconsSpan, "cog-show-icons", "Show Icons");
 		} else {
-			iconsSpan.textContent = "Show Icons";
+			skillIconsSpan.textContent = "Show Icons";
 		}
-		iconsField.appendChild(iconsSpan);
-		iconsInput.addEventListener("change", () => {
-			patchGizmo(gid, { showSkillIcons: iconsInput.checked });
+		skillIconsField.appendChild(skillIconsSpan);
+		skillIconsInput.addEventListener("change", () => {
+			patchGizmo(gid, { showSkillIcons: skillIconsInput.checked });
 			renderEditor(true);
 		});
-		togglesRow.appendChild(iconsField);
-		const progressField = document.createElement("label");
-		progressField.className = "check-row compact";
-		const progressInput = document.createElement("input");
-		progressInput.type = "checkbox";
-		progressInput.dataset.role = "showLevelProgress";
-		progressInput.checked = gizmo.settings.showLevelProgress !== false;
-		progressField.appendChild(progressInput);
-		progressField.appendChild(document.createTextNode(" "));
-		const progressSpan = document.createElement("span");
-		if (typeof setTranslatedText === "function") {
-			setTranslatedText(progressSpan, "cog-level-progress", "Level Progress");
-		} else {
-			progressSpan.textContent = "Level Progress";
+		skillsSection.appendChild(skillIconsField);
+		const showSkillProg = gizmo.settings.showSkillProgress !== false;
+		const showLevelProg = gizmo.settings.showLevelProgress !== false;
+		let skillsHideEntry = FEED_SECTION_HIDE_NOTES.skillsBoth;
+		if (showSkillProg && showLevelProg) {
+			skillsHideEntry = FEED_SECTION_HIDE_NOTES.skillsBoth;
+		} else if (showSkillProg) {
+			skillsHideEntry = FEED_SECTION_HIDE_NOTES.skillsSkill;
+		} else if (showLevelProg) {
+			skillsHideEntry = FEED_SECTION_HIDE_NOTES.skillsLevel;
 		}
-		progressField.appendChild(progressSpan);
-		progressInput.addEventListener("change", () => {
-			patchGizmo(gid, { showLevelProgress: progressInput.checked });
-			renderEditor(true);
-		});
-		togglesRow.appendChild(progressField);
-		skillsSection.appendChild(togglesRow);
 		appendFeedSectionNotes(skillsSection, "", `${feedStorage}/skills/`, {
-			hideEntry: FEED_SECTION_HIDE_NOTES.skills
+			hideEntry: skillsHideEntry
 		});
 		panel.appendChild(skillsSection);
 	}
@@ -2818,17 +2997,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		const iconsInput = document.createElement("input");
 		iconsInput.type = "checkbox";
 		iconsInput.dataset.role = "showNotificationIcons";
-		iconsInput.checked = gizmo.settings.showNotificationIcons === true;
-		iconsField.appendChild(iconsInput);
-		iconsField.appendChild(document.createTextNode(" "));
-		const iconsSpan = document.createElement("span");
-		if (typeof setTranslatedText === "function") {
-			setTranslatedText(iconsSpan, "cog-show-icons", "Show Icons");
-		} else {
-			iconsSpan.textContent = "Show Icons";
-		}
-		iconsField.appendChild(iconsSpan);
-		iconsInput.addEventListener("change", () => {
+		iconsInput.checked = gizmo.settings.showNotificationIcons !== false;
 			patchGizmo(gid, { showNotificationIcons: iconsInput.checked });
 		});
 		defaultsRow.appendChild(iconsField);

@@ -86,6 +86,8 @@ Int Function GetPlayerArrowCount() Global Native
 ; Count of equipped bolt ammo while a crossbow is out. 0 otherwise.
 Int Function GetPlayerBoltCount() Global Native
 
+; Migration Code for Transition from v1.01 or earlier to v1.1:
+; Prefer COG_Feed_API.Notify (supports source + meter + receipt). This shell forwards message/colour/icon only.
 ; Push a toast into a visible Feed gizmo with notifications enabled (text + optional #RRGGBB + optional COG icon path).
 ; No-op when no matching feed is on-screen. Prefer this (or SkyUILib) over Debug.Notification
 ; when you want coloured toasts that COG can own while a feed is active.

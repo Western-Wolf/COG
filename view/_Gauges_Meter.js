@@ -1218,7 +1218,6 @@ function fillGaugeEditor(panel, gauge) {
 		format: (v) => (Number(v) || 0).toFixed(1),
 		current: () => live().display.rotation || 0
 	});
-	bindNumberField(wInput, {
 	bindNumberField(maxAlphaInput, {
 		suffix: "%",
 		parse: (raw) => {
@@ -1235,6 +1234,7 @@ function fillGaugeEditor(panel, gauge) {
 			return Number.isFinite(a) ? a : 100;
 		}
 	});
+	bindNumberField(wInput, {
 		suffix: "px",
 		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(MIN_GAUGE_WIDTH, Math.min(2000, Number(raw) || 0))),
 		apply: (v) => patchGauge(gid, { display: { width: v } }),

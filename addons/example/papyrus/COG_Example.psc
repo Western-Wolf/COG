@@ -157,10 +157,11 @@ Function COGUpdate()
 
 	If Remaining == 0
 		; Notify: toast on a play-visible Feed with Notifications on (colour + optional icon).
+		; Prefer COG_Feed_API.Notify (source + meter + receipt). Legacy COG_API.Notify still works.
 		; No-op (logged) if no matching Feed. Icon path: shipped assets/icons/ or registered import.
 		; Only toast when registration succeeded this session (avoids orphan OnUpdate with empty IconPath).
 		If CountReceipt != 0 || PercentReceipt != 0 || TimerReceipt != 0
-			COG_API.Notify("Example countdown finished", "#E8D2A0", IconPath)
+			COG_Feed_API.Notify("Example countdown finished", "#E8D2A0", IconPath, "COG_Example")
 		EndIf
 		Remaining = 10
 	Else

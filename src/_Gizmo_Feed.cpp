@@ -1,9 +1,11 @@
 #include "pch.h"
 #include "_Gizmo_Feed.h"
-#include "_Gizmo_Feed_Inventory.h"
-#include "_Gizmo_Feed_LocationIcons.h"
-#include "_Gizmo_Feed_NotificationIcons.h"
-#include "_Gizmo_Feed_Skills.h"
+#include "_Gizmo_Feed_API.h"
+#include "_Gizmo_Feed_SourceInventory.h"
+#include "_Gizmo_Feed_SourceLocation.h"
+#include "_Gizmo_Feed_Log.h"
+#include "_Gizmo_Feed_SourceNotifications.h"
+#include "_Gizmo_Feed_SourceSkills.h"
 #include "_UI_CogUi.h"
 #include "_Core_Registry.h"
 #include "_Core_Registry_Json.h"
@@ -314,7 +316,9 @@ namespace
 					} else if (kind == RE::HUD_MESSAGE_TYPE::kSkillIncrease) {
 						// No suppress key — skill/level banners share QuestUpdateBaseInstance with
 						// hud.questUpdates. Feed Skills owns divert/enqueue only.
-						if (CogRegistry::Get().HasVisibleFeedShowingSkills()) {
+						auto& reg = CogRegistry::Get();
+						if (reg.HasVisibleFeedShowingSkills() ||
+							reg.HasVisibleFeedShowingLevelProgress()) {
 							if (text && text[0]) {
 								CogFeed::HandleSkillIncreaseHud(text);
 							}
@@ -434,21 +438,33 @@ void CogFeed::EnqueueNotification(std::string text, std::string color, std::stri
 	if (icon.empty()) {
 		// Icon rules see plain text (emphasis tags stripped for matching only).
 		icon = CogFeed::ResolveNotificationIcon(StripHudMarkupForMatch(text));
-	}
+	(void)Notify(std::move(text), std::move(color), std::move(icon), kSourceNotifications);
+}
 
-	Entry e;
-	{
-		std::lock_guard lock(g_mutex);
-		e.id = g_nextId++;
-		e.text = std::move(text);
-		e.color = std::move(color);
-		e.icon = std::move(icon);
-		g_ring.push_back(e);
-		while (g_ring.size() > kRingCap) {
-			g_ring.pop_front();
-		}
+void CogFeed::EnqueueLocation(std::string text, std::string kind)
+{
+	text = TranslateHudText(std::move(text));
+	if (text.empty()) {
+		return;
 	}
-	logger::debug("Feed: notification queued id={} \"{}\"", e.id, e.text);
+	if (kind != "current") {
+		kind = "discovery";
+	}
+	auto& reg = CogRegistry::Get();
+	std::string color;
+	if (kind == "current") {
+		if (!reg.HasVisibleFeedDivertingCurrentLocation()) {
+			return;
+		}
+		color = reg.FirstVisibleFeedSetting("showLocation", "currentLocationColor", "#e8d2a0");
+	} else {
+		if (!reg.HasVisibleFeedDivertingLocationDiscovery()) {
+			return;
+		}
+		color = reg.FirstVisibleFeedSetting("showLocation", "locationDiscoveryColor", "#e8d2a0");
+	}
+	std::string icon = CogFeed::ResolveLocationIcon(text, kind);
+	(void)Notify(std::move(text), std::move(color), std::move(icon), kSourceLocation);
 }
 
 void CogFeed::EnqueueLocation(std::string text, std::string kind)
@@ -462,69 +478,22 @@ void CogFeed::EnqueueLocation(std::string text, std::string kind)
 	}
 	std::string icon = CogFeed::ResolveLocationIcon(text, kind);
 
-	LocationEntry e;
-	{
-		std::lock_guard lock(g_mutex);
-		e.id = g_nextLocationId++;
-		e.text = std::move(text);
-		e.kind = std::move(kind);
-		e.icon = std::move(icon);
-		g_locationRing.push_back(e);
-		while (g_locationRing.size() > kRingCap) {
-			g_locationRing.pop_front();
-		}
-	}
-	logger::debug("Feed: location queued id={} kind={} \"{}\"", e.id, e.kind, e.text);
-}
-
-void CogFeed::FlushNotificationsToUi()
-{
-	PushPendingFeedEventsToUi();
-}
-
-void CogFeed::PushPendingFeedEventsToUi()
-{
-	if (!CogUi::HasView()) {
-		return;
-	}
-
-	std::vector<Entry> notes;
-	std::vector<LocationEntry> locs;
-	{
-		std::lock_guard lock(g_mutex);
-		for (const auto& e : g_ring) {
-			if (e.id > g_flushedNotificationId) {
-				notes.push_back(e);
-			}
-		}
-		if (!notes.empty()) {
-			g_flushedNotificationId = notes.back().id;
-		}
-		for (const auto& e : g_locationRing) {
-			if (e.id > g_flushedLocationId) {
-				locs.push_back(e);
-			}
-		}
-		if (!locs.empty()) {
-			g_flushedLocationId = locs.back().id;
-		}
-	}
-	auto inv = DrainInventoryEventsJson();
-	auto skills = DrainSkillEventsJson();
-	if (notes.empty() && locs.empty() && inv.empty() && skills.empty()) {
+	auto notify = DrainNotifyEventsJson();
+	if (notify.empty()) {
 		return;
 	}
 
 	std::ostringstream o;
 	o << '[';
-	bool first = true;
-	auto append = [&](const std::string& obj) {
-		if (!first) {
+	for (std::size_t i = 0; i < notify.size(); ++i) {
+		if (i) {
 			o << ',';
 		}
-		first = false;
-		o << obj;
-	};
+		o << notify[i];
+	}
+	o << ']';
+
+	CogFeedLog::debug("Feed: applyFeedEvents notify={}", notify.size());
 	for (const auto& e : notes) {
 		std::ostringstream one;
 		one << "{\"channel\":\"notification\",\"id\":" << e.id << ",\"text\":\"" << EscapeJson(e.text)

@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "_Gizmo_Feed_UtilityCallbackIntercept.h"
 #include "_Gizmo_Feed.h"
-#include "_Gizmo_Feed_Inventory.h"
+#include "_Gizmo_Feed_SourceInventory.h"
 #include "_Core_Registry.h"
 #include "_Core_HudSuppress.h"
 

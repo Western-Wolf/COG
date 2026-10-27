@@ -651,11 +651,11 @@ function defaultGauge(n) {
 		locked: false,
 		visibility: "hud",
 		display: {
-			x: DEFAULT_HUD_X,
-			y: DEFAULT_HUD_Y,
-			rotation: 0,
-			width: DEFAULT_GAUGE_WIDTH,
-			height: DEFAULT_GAUGE_HEIGHT,
+		x: DEFAULT_HUD_X,
+		y: DEFAULT_HUD_Y,
+		rotation: 0,
+		width: DEFAULT_GAUGE_WIDTH,
+		height: DEFAULT_GAUGE_HEIGHT,
 			maxAlpha: 100
 		},
 		sourceMod: "",
@@ -911,8 +911,8 @@ function patchGauge(id, patch, skipHud, live) {
 		syncHudGauge(gauge);
 		// live === false: colour commit — this gauge only (already synced).
 		if (live !== false && !drag) {
-			renderGears();
-		}
+		renderGears();
+	}
 	}
 	if (Object.prototype.hasOwnProperty.call(patch, "displayName")) {
 		renderEditor(true);
@@ -1112,19 +1112,19 @@ function gaugeStyleSig(gauge) {
 
 function patchHudGaugeLive(el, gauge) {
 	if (!el || !gauge) {
-			return;
-		}
+		return;
+	}
 	ensureGauge(gauge);
 	const { src, gear } = gaugeLinked(gauge);
 	if (normalizeGaugeType(gaugeSettings(gauge).type) === "frame") {
 		if (typeof patchGaugeFrameLive === "function") {
 			patchGaugeFrameLive(el, gauge, src, gear);
 		}
-			return;
-		}
+		return;
+	}
 	if (normalizeGaugeShape(gaugeSettings(gauge).shape) === "arc") {
 		patchGaugeArcLive(el, gauge, src, gear);
-	} else {
+		} else {
 		patchGaugeBarLive(el, gauge, src, gear);
 	}
 	const text = src ? formatGaugeCountValue(gauge, src) : "";
@@ -1216,11 +1216,11 @@ function syncGaugeHandleBounds(el) {
 		if (host && host !== el) {
 			clearGaugeHandleBoxVars(el);
 			setGaugeHandleBoxVars(host, pad, rotateGap, w, h);
-		} else {
+	} else {
 			setGaugeHandleBoxVars(el, pad, rotateGap, w, h);
 		}
-		return;
-	}
+			return;
+		}
 	const elRect = el.getBoundingClientRect();
 	let minX = Infinity;
 	let minY = Infinity;

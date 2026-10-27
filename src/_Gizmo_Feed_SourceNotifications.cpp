@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "_Gizmo_Feed_NotificationIcons.h"
+#include "_Gizmo_Feed_SourceNotifications.h"
 #include "_Gizmo_Feed_UtilityIconRegistry.h"
 #include "_Gizmo_Storage.h"
 

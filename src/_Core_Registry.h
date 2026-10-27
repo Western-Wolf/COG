@@ -340,6 +340,15 @@ public:
 	bool HasVisibleFeedShowingLevelProgress() const;
 	bool AnyVisibleFeedShowsActiveEffects() const;
 	bool ShouldSuppressInventoryNotifications() const;
+	/** First play-visible cog-feed with showKey true → settings[settingKey], else fallback. */
+	[[nodiscard]] std::string FirstVisibleFeedSetting(
+		std::string_view showKey,
+		std::string_view settingKey,
+		std::string_view fallback) const;
+	[[nodiscard]] bool FirstVisibleFeedSettingBool(
+		std::string_view showKey,
+		std::string_view settingKey,
+		bool fallback) const;
 
 	/** Record a runtime-imported icon (path relative to assets/imports/icons/). Write-through index. */
 	bool RegisterImportedIcon(std::string relPath);
@@ -379,6 +388,8 @@ private:
 	void EnsureDirs() const;
 	/** Migration Code for Transition from v1.01 or earlier to v1.1: gizmos/feed → gizmos/cog-feed. */
 	void MigrateLegacyFeedDataDir() const;
+	/** Migration Code for Transition from v1.01 or earlier to v1.1: drop pre-cog-* builtin type records. */
+	bool MigrateLegacyBuiltinGizmoTypeIdsUnlocked();
 	/** Ensure Default Group exists in memory. Returns true if it was newly inserted. */
 	bool EnsureDefaultGroup();
 	void ReconcileGroupMembership();

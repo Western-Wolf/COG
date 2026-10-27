@@ -523,8 +523,8 @@ void CogRegistry::RegisterBuiltinGizmoTypesUnlocked()
 {"key":"showLocation","kind":"bool","label":"Location","default":false},
 {"key":"showActiveEffects","kind":"bool","label":"Active effects","default":false},
 {"key":"showSkills","kind":"bool","label":"Skills","default":false},
-{"key":"effectsMinSec","kind":"float","label":"Effects min sec","default":1,"min":0,"max":600},
-{"key":"effectsMaxSec","kind":"float","label":"Effects max sec","default":180,"min":0,"max":3600},
+{"key":"timerMinSec","kind":"float","label":"Timer min sec","default":1,"min":0,"max":600},
+{"key":"timerMaxSec","kind":"float","label":"Timer max sec","default":180,"min":0,"max":3600},
 {"key":"showEffectIcons","kind":"bool","label":"Effect icons","default":true},
 {"key":"showEffectText","kind":"bool","label":"Effect text","default":true},
 {"key":"showEffectTimer","kind":"bool","label":"Effect timer","default":true},
@@ -548,10 +548,12 @@ void CogRegistry::RegisterBuiltinGizmoTypesUnlocked()
 {"key":"currentLocationIcon","kind":"string","label":"Current location icon","default":"Camping/compass.svg"},
 {"key":"locationDiscoveryColor","kind":"color","label":"Discovery colour","default":"#e8d2a0"},
 {"key":"currentLocationColor","kind":"color","label":"Current location colour","default":"#e8d2a0"},
-{"key":"skillIcon","kind":"string","label":"Skill icon","default":"Scribe/book-open.svg"},
-{"key":"levelIcon","kind":"string","label":"Level icon","default":"Celestial/star.svg"},
-{"key":"skillsColor","kind":"color","label":"Skills colour","default":"#e8d2a0"},
+{"key":"showSkillProgress","kind":"bool","label":"Skill progress","default":true},
 {"key":"showLevelProgress","kind":"bool","label":"Level progress","default":true},
+{"key":"skillProgressIcon","kind":"string","label":"Skill progress icon","default":"Scribe/book-open.svg"},
+{"key":"levelProgressIcon","kind":"string","label":"Level progress icon","default":"Celestial/star.svg"},
+{"key":"skillProgressColor","kind":"color","label":"Skill progress colour","default":"#e8d2a0"},
+{"key":"levelProgressColor","kind":"color","label":"Level progress colour","default":"#e8d2a0"},
 {"key":"backdropColor","kind":"color","label":"Backdrop colour","default":"#000000"},
 {"key":"backdropOpacity","kind":"int","label":"Backdrop opacity","default":35,"min":0,"max":100},
 {"key":"backdropDirection","kind":"enum","label":"Backdrop direction","default":"down","options":["up","down","center"]},
@@ -749,12 +751,13 @@ void CogRegistry::SetViewReady(bool ready)
 				visibleDetail);
 		}
 		logger::info(
-			"Feed: divert armed — notifications={} inventory={} locationDiscovery={} currentLocation={} skills={}",
+			"Feed: divert armed — notifications={} inventory={} locationDiscovery={} currentLocation={} skillProgress={} levelProgress={}",
 			HasVisibleFeedShowingNotifications(),
 			HasVisibleFeedShowingInventory(),
 			HasVisibleFeedDivertingLocationDiscovery(),
 			HasVisibleFeedDivertingCurrentLocation(),
-			HasVisibleFeedShowingSkills());
+			HasVisibleFeedShowingSkills(),
+			HasVisibleFeedShowingLevelProgress());
 		MarkCatalogDirty();
 		CogFeed::PushPendingFeedEventsToUi();
 	}

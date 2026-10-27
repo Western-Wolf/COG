@@ -3,6 +3,7 @@
 #include "_API_Gears.h"
 #include "_API_GizmoFeed_Notifications.h"
 #include "_API_Gizmos.h"
+#include "_Gizmo_Feed_API.h"
 #include "_Core_Registry.h"
 
 #include "RE/S/Stack.h"
@@ -168,6 +169,7 @@ bool CogApi::Bind(RE::BSScript::IVirtualMachine* vm)
 	CogApiGears::Bind(vm);
 	CogApiGizmos::Bind(vm);
 	CogApiGizmoFeedNotifications::Bind(vm);
+	CogApiFeed::Bind(vm);
 	logger::info("COG Papyrus natives bound");
 	return true;
 }

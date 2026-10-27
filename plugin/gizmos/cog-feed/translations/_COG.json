@@ -4,8 +4,8 @@
     "fr-CA": "Veuillez ajouter au moins une source."
   },
   "cog-feed-effects-hint": {
-    "en-CA": "Timed player effects only. They stay until the timer ends, then fade. You can filter by minimum and maximum remaining time.",
-    "fr-CA": "Effets temporisés du joueur uniquement. Ils persistent jusqu'à la fin du minuteur, puis disparaissent. Vous pouvez filtrer par temps restant minimal et maximal."
+    "en-CA": "Timed player effects only. They stay until the timer ends, then fade. Timer min/max are under Progress Bar.",
+    "fr-CA": "Effets temporisés du joueur uniquement. Ils persistent jusqu'à la fin du minuteur, puis disparaissent. Min/max de minuterie sous Barre de progression."
   },
   "cog-feed-icon-rules": {
     "en-CA": "Rules controlling icons can be found in {folder}.",
@@ -39,8 +39,16 @@
     "en-CA": "When enabled, this section hides {targets}.",
     "fr-CA": "Lorsque cette section est activée, elle masque {targets}."
   },
-  "cog-feed-skills-hide-note": {
-    "en-CA": "When enabled, this section diverts skill / level-up banners from hud.questUpdates.",
-    "fr-CA": "Lorsque cette section est activée, elle détourne les bandeaux de compétences / montée de niveau de hud.questUpdates."
+  "cog-feed-skills-hide-note-both": {
+    "en-CA": "When enabled, this section diverts skill / level-up banners from hud.questUpdates. Level Up Menu is never blocked.",
+    "fr-CA": "Lorsque cette section est activée, elle détourne les bandeaux de compétences / montée de niveau de hud.questUpdates. Le menu de montée de niveau n'est jamais bloqué."
+  },
+  "cog-feed-skills-hide-note-skill": {
+    "en-CA": "When enabled, this section diverts skill banners from hud.questUpdates. Level Up Menu is never blocked.",
+    "fr-CA": "Lorsque cette section est activée, elle détourne les bandeaux de compétences de hud.questUpdates. Le menu de montée de niveau n'est jamais bloqué."
+  },
+  "cog-feed-skills-hide-note-level": {
+    "en-CA": "When enabled, this section diverts level-up banners from hud.questUpdates. Level Up Menu is never blocked.",
+    "fr-CA": "Lorsque cette section est activée, elle détourne les bandeaux de montée de niveau de hud.questUpdates. Le menu de montée de niveau n'est jamais bloqué."
   }
 }

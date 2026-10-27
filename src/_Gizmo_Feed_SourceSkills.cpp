@@ -1,6 +1,8 @@
 #include "pch.h"
-#include "_Gizmo_Feed_Skills.h"
+#include "_Gizmo_Feed_SourceSkills.h"
 #include "_Gizmo_Feed.h"
+#include "_Gizmo_Feed_API.h"
+#include "_Gizmo_Feed_Log.h"
 #include "_Gizmo_Feed_UtilityIconRegistry.h"
 #include "_Gizmo_Storage.h"
 #include "_Core_Registry.h"
@@ -201,39 +203,52 @@ namespace
 			kind = "skill";
 		}
 
+		auto& reg = CogRegistry::Get();
+		if (kind == "skill") {
+			if (!reg.HasVisibleFeedShowingSkills()) {
+				ClearPendingSkill();
+				return;
+			}
+		} else if (!reg.HasVisibleFeedShowingLevelProgress()) {
+			ClearPendingSkill();
+			return;
+		}
+
 		std::string icon;
-		std::string skillName;
+		std::string colorKey;
+		std::string iconKey;
+		std::string iconFallback;
 		if (kind == "skill") {
 			RE::ActorValue av = RE::ActorValue::kNone;
 			if (TakePendingSkill(av)) {
 				icon = ResolveSkillIcon(av, text);
-				if (const char* avName = RE::ActorValueList::GetActorValueName(av); avName && avName[0]) {
-					skillName = avName;
-				} else {
-					skillName = std::string{ RE::ActorValueToString(av) };
-				}
 			} else {
 				icon = ResolveSkillIconByText(text);
 			}
+			colorKey = "skillProgressColor";
+			iconKey = "skillProgressIcon";
+			iconFallback = "Scribe/book-open.svg";
 		} else {
 			ClearPendingSkill();
+			colorKey = "levelProgressColor";
+			iconKey = "levelProgressIcon";
+			iconFallback = "Celestial/star.svg";
 		}
-
-		SkillEntry e;
-		{
-			std::lock_guard lock(g_mutex);
-			e.id = g_nextId++;
-			e.text = std::move(text);
-			e.kind = std::move(kind);
-			e.icon = std::move(icon);
-			e.skillName = std::move(skillName);
-			g_ring.push_back(e);
-			while (g_ring.size() > kRingCap) {
-				g_ring.pop_front();
-			}
+		if (icon.empty()) {
+			icon = reg.FirstVisibleFeedSetting("showSkills", iconKey, iconFallback);
 		}
-		logger::debug("Feed: skill queued id={} kind={} \"{}\"", e.id, e.kind, e.text);
+		const auto color = reg.FirstVisibleFeedSetting("showSkills", colorKey, "#e8d2a0");
+		const auto id = CogFeed::Notify(std::move(text), color, std::move(icon), CogFeed::kSourceSkills);
+		CogFeedLog::debug("SkillsFeed: Notify id={} kind={} ", id, kind);
+		if (id != 0) {
+			CogUi::RunOnMainThread([]() { CogFeed::FlushNotificationsToUi(); });
+		}
 	}
+}
+
+namespace
+{
+	std::int32_t g_levelProgressReceipt = 0;
 }
 
 void CogFeed::InstallSkillIncreaseSink()
@@ -268,66 +283,54 @@ void CogFeed::HandleSkillIncreaseHud(std::string text)
 
 std::vector<std::string> CogFeed::DrainSkillEventsJson()
 {
-	std::vector<SkillEntry> batch;
-	{
-		std::lock_guard lock(g_mutex);
-		for (const auto& e : g_ring) {
-			if (e.id > g_flushedId) {
-				batch.push_back(e);
-			}
-		}
-		if (!batch.empty()) {
-			g_flushedId = batch.back().id;
-		}
-	}
-	std::vector<std::string> out;
-	out.reserve(batch.size());
-	for (const auto& e : batch) {
-		std::ostringstream o;
-		o << "{\"id\":" << e.id << ",\"text\":\"" << EscapeJson(e.text) << "\",\"kind\":\""
-		  << EscapeJson(e.kind) << "\",\"icon\":\"" << EscapeJson(e.icon) << "\",\"skillName\":\""
-		  << EscapeJson(e.skillName) << "\"}";
-		out.push_back(o.str());
-	}
-	return out;
+	return {};
 }
 
 void CogFeed::PushLevelProgressToUi()
 {
-	// clearPayload "null" → applyLevelProgress clears levelProgressLive (see Feed JS).
-	static PolledUiChannel gate{ "applyLevelProgress", "null" };
-	if (!gate.BeginTick(CogRegistry::Get().HasVisibleFeedShowingLevelProgress())) {
+	if (!CogRegistry::Get().HasVisibleFeedShowingLevelProgress()) {
+		if (g_levelProgressReceipt != 0) {
+			Dismiss(g_levelProgressReceipt);
+			g_levelProgressReceipt = 0;
+			FlushNotificationsToUi();
+		}
 		return;
 	}
 	auto* player = RE::PlayerCharacter::GetSingleton();
 	if (!player) {
-		gate.SendIfChanged("null");
+		if (g_levelProgressReceipt != 0) {
+			Dismiss(g_levelProgressReceipt);
+			g_levelProgressReceipt = 0;
+			FlushNotificationsToUi();
+		}
 		return;
 	}
-	// Versioned accessor — direct player->skills is SE-offset and wrong on AE.
 	auto* skills = player->GetInfoRuntimeData().skills;
 	if (!skills || !skills->data) {
-		gate.SendIfChanged("null");
+		if (g_levelProgressReceipt != 0) {
+			Dismiss(g_levelProgressReceipt);
+			g_levelProgressReceipt = 0;
+			FlushNotificationsToUi();
+		}
 		return;
 	}
 	const auto* data = skills->data;
 	const float xp = data->xp;
 	const float threshold = data->levelThreshold > 0.f ? data->levelThreshold : 1.f;
-	float progress = xp / threshold;
-	if (!std::isfinite(progress)) {
-		progress = 0.f;
-	}
-	progress = (std::max)(0.f, (std::min)(1.f, progress));
 	const auto level = player->GetLevel();
+	const auto color =
+		CogRegistry::Get().FirstVisibleFeedSetting("showSkills", "skillsColor", "#e8d2a0");
+	std::string message = "Level ";
+	message += std::to_string(static_cast<unsigned>(level));
 
-	char buf[160];
-	std::snprintf(
-		buf,
-		sizeof(buf),
-		"{\"level\":%u,\"xp\":%.4f,\"threshold\":%.4f,\"progress\":%.6f}",
-		static_cast<unsigned>(level),
-		static_cast<double>(xp),
-		static_cast<double>(threshold),
-		static_cast<double>(progress));
-	gate.SendIfChanged(buf);
+	g_levelProgressReceipt = Notify(
+		std::move(message),
+		color,
+		{},
+		kSourceSkills,
+		xp,
+		threshold,
+		{},
+		g_levelProgressReceipt);
+	FlushNotificationsToUi();
 }

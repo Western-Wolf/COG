@@ -4,9 +4,9 @@
 #include "_Core_HudSuppress.h"
 #include "_Gears_LiveStats.h"
 #include "_Gizmo_Feed.h"
-#include "_Gizmo_Feed_ActiveEffects.h"
-#include "_Gizmo_Feed_Skills.h"
-#include "_Gizmo_Feed_Inventory.h"
+#include "_Gizmo_Feed_SourceActiveEffects.h"
+#include "_Gizmo_Feed_SourceSkills.h"
+#include "_Gizmo_Feed_SourceInventory.h"
 #include "_UI_CogUi.h"
 #include "_Core_Json.h"
 

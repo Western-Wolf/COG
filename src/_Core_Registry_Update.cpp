@@ -592,11 +592,12 @@ bool CogRegistry::HasVisibleFeedDivertingCurrentLocation() const
 
 
 bool CogRegistry::HasVisibleFeedShowingSkills() const
-		{
-			std::lock_guard lock(_mutex);
-			for (const auto& g : _gizmos) {
+{
+	std::lock_guard lock(_mutex);
+	for (const auto& g : _gizmos) {
 		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.typeId) == "cog-feed" &&
-			GizmoSettingsBool(g, "showSkills", false)) {
+			GizmoSettingsBool(g, "showSkills", false) &&
+			GizmoSettingsBool(g, "showSkillProgress", true)) {
 			return true;
 		}
 	}
@@ -618,6 +619,45 @@ bool CogRegistry::HasVisibleFeedShowingLevelProgress() const
 }
 
 
+
+std::string CogRegistry::FirstVisibleFeedSetting(
+	std::string_view showKey,
+	std::string_view settingKey,
+	std::string_view fallback) const
+{
+	std::lock_guard lock(_mutex);
+	for (const auto& g : _gizmos) {
+		if (!GizmoIsPlayActive(g) || NormalizeGizmoType(g.typeId) != "cog-feed") {
+			continue;
+		}
+		if (!GizmoSettingsBool(g, showKey, false)) {
+			continue;
+		}
+		auto v = CogRegistryJson::GizmoSettingsString(g, settingKey, fallback);
+		if (!v.empty()) {
+			return v;
+		}
+	}
+	return std::string{ fallback };
+}
+
+bool CogRegistry::FirstVisibleFeedSettingBool(
+	std::string_view showKey,
+	std::string_view settingKey,
+	bool fallback) const
+{
+	std::lock_guard lock(_mutex);
+	for (const auto& g : _gizmos) {
+		if (!GizmoIsPlayActive(g) || NormalizeGizmoType(g.typeId) != "cog-feed") {
+			continue;
+		}
+		if (!GizmoSettingsBool(g, showKey, false)) {
+			continue;
+		}
+		return CogRegistryJson::GizmoSettingsBool(g, settingKey, fallback);
+	}
+	return fallback;
+}
 
 bool CogRegistry::AnyVisibleFeedShowsActiveEffects() const
 {

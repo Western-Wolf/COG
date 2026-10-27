@@ -1,10 +1,13 @@
 #include "pch.h"
-#include "_Gizmo_Feed_Inventory.h"
+#include "_Gizmo_Feed_SourceInventory.h"
 #include "_Gizmo_Feed_UtilityIconRegistry.h"
 #include "_Gizmo_Feed_UtilityStrings.h"
 #include "_Gizmo_Feed.h"
+#include "_Gizmo_Feed_API.h"
+#include "_Gizmo_Feed_Log.h"
 #include "_Gizmo_Storage.h"
 #include "_Core_Registry.h"
+#include "_UI_CogUi.h"
 
 #include "RE/B/BGSBipedObjectForm.h"
 #include "RE/E/ExtraTextDisplayData.h"
@@ -945,7 +948,7 @@ void CogFeed::EnqueueInventory(
 		name.pop_back();
 	}
 	if (!IsUsableItemDisplayName(name)) {
-		logger::debug("InventoryFeed: enqueue skipped (unnamed / sMissingName)");
+		CogFeedLog::debug("InventoryFeed: enqueue skipped (unnamed / sMissingName)");
 		return;
 	}
 	if (count < 1) {
@@ -954,30 +957,33 @@ void CogFeed::EnqueueInventory(
 	if (!added) {
 		stolen = false;
 	}
-	// Empty icon → view falls back to feed gizmo Default Icon, then Treasure/bag.svg.
 
-	Entry e;
-	{
-		std::lock_guard lock(g_mutex);
-		e.id = g_nextId++;
-		e.name = std::move(name);
-		e.count = count;
-		e.added = added;
-		e.stolen = stolen;
-		e.icon = std::move(icon);
-		g_ring.push_back(e);
-		while (g_ring.size() > kRingCap) {
-			g_ring.pop_front();
-		}
+	auto& reg = CogRegistry::Get();
+	std::string color;
+	if (!added) {
+		color = reg.FirstVisibleFeedSetting("showInventory", "removeColor", "#e8d2a0");
+	} else if (stolen) {
+		color = reg.FirstVisibleFeedSetting("showInventory", "stolenColor", "#e8d2a0");
+	} else {
+		color = reg.FirstVisibleFeedSetting("showInventory", "addColor", "#e8d2a0");
 	}
-	logger::debug(
-		"InventoryFeed: queued id={} {}{} \"{}\" x{} icon=\"{}\"",
-		e.id,
-		e.added ? "add" : "remove",
-		e.stolen ? " stolen" : "",
-		e.name,
-		e.count,
-		e.icon);
+
+	// Fully resolved toast text — include signed count so Feed paints the message as-is.
+	std::string message = name;
+	message += added ? " (+" : " (-";
+	message += std::to_string(count);
+	message += ')';
+
+	const auto id = Notify(std::move(message), std::move(color), std::move(icon), kSourceInventory);
+	CogFeedLog::debug(
+		"InventoryFeed: Notify id={} {}{} \"{}\"",
+		id,
+		added ? "add" : "remove",
+		stolen ? " stolen" : "",
+		name);
+	if (id != 0) {
+		CogUi::RunOnMainThread([]() { FlushNotificationsToUi(); });
+	}
 }
 
 std::vector<std::string> CogFeed::DrainInventoryEventsJson()

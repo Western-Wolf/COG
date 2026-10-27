@@ -108,16 +108,16 @@
     "fr-CA": "Autoriser les mods à choisir la couleur"
   },
   "cog-allow-mods-choose-colour-tip": {
-    "en-CA": "When on, message colour can come from SkyUILib (for compatibility) or COG_API.Notify. When off, every message uses the Notifications colour.",
-    "fr-CA": "Lorsque c'est activé, la couleur du message peut provenir de SkyUILib (pour la compatibilité) ou de COG_API.Notify. Lorsque c'est désactivé, chaque message utilise la couleur des Notifications."
+    "en-CA": "When on, message colour can come from SkyUILib (for compatibility) or COG_Feed_API.Notify / COG_API.Notify. When off, every message uses the Notifications colour.",
+    "fr-CA": "Lorsque c'est activé, la couleur du message peut provenir de SkyUILib (pour la compatibilité) ou de COG_Feed_API.Notify / COG_API.Notify. Lorsque c'est désactivé, chaque message utilise la couleur des Notifications."
   },
   "cog-allow-mods-choose-icon": {
     "en-CA": "Allow Mods to Choose Icon",
     "fr-CA": "Autoriser les mods à choisir l'icône"
   },
   "cog-allow-mods-choose-icon-tip": {
-    "en-CA": "When on, mods can use COG_API.Notify to supply a per-message icon path under assets/icons/. When off, every message uses the Notifications icon (if Show icons is on).",
-    "fr-CA": "Lorsque c'est activé, les mods peuvent utiliser COG_API.Notify pour fournir un chemin d'icône par message sous assets/icons/. Lorsque c'est désactivé, chaque message utilise l'icône des Notifications (si Afficher les icônes est activé)."
+    "en-CA": "When on, mods can use COG_Feed_API.Notify (or legacy COG_API.Notify) to supply a per-message icon path under assets/icons/. When off, every message uses the Notifications icon (if Show icons is on).",
+    "fr-CA": "Lorsque c'est activé, les mods peuvent utiliser COG_Feed_API.Notify (ou l'ancien COG_API.Notify) pour fournir un chemin d'icône par message sous assets/icons/. Lorsque c'est désactivé, chaque message utilise l'icône des Notifications (si Afficher les icônes est activé)."
   },
   "cog-alpha": {
     "en-CA": "Alpha",
@@ -1063,6 +1063,10 @@
     "en-CA": "Level Progress",
     "fr-CA": "Progression de niveau"
   },
+  "cog-skill-progress": {
+    "en-CA": "Skill Progress",
+    "fr-CA": "Progression de compétence"
+  },
   "cog-level-up-menu-never-blocked": {
     "en-CA": "Level Up Menu is never blocked.",
     "fr-CA": "Le menu de montée de niveau n'est jamais bloqué."
@@ -1300,8 +1304,8 @@
     "fr-CA": "Barre de progression"
   },
   "cog-progress-bar-hint": {
-    "en-CA": "Shared bar colour, width, and number format for Active Effects timers and Skills Level Progress.",
-    "fr-CA": "Couleur, largeur et format numérique partagés de la barre pour les minuteries des effets actifs et la progression de niveau des compétences."
+    "en-CA": "Shared bar colour, width, number format, and timer window for Active Effects and Skills Level Progress.",
+    "fr-CA": "Couleur, largeur, format numérique et fenêtre de minuterie partagés pour les effets actifs et la progression de niveau des compétences."
   },
   "cog-push-stock-titles": {
     "en-CA": "Update stock titles on translation",

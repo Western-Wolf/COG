@@ -1,5 +1,7 @@
-#include "_Gizmo_Feed_ActiveEffects.h"
+#include "_Gizmo_Feed_SourceActiveEffects.h"
 #include "_Gizmo_Feed.h"
+#include "_Gizmo_Feed_API.h"
+#include "_Gizmo_Feed_Log.h"
 
 #include "_Core_Registry.h"
 #include "_Gizmo_Feed_UtilityIconRegistry.h"
@@ -26,6 +28,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <spdlog/spdlog.h>
@@ -325,34 +328,44 @@ bool CogFeed::AnyFeedShowsActiveEffects()
 
 void CogFeed::PushActiveEffectsToUi()
 {
-	static PolledUiChannel gate{ "applyActiveEffects", "[]" };
-	if (!gate.BeginTick(AnyFeedShowsActiveEffects())) {
+	static std::unordered_map<RE::FormID, std::int32_t> effectReceipts;
+
+	auto dismissAll = [&]() {
+		for (auto& [_, receipt] : effectReceipts) {
+			if (receipt != 0) {
+				Dismiss(receipt);
+			}
+		}
+		effectReceipts.clear();
 		ClearEffectMetaCache();
+		FlushNotificationsToUi();
+	};
+
+	if (!AnyFeedShowsActiveEffects()) {
+		if (!effectReceipts.empty()) {
+			dismissAll();
+		}
 		return;
 	}
 
 	auto* player = RE::PlayerCharacter::GetSingleton();
 	if (!player) {
-		ClearEffectMetaCache();
-		gate.SendIfChanged("[]");
+		dismissAll();
 		return;
 	}
 
 	auto* target = player->AsMagicTarget();
 	if (!target) {
-		ClearEffectMetaCache();
-		gate.SendIfChanged("[]");
+		dismissAll();
 		return;
 	}
 
 	auto* list = target->GetActiveEffectList();
 	if (!list) {
-		ClearEffectMetaCache();
-		gate.SendIfChanged("[]");
+		dismissAll();
 		return;
 	}
 
-	// C3: copy POD scalars under SEH, then resolve chrome off FormID (no ActiveEffect* retained).
 	EffectCollectCtx collect;
 	collect.list = list;
 	unsigned long sehCode = 0;
@@ -361,8 +374,6 @@ void CogFeed::PushActiveEffectsToUi()
 		return;
 	}
 
-	// One Feed row per EffectSetting (MGEF). When several instances share a type
-	// (e.g. two Fortify Smithing potions), keep the longest remaining timer.
 	std::unordered_map<RE::FormID, EffectPushRow> bestByForm;
 	bestByForm.reserve(48);
 
@@ -383,9 +394,6 @@ void CogFeed::PushActiveEffectsToUi()
 			continue;
 		}
 
-		const double percent = (std::max)(
-			0.0,
-			(std::min)(100.0, static_cast<double>(remaining) / static_cast<double>(snap.duration) * 100.0));
 		const EffectMetaCache meta = MetaForEffect(snap.formId, base);
 		EffectPushRow row;
 		row.formId = snap.formId;
@@ -394,7 +402,7 @@ void CogFeed::PushActiveEffectsToUi()
 		row.duration = snap.duration;
 		row.elapsed = snap.elapsed;
 		row.remaining = remaining;
-		row.percent = percent;
+		row.percent = 0.0;
 		row.transform = meta.transform;
 		bestByForm[snap.formId] = std::move(row);
 	}
@@ -413,30 +421,53 @@ void CogFeed::PushActiveEffectsToUi()
 		return a.formId < b.formId;
 	});
 
-	std::ostringstream o;
-	o << '[';
-	bool first = true;
-	std::uint32_t count = 0;
+	auto& reg = CogRegistry::Get();
+	const auto color = reg.FirstVisibleFeedSetting("showActiveEffects", "effectsColor", "#e8d2a0");
+	const bool suppressTransform =
+		reg.FirstVisibleFeedSettingBool("showActiveEffects", "suppressTransformEffects", true);
+	std::unordered_set<RE::FormID> seen;
+	seen.reserve(rows.size());
 	constexpr std::uint32_t kMaxPush = 48;
-
+	std::uint32_t count = 0;
 	for (const auto& row : rows) {
 		if (count >= kMaxPush) {
 			break;
 		}
-		if (!first) {
-			o << ',';
+		if (suppressTransform && row.transform) {
+			continue;
 		}
-		first = false;
-		o << "{\"id\":\"" << row.formId << "\",\"name\":\"" << EscapeJson(row.name)
-		  << "\",\"duration\":" << row.duration << ",\"elapsed\":" << row.elapsed
-		  << ",\"remaining\":" << row.remaining << ",\"percent\":" << row.percent
-		  << ",\"icon\":\"" << EscapeJson(row.icon) << "\""
-		  << ",\"transform\":" << (row.transform ? "true" : "false") << '}';
+		std::int32_t prior = 0;
+		if (auto it = effectReceipts.find(row.formId); it != effectReceipts.end()) {
+			prior = it->second;
+		}
+		const auto receipt = Notify(
+			row.name,
+			color,
+			row.icon,
+			kSourceEffects,
+			row.remaining,
+			row.duration,
+			"timer",
+			prior);
+		if (receipt != 0) {
+			effectReceipts[row.formId] = receipt;
+			seen.insert(row.formId);
+		}
 		++count;
 	}
 
-	o << ']';
-	gate.SendIfChanged(o.str());
+	for (auto it = effectReceipts.begin(); it != effectReceipts.end();) {
+		if (seen.contains(it->first)) {
+			++it;
+			continue;
+		}
+		if (it->second != 0) {
+			Dismiss(it->second);
+		}
+		it = effectReceipts.erase(it);
+	}
+
+	FlushNotificationsToUi();
 }
 
 void CogFeed::LoadEffectIconRules()
