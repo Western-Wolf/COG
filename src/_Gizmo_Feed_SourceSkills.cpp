@@ -18,6 +18,7 @@
 #include <cstdio>
 #include <deque>
 #include <filesystem>
+#include <limits>
 #include <mutex>
 #include <sstream>
 #include <string>
@@ -249,6 +250,21 @@ namespace
 namespace
 {
 	std::int32_t g_levelProgressReceipt = 0;
+	float g_levelProgressLastXp = std::numeric_limits<float>::quiet_NaN();
+	float g_levelProgressLastThreshold = std::numeric_limits<float>::quiet_NaN();
+	std::uint16_t g_levelProgressLastLevel = 0;
+
+	void ClearLevelProgressReceipt()
+	{
+		if (g_levelProgressReceipt != 0) {
+			CogFeed::Dismiss(g_levelProgressReceipt);
+			g_levelProgressReceipt = 0;
+			CogFeed::FlushNotificationsToUi();
+		}
+		g_levelProgressLastXp = std::numeric_limits<float>::quiet_NaN();
+		g_levelProgressLastThreshold = std::numeric_limits<float>::quiet_NaN();
+		g_levelProgressLastLevel = 0;
+	}
 }
 
 void CogFeed::InstallSkillIncreaseSink()
@@ -286,40 +302,42 @@ std::vector<std::string> CogFeed::DrainSkillEventsJson()
 	return {};
 }
 
+void CogFeed::ClearLevelProgressIfHidden()
+{
+	if (!CogRegistry::Get().HasVisibleFeedShowingLevelProgress()) {
+		ClearLevelProgressReceipt();
+	}
+}
+
 void CogFeed::PushLevelProgressToUi()
 {
 	if (!CogRegistry::Get().HasVisibleFeedShowingLevelProgress()) {
-		if (g_levelProgressReceipt != 0) {
-			Dismiss(g_levelProgressReceipt);
-			g_levelProgressReceipt = 0;
-			FlushNotificationsToUi();
-		}
+		ClearLevelProgressReceipt();
 		return;
 	}
 	auto* player = RE::PlayerCharacter::GetSingleton();
 	if (!player) {
-		if (g_levelProgressReceipt != 0) {
-			Dismiss(g_levelProgressReceipt);
-			g_levelProgressReceipt = 0;
-			FlushNotificationsToUi();
-		}
+		ClearLevelProgressReceipt();
 		return;
 	}
 	auto* skills = player->GetInfoRuntimeData().skills;
 	if (!skills || !skills->data) {
-		if (g_levelProgressReceipt != 0) {
-			Dismiss(g_levelProgressReceipt);
-			g_levelProgressReceipt = 0;
-			FlushNotificationsToUi();
-		}
+		ClearLevelProgressReceipt();
 		return;
 	}
 	const auto* data = skills->data;
 	const float xp = data->xp;
 	const float threshold = data->levelThreshold > 0.f ? data->levelThreshold : 1.f;
 	const auto level = player->GetLevel();
-	const auto color =
-		CogRegistry::Get().FirstVisibleFeedSetting("showSkills", "skillsColor", "#e8d2a0");
+	// Same divert can re-enter; skip identical meters so JS pulseAt can age out.
+	if (g_levelProgressReceipt != 0 && level == g_levelProgressLastLevel &&
+		xp == g_levelProgressLastXp && threshold == g_levelProgressLastThreshold) {
+		return;
+	}
+	const auto color = CogRegistry::Get().FirstVisibleFeedSetting(
+		"showSkills",
+		"levelProgressColor",
+		"#e8d2a0");
 	std::string message = "Level ";
 	message += std::to_string(static_cast<unsigned>(level));
 
@@ -332,5 +350,8 @@ void CogFeed::PushLevelProgressToUi()
 		threshold,
 		{},
 		g_levelProgressReceipt);
+	g_levelProgressLastXp = xp;
+	g_levelProgressLastThreshold = threshold;
+	g_levelProgressLastLevel = level;
 	FlushNotificationsToUi();
 }

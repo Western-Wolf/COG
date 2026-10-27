@@ -289,7 +289,7 @@ public:
 	std::string DefaultVisibilityForType(std::string_view typeId) const;
 	/** Fill missing instance fields from the registered type (settings schema + root defaults). */
 	bool ApplyGizmoTypeDefaultsUnlocked();
-	/** Mirror COG_Builtin.psc Register batch from C++ so builtins always exist even if the quest misses COG_Ready. */
+	/** Register COG.Builtin gears (native-only; EndRegister omit-prunes retired varNames). */
 	void EnsureBuiltinSources();
 
 	std::string EditorKey() const;

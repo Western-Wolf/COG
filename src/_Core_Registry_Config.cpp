@@ -220,6 +220,32 @@ void CogRegistry::EnsureDirs() const
 }
 
 // Migration Code for Transition from v1.01 or earlier to v1.1:
+// Drop pre-cog-* builtin type records (clock/feed/shout-meter/suppressor). Instances already
+// normalize to cog-* on load; SaveGizmoTypesUnlocked then prunes the orphan JSON stems.
+bool CogRegistry::MigrateLegacyBuiltinGizmoTypeIdsUnlocked()
+{
+	bool dropped = false;
+	for (auto it = _gizmoTypes.begin(); it != _gizmoTypes.end();) {
+		const auto normalized = NormalizeGizmoType(it->typeId);
+		if (it->typeId != normalized && IsBuiltinGizmoTypeId(normalized) &&
+			!IsBuiltinGizmoTypeId(it->typeId)) {
+			logger::info(
+				"COG: Migration Code for Transition from v1.01 or earlier to v1.1: discarded legacy gizmo type '{}' (now '{}')",
+				it->typeId,
+				normalized);
+			it = _gizmoTypes.erase(it);
+			dropped = true;
+			continue;
+		}
+		++it;
+	}
+	if (dropped) {
+		SaveGizmoTypesUnlocked();
+	}
+	return dropped;
+}
+
+// Migration Code for Transition from v1.01 or earlier to v1.1:
 // One-time rename moves gizmos/feed/ → gizmos/cog-feed/ when the legacy tree still holds section rule *.txt files.
 void CogRegistry::MigrateLegacyFeedDataDir() const
 {
@@ -851,6 +877,19 @@ void CogRegistry::LoadGizmoTypeFiles(bool& repaired)
 		if (IsBuiltinGizmoTypeId(type.typeId)) {
 			continue;
 		}
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// Pre-cog-* builtin ids (clock/feed/shout-meter/suppressor) must not reload as customs.
+		{
+			const auto normalized = NormalizeGizmoType(type.typeId);
+			if (type.typeId != normalized && IsBuiltinGizmoTypeId(normalized)) {
+				logger::info(
+					"COG: Migration Code for Transition from v1.01 or earlier to v1.1: skipped legacy gizmo type file '{}' (now '{}')",
+					type.typeId,
+					normalized);
+				repaired = true;
+				continue;
+			}
+		}
 		if (type.sourceMod.empty()) {
 			logger::warn("COG: skipped gizmo type {} — empty sourceMod", ctx.path);
 			continue;
@@ -877,19 +916,6 @@ void CogRegistry::SaveGizmoTypesUnlocked() const
 			continue;
 		}
 		const auto stem = FileStem(type.typeId);
-		// Migration Code for Transition from v1.01 or earlier to v1.1:
-		// Pre-cog-* builtin ids (clock/feed/shout-meter/suppressor) must not reload as customs.
-		{
-			const auto normalized = NormalizeGizmoType(type.typeId);
-			if (type.typeId != normalized && IsBuiltinGizmoTypeId(normalized)) {
-				logger::info(
-					"COG: Migration Code for Transition from v1.01 or earlier to v1.1: skipped legacy gizmo type file '{}' (now '{}')",
-					type.typeId,
-					normalized);
-				repaired = true;
-				continue;
-			}
-		}
 		stems.insert(stem);
 		ids.push_back(type.typeId);
 		WriteAll(dir / (stem + ".json"), GizmoTypeToJson(type));

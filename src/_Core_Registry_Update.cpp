@@ -385,7 +385,7 @@ void CogRegistry::OnLoadingMenuClosed()
 		// Force a full snapshot on the first tick after load (not a lean live patch).
 		_layoutDirty = true;
 	}
-	// Re-mark internal senders present immediately after the clear (Papyrus may miss COG_Ready).
+	// Re-register COG.Builtin after the session clear (native catalog + omit-prune).
 	EnsureBuiltinSources();
 	CogInventory::RegisterFromSaved();
 	CogUi::SendReadyEvent();

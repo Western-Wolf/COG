@@ -24,7 +24,7 @@ COG links against [CommonLibSSE-NG](https://github.com/alandtse/CommonLibSSE-NG)
 |------|----------|
 | `src/` | SKSE plugin (`COG.dll`) |
 | `view/` | Prisma overlay (HTML/CSS/JS + shipped assets) |
-| `papyrus/` | `COG_API` / `COG_Builtin` sources |
+| `papyrus/` | `COG_API` / `COG_Feed_API` sources |
 | `plugin/` | Generated light-flagged ESP |
 | `addons/iwant/` | Optional iWant Widgets / Status Bars bridge |
 | `addons/example/` | Optional Papyrus `COG_API` example pack |

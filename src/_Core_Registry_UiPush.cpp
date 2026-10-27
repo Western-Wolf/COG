@@ -622,7 +622,8 @@ void CogRegistry::PushToUi()
 		CogUi::Interop("applyLivePatch", BuildLivePatchJson());
 	}
 	CogFeed::PushActiveEffectsToUi();
-	CogFeed::PushLevelProgressToUi();
+	// Level XP meter is divert-driven (kSkillIncrease), not polled — only clear if section off.
+	CogFeed::ClearLevelProgressIfHidden();
 	// Batched toast drain on the same tick path as effects (one Interop when pending).
 	CogFeed::PushPendingFeedEventsToUi();
 }

@@ -438,6 +438,7 @@ void CogFeed::EnqueueNotification(std::string text, std::string color, std::stri
 	if (icon.empty()) {
 		// Icon rules see plain text (emphasis tags stripped for matching only).
 		icon = CogFeed::ResolveNotificationIcon(StripHudMarkupForMatch(text));
+	}
 	(void)Notify(std::move(text), std::move(color), std::move(icon), kSourceNotifications);
 }
 
@@ -467,16 +468,16 @@ void CogFeed::EnqueueLocation(std::string text, std::string kind)
 	(void)Notify(std::move(text), std::move(color), std::move(icon), kSourceLocation);
 }
 
-void CogFeed::EnqueueLocation(std::string text, std::string kind)
+void CogFeed::FlushNotificationsToUi()
 {
-	text = TranslateHudText(std::move(text));
-	if (text.empty()) {
+	PushPendingFeedEventsToUi();
+}
+
+void CogFeed::PushPendingFeedEventsToUi()
+{
+	if (!CogUi::HasView()) {
 		return;
 	}
-	if (kind != "current") {
-		kind = "discovery";
-	}
-	std::string icon = CogFeed::ResolveLocationIcon(text, kind);
 
 	auto notify = DrainNotifyEventsJson();
 	if (notify.empty()) {
@@ -494,32 +495,6 @@ void CogFeed::EnqueueLocation(std::string text, std::string kind)
 	o << ']';
 
 	CogFeedLog::debug("Feed: applyFeedEvents notify={}", notify.size());
-	for (const auto& e : notes) {
-		std::ostringstream one;
-		one << "{\"channel\":\"notification\",\"id\":" << e.id << ",\"text\":\"" << EscapeJson(e.text)
-			<< "\",\"color\":\"" << EscapeJson(e.color) << "\",\"icon\":\"" << EscapeJson(e.icon) << "\"}";
-		append(one.str());
-	}
-	for (const auto& json : inv) {
-		append(std::string("{\"channel\":\"inventory\",") + json.substr(1));
-	}
-	for (const auto& e : locs) {
-		std::ostringstream one;
-		one << "{\"channel\":\"location\",\"id\":" << e.id << ",\"text\":\"" << EscapeJson(e.text)
-			<< "\",\"kind\":\"" << EscapeJson(e.kind) << "\",\"icon\":\"" << EscapeJson(e.icon) << "\"}";
-		append(one.str());
-	}
-	for (const auto& json : skills) {
-		append(std::string("{\"channel\":\"skill\",") + json.substr(1));
-	}
-	o << ']';
-
-	logger::debug(
-		"Feed: applyFeedEvents notes={} inventory={} locations={} skills={}",
-		notes.size(),
-		inv.size(),
-		locs.size(),
-		skills.size());
 	CogUi::Interop("applyFeedEvents", o.str());
 }
 

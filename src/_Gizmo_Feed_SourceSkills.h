@@ -14,6 +14,12 @@ namespace CogFeed
 	/** Drain newly queued skill toast entries as JSON objects (no surrounding array). */
 	[[nodiscard]] std::vector<std::string> DrainSkillEventsJson();
 
-	/** Push character level XP progress when a Skills feed wants the live line. */
+	/**
+	 * Snapshot player level XP into the Feed meter. Call only from the skill/level
+	 * HUD divert (HandleSkillIncreaseHud) — not from the UI tick.
+	 */
 	void PushLevelProgressToUi();
+
+	/** Dismiss the level XP meter receipt when no Feed is showing Level Progress. */
+	void ClearLevelProgressIfHidden();
 }

@@ -377,16 +377,6 @@ function ensureFeedGizmo(gizmo) {
 	s.currentLocationIcon = normalizeFeedCurrentLocationIcon(s.currentLocationIcon);
 	s.locationDiscoveryColor = optionalHex(s.locationDiscoveryColor);
 	s.currentLocationColor = optionalHex(s.currentLocationColor);
-	s.skillIcon = normalizeFeedSkillIcon(s.skillIcon);
-	s.levelIcon = normalizeFeedLevelIcon(s.levelIcon);
-	s.skillsColor = optionalHex(s.skillsColor);
-	s.showLevelProgress = s.showLevelProgress !== false;
-	s.backdropColor = optionalHex(s.backdropColor);
-	s.backdropOpacity = Math.max(
-		0,
-		Math.min(
-			100,
-			Number.isFinite(Number(s.backdropOpacity)) ? Number(s.backdropOpacity) : DEFAULT_FEED_BACKDROP_OPACITY
 	s.showSkillProgress = s.showSkillProgress !== false;
 	s.showLevelProgress = s.showLevelProgress !== false;
 	s.skillProgressIcon = normalizeFeedSkillIcon(s.skillProgressIcon);
@@ -560,18 +550,30 @@ function applyNotifyFeedEvent(incoming, noPaint) {
 		const progress = threshold > 0 ? Math.max(0, Math.min(1, xp / threshold)) : 0;
 		// Source owns the label (e.g. "Level 12"); keep a numeric level only for demos / legacy.
 		const levelMatch = /^Level\s+(\d+)\s*$/i.exec(text.trim());
+		const name = text || "Level";
+		const level = levelMatch ? Number(levelMatch[1]) : 1;
+		const prev = levelProgressLive;
+		const changed =
+			!prev ||
+			Number(prev.xp) !== xp ||
+			Number(prev.threshold) !== threshold ||
+			Number(prev.level) !== level ||
+			String(prev.name || "") !== name;
 		levelProgressLive = {
 			id,
-			name: text || "Level",
-			level: levelMatch ? Number(levelMatch[1]) : 1,
+			name,
+			level,
 			xp,
 			threshold,
 			progress,
 			percent: progress * 100,
 			icon: normalizeIconRelPath(icon) || ""
 		};
-		// Flash with toast lifetime; do not treat the meter as a permanent feed line.
-		levelProgressPulseAt = performance.now();
+		// Flash only when XP/level actually changes. Per-tick identical upserts must not
+		// reset pulseAt — that kept addedAt≈now, opacity stuck in fade-in, blank top row.
+		if (changed) {
+			levelProgressPulseAt = performance.now();
+		}
 		return;
 	}
 
@@ -1222,8 +1224,8 @@ function feedVisibleLines(gizmo, now, preview) {
 
 	merged.sort((a, b) => a.addedAt - b.addedAt || String(a.key).localeCompare(String(b.key)));
 
-	// Level progress rides the newest skill toast's lifetime. With Skill Progress off, a
-	// meter Notify still flashes for one feed duration via levelProgressPulseAt.
+	// Level XP meter is divert-driven (pushed with kSkillIncrease). It rides the newest
+	// skill toast's lifetime; with Skill Progress off, pulseAlive still flashes one duration.
 	if (
 		gizmo.settings.showSkills &&
 		gizmo.settings.showLevelProgress !== false
@@ -1249,6 +1251,13 @@ function feedVisibleLines(gizmo, now, preview) {
 				progress = { name: "Level 1", level: 1, xp: 0, threshold: 1, progress: 0, percent: 0 };
 			}
 			const skillLine = newestSkillIdx >= 0 ? merged[newestSkillIdx] : null;
+			// Piggyback skill toast lifetime; pulse flash uses fixed pulseAt; editor demo mid-hold.
+			let addedAt = now - holdAge;
+			if (skillLine) {
+				addedAt = skillLine.addedAt;
+			} else if (pulseAlive) {
+				addedAt = levelProgressPulseAt;
+			}
 			const entry = {
 				kind: "level-progress",
 				key: "level-progress",
@@ -1260,7 +1269,7 @@ function feedVisibleLines(gizmo, now, preview) {
 				threshold: Number(progress.threshold) || 1,
 				icon: progress.icon || "",
 				demo: (skillLine && skillLine.demo === true) || (editorOpen && !levelProgressLive),
-				addedAt: skillLine ? skillLine.addedAt : levelProgressPulseAt || now - holdAge
+				addedAt
 			};
 			if (newestSkillIdx >= 0) {
 				merged.splice(newestSkillIdx + 1, 0, entry);
@@ -2998,6 +3007,16 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		iconsInput.type = "checkbox";
 		iconsInput.dataset.role = "showNotificationIcons";
 		iconsInput.checked = gizmo.settings.showNotificationIcons !== false;
+		iconsField.appendChild(iconsInput);
+		iconsField.appendChild(document.createTextNode(" "));
+		const iconsSpan = document.createElement("span");
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(iconsSpan, "cog-show-icons", "Show Icons");
+		} else {
+			iconsSpan.textContent = "Show Icons";
+		}
+		iconsField.appendChild(iconsSpan);
+		iconsInput.addEventListener("change", () => {
 			patchGizmo(gid, { showNotificationIcons: iconsInput.checked });
 		});
 		defaultsRow.appendChild(iconsField);

@@ -575,7 +575,7 @@ void CogRegistry::RegisterBuiltinGizmoTypes()
 
 void CogRegistry::EnsureBuiltinSources()
 {
-	// Keep in sync with _cog/papyrus/COG_Builtin.psc Setup().
+	// Sole register path for COG.Builtin (not Papyrus). Live values: RefreshLiveUnlocked.
 	BeginRegister("COG.Builtin", kCogPluginFile);
 	Register("COG.Builtin", "Health", "percent", "Health", "Stat", "Survival/health.svg", "#ffffff", "", "#DF2020", "", "hud.health", true);
 	Register("COG.Builtin", "Stamina", "percent", "Stamina", "Stat", "Camping/hiker.svg", "#ffffff", "", "#20DF20", "", "hud.stamina", true);
