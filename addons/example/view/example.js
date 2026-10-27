@@ -1,39 +1,24 @@
 // COG Example API — Example (Gear Updated) gizmo view script
 //
-// Deployed as PrismaUI/views/Example/example.js and registered from Papyrus via
-// RegisterGizmo(..., viewScript = "Example/example.js", ...).
-// COG loads this as ../Example/example.js from the overlay, so it shares the same
-// classic-script globals as the HUD (_Core.js, _UI.js, _Gauges_Meter.js, …):
-//   CogRegisterGizmoRenderer, snapshot, sourceFor, resolveIconHref, paintMaskedFace, mixHex.
-//
-// Contract: call CogRegisterGizmoRenderer(typeId, { mount, update, unmount }).
-// COG owns the outer gizmo box (position, size, rotation, visibility). This script
-// only paints inside the .gizmo-custom-host element.
-//
-// Live data path: sourceFor + Papyrus UpdateCount (gear-backed).
+// Deployed as PrismaUI/views/Example/example.js
+// Live data: sourceFor("COG_Example_Gears", "count") after Papyrus UpdateCount.
+// Schema: zeroColor, tenColor, showCount (digit beside icon, same size/colour).
 
 (function () {
 
-	// Must match RegisterGizmo typeId / Papyrus sourceMod + count varName.
 	const TYPE_ID = "xmp-gearupdated";
-	const SOURCE_MOD = "COG_Example";
+	const SOURCE_MOD = "COG_Example_Gears";
 	const COUNT_VAR = "count";
-
-	// After COG_API.ImportIcon, the file lives under assets/imports/icons/.
-	// Short form for Register/Notify: "COG_Example/example.svg".
-	const ICON_REL = "assets/imports/icons/COG_Example/example.svg";
-	// Schema defaults from RegisterGizmo settingsSchemaJson (zeroColour / tenColour).
-	const DEFAULT_ZERO = "#DF2020";
-	const DEFAULT_TEN = "#20DF20";
+	const ICON_REL = "assets/imports/icons/COG_Example/light-bulb-fill.png";
+	const DEFAULT_ZERO = "#20DF20";
+	const DEFAULT_TEN = "#DF2020";
 	const FACE_CLASS = "example-gearupdated-face";
 
-	/** Per-instance settings from the editor (schema keys: zeroColor, tenColor). */
 	function readSettings(gizmo) {
 		const raw = gizmo && gizmo.settings;
 		if (raw && typeof raw === "object") {
 			return raw;
 		}
-		// Fallback when only the serialized JSON string is present on the object.
 		if (typeof gizmo.settingsJson === "string" && gizmo.settingsJson.trim()) {
 			try {
 				const parsed = JSON.parse(gizmo.settingsJson);
@@ -45,11 +30,6 @@
 		return {};
 	}
 
-	/**
-	 * Live countdown value from the Example Count gear (Papyrus UpdateCount).
-	 * This demo reads the shared source from snapshot via sourceFor(mod, varName).
-	 * src.value is the count integer for type "count".
-	 */
 	function exampleCount() {
 		if (typeof sourceFor !== "function") {
 			return 0;
@@ -59,10 +39,6 @@
 		return Number.isFinite(n) ? n : 0;
 	}
 
-	/**
-	 * Move from Zero colour → Ten colour by count/10 (0 → zeroColor, 10 → tenColor).
-	 * mixHex is a COG overlay helper (same loop gears use for icon gradients).
-	 */
 	function tintForCount(settings, count) {
 		const zero = (settings && settings.zeroColor) || DEFAULT_ZERO;
 		const ten = (settings && settings.tenColor) || DEFAULT_TEN;
@@ -73,40 +49,83 @@
 		return t >= 0.5 ? ten : zero;
 	}
 
-	/** One full-bleed icon plate inside the custom host (clears COG's placeholder text). */
+	function showCountEnabled(settings) {
+		if (!settings || settings.showCount === undefined || settings.showCount === null) {
+			return true;
+		}
+		return (
+			settings.showCount === true ||
+			settings.showCount === "true" ||
+			settings.showCount === 1 ||
+			settings.showCount === "1"
+		);
+	}
+
 	function ensureHost(host) {
 		if (!host) {
 			return null;
 		}
 		host.classList.remove("is-placeholder");
 		host.dataset.placeholder = "";
-		let icon = host.querySelector(".example-gearupdated-icon");
-		if (!icon) {
-			// Clear placeholder text only when first building — wiping every update
-			// remounts the mask face and causes flicker on live UpdateCount ticks.
+		let row = host.querySelector(".example-gearupdated-row");
+		if (!row) {
 			host.textContent = "";
-			icon = document.createElement("div");
+			row = document.createElement("div");
+			row.className = "example-gearupdated-row";
+			row.style.cssText =
+				"display:flex;flex-direction:row;align-items:center;justify-content:center;" +
+				"gap:0.1em;width:100%;height:100%;box-sizing:border-box;padding:4%;" +
+				"overflow:hidden;";
+			const icon = document.createElement("div");
 			icon.className = "example-gearupdated-icon";
+			// Fixed square — never flex-shrink when the digit goes to two characters.
 			icon.style.cssText =
-				"position:relative;width:100%;height:100%;box-sizing:border-box;";
-			host.appendChild(icon);
+				"position:relative;flex:0 0 auto;box-sizing:border-box;" +
+				"width:0;height:0;overflow:hidden;";
+			const countEl = document.createElement("div");
+			countEl.className = "example-gearupdated-count";
+			countEl.style.cssText =
+				"flex:0 0 auto;font-weight:700;line-height:1;user-select:none;pointer-events:none;" +
+				"font-variant-numeric:tabular-nums;min-width:2ch;text-align:left;";
+			row.appendChild(icon);
+			row.appendChild(countEl);
+			host.appendChild(row);
 		}
-		return icon;
+		return row;
 	}
 
-	/**
-	 * Paint the example icon tinted by the live count.
-	 * resolveIconHref: maps a relative icon path to assets/icons/ or assets/imports/icons/.
-	 * paintMaskedFace: CSS-mask the SVG and fill with `color` (same path as gear icons).
-	 */
+	function faceSizePx(host, row, withCount) {
+		const h = (host && host.clientHeight) || (row && row.clientHeight) || 40;
+		const w = (host && host.clientWidth) || (row && row.clientWidth) || h;
+		// Budget for icon + 2-digit count + gap so size stays constant at 0…10.
+		const pad = Math.max(2, Math.round(Math.min(h, w) * 0.08));
+		const usableH = Math.max(8, h - pad * 2);
+		const usableW = Math.max(8, w - pad * 2);
+		if (!withCount) {
+			return Math.max(8, Math.floor(Math.min(usableH, usableW)));
+		}
+		// icon + gap(~0.1em) + ~1.15× digit width for "10" ≈ 2.25× face.
+		const byW = Math.floor(usableW / 2.25);
+		return Math.max(8, Math.min(usableH, byW));
+	}
+
 	function paint(host, gizmo) {
-		const icon = ensureHost(host);
-		if (!icon || typeof paintMaskedFace !== "function" || typeof resolveIconHref !== "function") {
+		const row = ensureHost(host);
+		if (!row || typeof paintMaskedFace !== "function" || typeof resolveIconHref !== "function") {
+			return;
+		}
+		const icon = row.querySelector(".example-gearupdated-icon");
+		const countEl = row.querySelector(".example-gearupdated-count");
+		if (!icon || !countEl) {
 			return;
 		}
 		const settings = readSettings(gizmo);
 		const count = exampleCount();
 		const color = tintForCount(settings, count);
+		const show = showCountEnabled(settings);
+		const facePx = faceSizePx(host, row, show);
+		icon.style.width = facePx + "px";
+		icon.style.height = facePx + "px";
 		const href = resolveIconHref(ICON_REL);
 		paintMaskedFace(icon, FACE_CLASS, { color, href });
 		const face = icon.querySelector("." + FACE_CLASS);
@@ -122,6 +141,15 @@
 			face.style.maskSize = "contain";
 			face.style.pointerEvents = "none";
 		}
+		if (show) {
+			countEl.style.display = "";
+			countEl.textContent = String(count);
+			countEl.style.color = color;
+			countEl.style.fontSize = facePx + "px";
+		} else {
+			countEl.style.display = "none";
+			countEl.textContent = "";
+		}
 	}
 
 	if (typeof window.CogRegisterGizmoRenderer !== "function") {
@@ -129,18 +157,13 @@
 		return;
 	}
 
-	// Register this typeId with COG. Called once when the script loads; COG then
-	// invokes mount/update/unmount for each placed instance of xmp-gearupdated.
 	window.CogRegisterGizmoRenderer(TYPE_ID, {
-		// First build of the DOM under host for a new (or rebuilt) gizmo element.
 		mount(host, gizmo) {
 			paint(host, gizmo);
 		},
-		// Every HUD refresh: re-read settings + live count and retint the icon.
 		update(host, gizmo) {
 			paint(host, gizmo);
 		},
-		// Gizmo removed or type remounted — clear our DOM.
 		unmount(host) {
 			if (host) {
 				host.textContent = "";

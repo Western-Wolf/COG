@@ -1,0 +1,18 @@
+{
+  "name:Example (Gear Updated)": {
+    "en-CA": "Example (Gear Updated)",
+    "fr-CA": "Exemple (Gear Updated)"
+  },
+  "cog-zero-colour": {
+    "en-CA": "Zero colour",
+    "fr-CA": "Couleur à zéro"
+  },
+  "cog-ten-colour": {
+    "en-CA": "Ten colour",
+    "fr-CA": "Couleur à dix"
+  },
+  "cog-show-count": {
+    "en-CA": "Show Count",
+    "fr-CA": "Afficher le compte"
+  }
+}

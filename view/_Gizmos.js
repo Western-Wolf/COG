@@ -640,17 +640,22 @@ function fillSchemaGizmoEditor(panel, gizmo) {
 		}
 		if (kind === "bool" || kind === "boolean") {
 			const wrap = document.createElement("label");
-			wrap.className = "pos-field compact";
-			wrap.innerHTML = "<span>" + label + "</span><select></select>";
-			const sel = wrap.querySelector("select");
-			sel.innerHTML = '<option value="true">On</option><option value="false">Off</option>';
-			tagSelectOptions(sel, {
-				true: ["cog-on", "On"],
-				false: ["cog-off", "Off"]
-			});
-			sel.value = settings()[field.key] ? "true" : "false";
-			sel.addEventListener("change", () => {
-				patchGizmoSetting(gid, field.key, sel.value === "true");
+			wrap.className = "check-row compact";
+			const box = document.createElement("input");
+			box.type = "checkbox";
+			const cur = settings()[field.key];
+			box.checked =
+				cur === true ||
+				cur === "true" ||
+				cur === 1 ||
+				cur === "1" ||
+				(cur == null && (field.default === true || field.default === "true"));
+			const span = document.createElement("span");
+			span.textContent = label;
+			wrap.appendChild(box);
+			wrap.appendChild(span);
+			box.addEventListener("change", () => {
+				patchGizmoSetting(gid, field.key, box.checked);
 			});
 			row.appendChild(wrap);
 			continue;
