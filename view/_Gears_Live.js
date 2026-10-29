@@ -100,8 +100,13 @@ function applyLivePercentToHud(incoming) {
 			const style = ensureGroupSettings(group || {});
 			const showTotal =
 				style.showNumber !== false && usesRatio(src) && numberFormatShowsTotal(style.numberFormat);
+			const chrome = sourceBorderColor(src, gear, group);
 			for (const value of el.querySelectorAll(".gear-value")) {
 				value.textContent = formatValue(src, showTotal);
+				value.style.color = chrome;
+			}
+			for (const label of el.querySelectorAll(".gear-label")) {
+				label.style.color = chrome;
 			}
 			applyIconFillFromHidden(el, src, gear, group);
 			applyIconPaint(el, src, gear, group);
@@ -177,8 +182,13 @@ function applyLivePatchToHud() {
 			const style = ensureGroupSettings(group || {});
 			const showTotal =
 				style.showNumber !== false && usesRatio(src) && numberFormatShowsTotal(style.numberFormat);
+			const chrome = sourceBorderColor(src, gear, group);
 			for (const value of el.querySelectorAll(".gear-value")) {
 				value.textContent = formatValue(src, showTotal);
+				value.style.color = chrome;
+			}
+			for (const label of el.querySelectorAll(".gear-label")) {
+				label.style.color = chrome;
 			}
 			applyIconFillFromHidden(el, src, gear, group);
 			applyIconPaint(el, src, gear, group);
@@ -459,13 +469,14 @@ function buildGearEl(groupId, gear, src, style, stack, preview, group) {
 	if (needStack) {
 		const copy = document.createElement("div");
 		copy.className = "gear-stack";
+		const chrome = sourceBorderColor(src, gear, group);
 		if (showBar) {
 			const bar = document.createElement("div");
 			bar.className = "gear-bar" + (style.barTrough ? " has-trough" : "") + (showValue ? " has-value" : "");
 			const clip = document.createElement("div");
 			clip.className = "gear-bar-clip";
 			if (style.barTrough) {
-				clip.style.borderColor = sourceBorderColor(src, gear, group);
+				clip.style.borderColor = chrome;
 			}
 			const fill = document.createElement("span");
 			fill.className = "gear-bar-fill";
@@ -479,6 +490,7 @@ function buildGearEl(groupId, gear, src, style, stack, preview, group) {
 				const value = document.createElement("div");
 				value.className = "gear-value";
 				value.textContent = formatValue(src, showTotal);
+				value.style.color = chrome;
 				bar.appendChild(value);
 			}
 			copy.appendChild(bar);
@@ -486,12 +498,14 @@ function buildGearEl(groupId, gear, src, style, stack, preview, group) {
 			const value = document.createElement("div");
 			value.className = "gear-value";
 			value.textContent = formatValue(src, showTotal);
+			value.style.color = chrome;
 			copy.appendChild(value);
 		}
 		if (style.showLabel) {
 			const label = document.createElement("div");
 			label.className = "gear-label";
 			label.textContent = sourceTitle(src, gear.varName, gear);
+			label.style.color = chrome;
 			copy.appendChild(label);
 		}
 		el.appendChild(copy);
@@ -642,8 +656,13 @@ function renderGears() {
 			}
 			applyIconFillFromHidden(el, item.src, item.gear, group);
 			applyIconPaint(el, item.src, item.gear, group);
+			const chrome = sourceBorderColor(item.src, item.gear, group);
 			for (const value of el.querySelectorAll(".gear-value")) {
 				value.textContent = formatValue(item.src, showTotal);
+				value.style.color = chrome;
+			}
+			for (const label of el.querySelectorAll(".gear-label")) {
+				label.style.color = chrome;
 			}
 		}
 		// Layout after children exist so rotation vars apply to a real box.

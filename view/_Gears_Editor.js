@@ -542,14 +542,14 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 		let n = Number(hidePctInput.value);
 		if (!Number.isFinite(n) || n < 0) {
 			n = 0;
-			hidePctInput.value = "0";
 		}
 		if (!hideAbsolute) {
-			n = Math.max(0, Math.min(100, Math.round(n * 1000) / 1000));
+			n = quantizePct(Math.max(0, Math.min(100, n)));
+			hidePctInput.value = fmtPct(n);
 		} else {
 			n = Math.round(n * 1000) / 1000;
+			hidePctInput.value = String(n);
 		}
-		hidePctInput.value = String(n);
 		patchGearSettings(gear.id, { hideAt: hideAtFromEditor(op, n, hideType) });
 	};
 	displayInput.addEventListener("input", () => commitText("displayName", displayInput));

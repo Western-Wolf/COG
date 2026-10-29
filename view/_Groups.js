@@ -936,8 +936,8 @@ function renderGroups(body) {
 				<label class="section-label">Group settings</label>
 				<p class="lede" data-role="displayLede">Display</p>
 				<div class="pos-row">
-					<label class="pos-field"><span>X</span><input type="number" min="0" max="100" step="0.1" data-role="x"></label>
-					<label class="pos-field"><span>Y</span><input type="number" min="0" max="100" step="0.1" data-role="y"></label>
+					<label class="pos-field"><span>X</span><input type="number" min="0" max="100" step="0.001" data-role="x"></label>
+					<label class="pos-field"><span>Y</span><input type="number" min="0" max="100" step="0.001" data-role="y"></label>
 					<label class="pos-field"><span>Rotation</span><input type="number" min="-180" max="180" step="1" data-role="rotation"></label>
 					<label class="pos-field"><span>Size</span><input type="number" min="4" max="256" step="1" data-role="gearSize"></label>
 					<label class="pos-field"><span>Spacing</span><input type="number" min="0" max="256" step="1" data-role="spacing"></label>
@@ -971,12 +971,15 @@ function renderGroups(body) {
 							<option value="alphaDown">Alpha &amp; Down</option>
 						</select>
 					</label>
-					<label class="pos-field compact mid"><span>Max Alpha</span><input type="number" min="0" max="100" step="1" data-role="maxAlpha"></label>
-					<label><input type="checkbox" data-role="showLabel"> <span>Title</span></label>
-					<label><input type="checkbox" data-role="showIcon"> <span>Icon</span></label>
-					<label><input type="checkbox" data-role="showNumber"> <span>Show Number</span></label>
-					<label><input type="checkbox" data-role="barTrough"> <span>Bar trough</span></label>
-					<label class="check-row" data-role="useGroupColorsRow"><input type="checkbox" data-role="useGroupColors"> <span>Use group colours</span></label>
+					<label class="pos-field compact mid"><span>Max Alpha</span><input type="number" min="0" max="100" step="0.001" data-role="maxAlpha"></label>
+					<label class="color-field compact" data-role="borderColorHost"></label>
+				</div>
+				<div class="style-row group-checks-row">
+					<label class="check-row"><input type="checkbox" data-role="showLabel"> <span>Title</span></label>
+					<label class="check-row"><input type="checkbox" data-role="showIcon"> <span>Icon</span></label>
+					<label class="check-row"><input type="checkbox" data-role="showNumber"> <span>Show Number</span></label>
+					<label class="check-row"><input type="checkbox" data-role="barTrough"> <span>Bar trough</span></label>
+					<label class="check-row" data-role="useGroupColorsRow"><input type="checkbox" data-role="useGroupColors"> <span>Use Group Theme</span></label>
 				</div>
 				<div class="group-color-section" data-role="groupColors" hidden>
 					<div class="color-row" data-role="groupColorFields"></div>
@@ -1143,7 +1146,7 @@ function renderGroups(body) {
 		tagCheckSpan("showIcon", "cog-icon", "Icon");
 		tagCheckSpan("showNumber", "cog-show-number", "Show Number");
 		tagCheckSpan("barTrough", "cog-bar-trough", "Bar trough");
-		tagCheckSpan("useGroupColors", "cog-use-group-colours", "Use group colours");
+		tagCheckSpan("useGroupColors", "cog-use-group-colours", "Use Group Theme");
 		const gearsSummary = details.querySelector(".nested-acc > summary");
 		const gearsCountVars = { count: members.length };
 		if (typeof setTranslatedText === "function") {
@@ -1183,11 +1186,10 @@ function renderGroups(body) {
 					return null;
 				}
 				const v = Number(raw);
-				return Number.isFinite(v) ? clampPct(v, 0, 100) / 100 : null;
+				return Number.isFinite(v) ? clampPct(v, 0, 100) : null;
 			},
-			apply: (v) => patchGroup(group.id, { display: { x: v } }),
-			format: (v) => fmtPct(v * 100),
-			current: () => groupFor(group.id)?.display?.x ?? DEFAULT_HUD_X
+			apply: (v) => patchGroup(group.id, { display: { x: v / 100 } }),
+			current: () => (groupFor(group.id)?.display?.x ?? DEFAULT_HUD_X) * 100
 		});
 		bindNumberField(details.querySelector('[data-role="y"]'), {
 			suffix: "%",
@@ -1196,11 +1198,10 @@ function renderGroups(body) {
 					return null;
 				}
 				const v = Number(raw);
-				return Number.isFinite(v) ? clampPct(v, 0, 100) / 100 : null;
+				return Number.isFinite(v) ? clampPct(v, 0, 100) : null;
 			},
-			apply: (v) => patchGroup(group.id, { display: { y: v } }),
-			format: (v) => fmtPct(v * 100),
-			current: () => groupFor(group.id)?.display?.y ?? DEFAULT_HUD_Y
+			apply: (v) => patchGroup(group.id, { display: { y: v / 100 } }),
+			current: () => (groupFor(group.id)?.display?.y ?? DEFAULT_HUD_Y) * 100
 		});
 		bindNumberField(details.querySelector('[data-role="rotation"]'), {
 			suffix: "°",
@@ -1225,7 +1226,6 @@ function renderGroups(body) {
 				return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : null;
 			},
 			apply: (v) => patchGroup(group.id, { display: { maxAlpha: v } }),
-			format: (v) => String(Math.round(Number(v) || 100)),
 			current: () => {
 				const a = Number(groupFor(group.id)?.display?.maxAlpha);
 				return Number.isFinite(a) ? a : 100;
@@ -1257,7 +1257,10 @@ function renderGroups(body) {
 		xInput.value = fmtPct((group.display.x ?? DEFAULT_HUD_X) * 100);
 		yInput.value = fmtPct((group.display.y ?? DEFAULT_HUD_Y) * 100);
 		rotInput.value = (Number(group.display.rotation) || 0).toFixed(1);
-		maxAlphaInput.value = String(Math.round(Number(group.display.maxAlpha) || 100));
+		{
+			const a = Number(group.display.maxAlpha);
+			maxAlphaInput.value = fmtPct(Number.isFinite(a) ? a : 100);
+		}
 		sizeInput.value = String(pixelSize(group));
 		gapInput.value = String(pixelSpacing(group));
 		const catSel = details.querySelector(".filter-category");
@@ -1294,10 +1297,23 @@ function renderGroups(body) {
 		if (useColorsRow) {
 			useColorsRow.appendChild(
 				makeInfoTip(
-					"When on, gears in this group use these colours unless they are exempt. Empty bar/border fields fall back to General. Empty icon colour falls back to General for SVG/PNG; for GIF/WebP, empty keeps native colours.",
+					"When on, gears in this group use the icon and bar colour maps below unless they are exempt. Empty stops fall back to General (GIF/WebP icons stay native when icon colour is empty).",
 					"cog-group-use-colours-tip"
 				)
 			);
+		}
+		const borderHost = details.querySelector('[data-role="borderColorHost"]');
+		if (borderHost) {
+			const borderField = makeGroupColorField(
+				"Border & Text",
+				group.id,
+				"borderColor",
+				style.borderColor,
+				themeBorder()
+			);
+			borderField.classList.add("compact");
+			tagFieldLabel(borderField, "cog-border-and-text", "Border & Text");
+			borderHost.replaceWith(borderField);
 		}
 		const currentStyle = () => {
 			const live = ensureGroupSettings(groupFor(group.id) || group);
@@ -1331,46 +1347,20 @@ function renderGroups(body) {
 			renderEditor(true);
 		});
 		colorFields.classList.add("color-ramp-stack");
-		const generalColors = document.createElement("div");
-		generalColors.className = "color-ramp-editor";
-		const generalHeading = document.createElement("div");
-		generalHeading.className = "color-ramp-heading";
-		if (typeof setTranslatedText === "function") {
-			setTranslatedText(generalHeading, "cog-general-colours", "General Colours");
-		} else {
-			generalHeading.textContent = "General Colours";
-		}
-		const generalHeadingRow = document.createElement("div");
-		generalHeadingRow.className = "style-row";
-		generalHeadingRow.style.alignItems = "center";
-		generalHeadingRow.style.gap = "0.35rem";
-		generalHeadingRow.appendChild(generalHeading);
-		generalHeadingRow.appendChild(
-			makeInfoTip(
-				"Stop values are shared by every gear on this line. Percent and timer gears only use stops up to 100 (at 100% they take the last stop at or below 100). Count gears use the same map past 100.",
-				"cog-group-colour-ramp-tip"
-			)
-		);
-		generalColors.appendChild(generalHeadingRow);
-		const generalRow = document.createElement("div");
-		generalRow.className = "style-row color-ramp-general-row";
-		const borderField = makeGroupColorField("Border", group.id, "borderColor", style.borderColor, themeBorder());
-		borderField.classList.add("compact");
-		tagFieldLabel(borderField, "cog-border", "Border");
-		generalRow.appendChild(borderField);
-		generalColors.appendChild(generalRow);
-		colorFields.appendChild(generalColors);
-		const groupRampOpts = { axis: "count" };
+		const groupRampTip =
+			"Stop values are shared by every gear on this line. Percent and timer gears only use stops up to 100 (at 100% they take the last stop at or below 100). Count gears use the same map past 100. Empty inherits the General backup.";
+		const groupRampOpts = { axis: "count", hideHint: true };
 		const tagColorRamp = (editor, headingTag, headingFallback) => {
 			const heading = editor.querySelector(".color-ramp-heading");
-			const hint = editor.querySelector(".color-ramp-hint");
-			if (typeof setTranslatedText === "function") {
+			if (heading && typeof setTranslatedText === "function") {
 				setTranslatedText(heading, headingTag, headingFallback);
-				setTranslatedText(
-					hint,
-					"cog-color-ramp-hint-count",
-					"Empty inherits the backup. Multiple stops fade between values (counts may go past 100)."
-				);
+			}
+			if (heading) {
+				const headingRow = document.createElement("div");
+				headingRow.className = "color-ramp-heading-row";
+				heading.replaceWith(headingRow);
+				headingRow.appendChild(heading);
+				headingRow.appendChild(makeInfoTip(groupRampTip, "cog-group-colour-ramp-tip"));
 			}
 			return editor;
 		};
@@ -1443,7 +1433,7 @@ function renderGroups(body) {
 					<strong></strong>
 					<div class="meta"></div>
 				</div>
-				<label class="check-row compact gear-exempt"><input type="checkbox" data-role="exempt"> <span>Exempt from group colours</span></label>
+				<label class="check-row compact gear-exempt"><input type="checkbox" data-role="exempt"> <span>Exempt from group theme</span></label>
 				<button type="button" class="tiny" data-role="up">Up</button>
 				<button type="button" class="tiny" data-role="down">Down</button>
 				<button type="button" class="tiny" data-role="remove">Remove</button>`;
@@ -1452,7 +1442,7 @@ function renderGroups(body) {
 			const exemptBox = row.querySelector('[data-role="exempt"]');
 			const exemptSpan = row.querySelector(".gear-exempt > span");
 			if (typeof setTranslatedText === "function") {
-				setTranslatedText(exemptSpan, "cog-exempt-from-group-colours", "Exempt from group colours");
+				setTranslatedText(exemptSpan, "cog-exempt-from-group-colours", "Exempt from group theme");
 				setTranslatedText(row.querySelector('[data-role="up"]'), "cog-up", "Up");
 				setTranslatedText(row.querySelector('[data-role="down"]'), "cog-down", "Down");
 				setTranslatedText(row.querySelector('[data-role="remove"]'), "cog-remove", "Remove");

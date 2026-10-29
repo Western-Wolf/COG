@@ -9,7 +9,7 @@ Press the bound key (default **F3**) to focus the overlay editor. Press it again
 
 Show Default Group toggles the built-in line for unassigned gears. 
 
-Backup colours (bar, border, icon) apply when a gear or group does not override them. Most icons use the backup icon tint when their own colour ramp is blank; GIF and WebP icons keep their native colours instead until you set an icon colour.
+Backup colours (Bar Fill, Border & Text, Icon) apply when a gear or group does not override them. Border & Text also tints group titles and numbers. Most icons use the backup icon tint when their own colour ramp is blank; GIF and WebP icons keep their native colours instead until you set an icon colour.
  +++
 
 ### Gears #cog-help-sec-gears
@@ -53,7 +53,7 @@ Only Totem of Brotherhood's pack howl has a real cooldown (60 seconds). That tot
 
 +++ Groups tab #cog-help-groups-tab
 
-Create and arrange lines. Add gears, reorder them, set size/spacing/stack, and optionally use group colours. Exempt from group colours keeps a gear on its own palette when the group theme is on. Open a group accordion to raise that line above the editor for dragging.
+Create and arrange lines. Add gears, reorder them, set size/spacing/stack, Border & Text (trough, titles, numbers), and optionally Use Group Theme for icon/bar colour maps. Exempt from group theme keeps a gear on its own icon/bar palette when the group theme is on. Open a group accordion to raise that line above the editor for dragging.
  +++
 
 +++ What does Fill from Hidden do? #cog-help-fill-from-hidden
@@ -71,7 +71,7 @@ Hide when itself is set per gear on the Gears tab: Off, Below, or Above, plus a 
 
 Add Gauge creates a free-floating indicator for one gear (independent of groups). Open a gauge accordion to raise it above the editor for drag, rotate, and resize. Type is Meter (Bar or Arc) or Frame.
 
-Meter: Show Icon and Show Label each offer none / left / right / centered / up / down. When both use the same placement, the label sits farther from the gauge than the icon (on arcs, left/right share the hollow: icon on the chosen side, label fills the remaining width). Icon Colour and Label Colour default to border colour; other options keep gear colours or match bar / label / icon / border tints. On bars, left/right label text is aligned away from the bar; arc labels wrap and scale to fit the hollow. On arcs, up is above the peak and down is below the baseline. Shape is Bar (default) or Arc. Bar and Arc share border, trough, endcaps, and fill direction — Arc is a semicircle band.
+Meter: Show Icon and Show Label each offer none / left / right / centered / up / down. When both use the same placement, the label sits farther from the gauge than the icon (on arcs, left/right share the hollow: icon on the chosen side, label fills the remaining width). Icon, Title, and Number colour modes pick a real source — Bar, Border, or Icon — and default to Border. On bars, left/right label text is aligned away from the bar; arc labels wrap and scale to fit the hollow. On arcs, up is above the peak and down is below the baseline. Shape is Bar (default) or Arc. Bar and Arc share border, trough, endcaps, and fill direction — Arc is a semicircle band.
 
 Frame: pick a Frames silhouette, fill/border colours, and Display mode Gear or Picture. Frame rotation turns the bezel only. Gear mode shows the bound gear’s icon/bar/value/title inside the plate. Picture mode shows chosen Pictures artwork only (progress from the bound gear); direction is relative to the frame, not the picture’s own rotation. Always Visible (on by default) keeps the frame shown even when the vanilla HUD is hidden or the gear’s Hide when rule would soft-hide it.
  +++

@@ -573,7 +573,11 @@ function normalizeGaugePlacement(value) {
 	return "none";
 }
 
-function normalizeIconColorMode(value) {
+/**
+ * Real colour sources only: bar | border | icon.
+ * With allowEmpty, unrecognized values (keep / label / …) return "" so callers can migrate.
+ */
+function normalizeIconColorMode(value, opts) {
 	const v = String(value || "").toLowerCase();
 	if (v === "border" || v === "useborder" || v === "use border colour" || v === "use border color") {
 		return "border";
@@ -581,13 +585,20 @@ function normalizeIconColorMode(value) {
 	if (v === "bar" || v === "usebar" || v === "use bar colour" || v === "use bar color") {
 		return "bar";
 	}
-	if (v === "label" || v === "uselabel" || v === "use label colour" || v === "use label color") {
-		return "label";
+	if (v === "icon" || v === "matchicon" || v === "match icon colours" || v === "match icon colors") {
+		return "icon";
 	}
-	return "keep";
+	if (opts && opts.allowEmpty) {
+		return "";
+	}
+	return "border";
 }
 
-function normalizeLabelColorMode(value) {
+/**
+ * Real colour sources only: bar | border | icon.
+ * With allowEmpty, unrecognized values (keep / …) return "" so callers can migrate.
+ */
+function normalizeLabelColorMode(value, opts) {
 	const v = String(value || "").toLowerCase();
 	if (v === "border" || v === "matchborder" || v === "match border colour" || v === "match border color") {
 		return "border";
@@ -598,7 +609,10 @@ function normalizeLabelColorMode(value) {
 	if (v === "icon" || v === "matchicon" || v === "match icon colours" || v === "match icon colors") {
 		return "icon";
 	}
-	return "keep";
+	if (opts && opts.allowEmpty) {
+		return "";
+	}
+	return "border";
 }
 
 function gaugePlacementSelectHtml(selected) {
@@ -752,15 +766,17 @@ function ensureGauge(gauge) {
 
 	bag.shape = normalizeGaugeShape(bag.shape);
 	bag.borderColor = String(bag.borderColor || "");
-	bag.borderThickness = quantizeDec(Math.max(0, Math.min(50, Number(bag.borderThickness) || 0)), 1);
-	bag.troughOpacity = quantizeDec(
-		Math.max(0, Math.min(100, Number(bag.troughOpacity) || DEFAULT_TROUGH_OPACITY)),
-		0
-	);
+	bag.borderThickness = quantizePct(Math.max(0, Math.min(50, Number(bag.borderThickness) || 0)));
+	{
+		const n = Number(bag.troughOpacity);
+		bag.troughOpacity = quantizePct(
+			Math.max(0, Math.min(100, Number.isFinite(n) ? n : DEFAULT_TROUGH_OPACITY))
+		);
+	}
 	const migratedCap = migrateEndCapPath(String(bag.endCap || ""));
 	bag.endCapMode = normalizeEndCapMode(bag.endCapMode, migratedCap);
 	bag.endCap = migratedCap || defaultEndCapArtPath();
-	bag.endCapOverlap = quantizeDec(Math.max(0, Math.min(45, Number(bag.endCapOverlap) || 0)), 1);
+	bag.endCapOverlap = quantizePct(Math.max(0, Math.min(45, Number(bag.endCapOverlap) || 0)));
 	if (bag.type === "frame") {
 		bag.showIcon = normalizeFrameSlot(bag.showIcon);
 		bag.showLabel = normalizeFrameSlot(bag.showLabel);
@@ -771,24 +787,57 @@ function ensureGauge(gauge) {
 		bag.showNumber = normalizeGaugePlacement(bag.showNumber);
 	}
 	bag.fillDirection = normalizeFillDirection(bag.fillDirection);
-	bag.iconColorMode = normalizeIconColorMode(bag.iconColorMode || "border");
-	bag.labelColorMode = normalizeLabelColorMode(bag.labelColorMode || "border");
-	bag.numberColorMode = normalizeLabelColorMode(bag.numberColorMode || "border");
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Colour modes are bar | border | icon only (drop keep / title / number copies).
+	{
+		const raw = bag.iconColorMode;
+		const next = normalizeIconColorMode(raw, { allowEmpty: true });
+		if (!next) {
+			if (raw != null && String(raw).trim() !== "") {
+				noteMigration(`gauge ${gid} iconColorMode ${raw} → border`);
+			}
+			bag.iconColorMode = "border";
+		} else {
+			bag.iconColorMode = next;
+		}
+	}
+	{
+		const raw = bag.labelColorMode;
+		const next = normalizeLabelColorMode(raw, { allowEmpty: true });
+		if (!next) {
+			if (raw != null && String(raw).trim() !== "") {
+				noteMigration(`gauge ${gid} labelColorMode ${raw} → border`);
+			}
+			bag.labelColorMode = "border";
+		} else {
+			bag.labelColorMode = next;
+		}
+	}
+	{
+		const raw = bag.numberColorMode;
+		const next = normalizeLabelColorMode(raw, { allowEmpty: true });
+		if (!next) {
+			if (raw != null && String(raw).trim() !== "") {
+				noteMigration(`gauge ${gid} numberColorMode ${raw} → border`);
+			}
+			bag.numberColorMode = "border";
+		} else {
+			bag.numberColorMode = next;
+		}
+	}
 	bag.numberAsPercent = bag.numberAsPercent === true;
 	bag.fontSize = Math.max(0, Number(bag.fontSize) || 0);
 	bag.frameShape = String(bag.frameShape || "").trim() || defaultFrameShapePath();
 	bag.frameFillColor = String(bag.frameFillColor || "");
 	bag.frameBorderColor = String(bag.frameBorderColor || "");
-	bag.frameBorderThickness = quantizeDec(
+	bag.frameBorderThickness = quantizePct(
 		Math.max(
 			0,
 			Math.min(50, Number.isFinite(Number(bag.frameBorderThickness)) ? Number(bag.frameBorderThickness) : 5)
-		),
-		1
+		)
 	);
-	bag.insideSize = quantizeDec(
-		Math.max(5, Math.min(100, Number.isFinite(Number(bag.insideSize)) ? Number(bag.insideSize) : 65)),
-		0
+	bag.insideSize = quantizePct(
+		Math.max(5, Math.min(100, Number.isFinite(Number(bag.insideSize)) ? Number(bag.insideSize) : 65))
 	);
 	bag.displayMode = normalizeGaugeDisplayMode(bag.displayMode);
 	if (bag.alwaysVisible === undefined || bag.alwaysVisible === null) {
@@ -1123,14 +1172,23 @@ function patchHudGaugeLive(el, gauge) {
 		patchGaugeBarLive(el, gauge, src, gear);
 	}
 	const text = src ? formatGaugeCountValue(gauge, src) : "";
-	const paint = src ? gaugeCountPaint(gauge, src, gear) : "";
+	const countPaint = src ? gaugeCountPaint(gauge, src, gear) : "";
 	for (const countEl of el.querySelectorAll(".gauge-gear-count")) {
 		if (countEl.hidden) {
 			continue;
 		}
-	countEl.textContent = text;
-	countEl.classList.toggle("is-default-color", !paint);
-		countEl.style.color = paint || "";
+		countEl.textContent = text;
+		countEl.classList.toggle("is-default-color", !countPaint);
+		countEl.style.color = countPaint || "";
+	}
+	// Title colour can track bar/icon ramps — refresh on live ticks (full paint is skipped).
+	const labelPaint = src ? gaugeLabelPaint(gauge, src, gear) : "";
+	for (const labelEl of el.querySelectorAll(".gauge-gear-label")) {
+		if (labelEl.hidden) {
+			continue;
+		}
+		labelEl.classList.toggle("is-default-color", !labelPaint);
+		labelEl.style.color = labelPaint || "";
 	}
 }
 

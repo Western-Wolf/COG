@@ -110,7 +110,12 @@ function ensureShoutMeterGizmo(gizmo) {
 	s.wordsMode = normalizeShoutWordsMode(s.wordsMode);
 	s.primaryColor = optionalHex(s.primaryColor) || DEFAULT_SHOUT_PRIMARY;
 	s.secondaryColor = optionalHex(s.secondaryColor) || DEFAULT_SHOUT_SECONDARY;
-	s.troughOpacity = Math.max(0, Math.min(100, Number(s.troughOpacity) || DEFAULT_TROUGH_OPACITY));
+	{
+		const n = Number(s.troughOpacity);
+		s.troughOpacity = quantizePct(
+			Math.max(0, Math.min(100, Number.isFinite(n) ? n : DEFAULT_TROUGH_OPACITY))
+		);
+	}
 	gizmo.visibility = coalesceGizmoVisibility(gizmo, "cog-shout-meter");
 	gizmo.settings = s;
 	gizmo.settingsJson = JSON.stringify(s);
@@ -591,15 +596,14 @@ function fillShoutMeterGizmoEditor(panel, gizmo) {
 	troughRow.className = "style-row";
 	const trough = document.createElement("label");
 	trough.className = "pos-field compact";
-	trough.innerHTML = `<span>Trough Opacity</span><input type="number" min="0" max="100" step="1" data-role="troughOpacity">`;
+	trough.innerHTML = `<span>Trough Opacity</span><input type="number" min="0" max="100" step="0.001" data-role="troughOpacity">`;
 	tagFieldLabel(trough, "cog-trough-opacity", "Trough Opacity");
 	const troughInput = trough.querySelector("input");
-	troughInput.value = fmtDec(gizmo.settings.troughOpacity, 0);
+	troughInput.value = fmtPct(gizmo.settings.troughOpacity);
 	bindNumberField(troughInput, {
 		suffix: "%",
 		parse: (raw) => Math.max(0, Math.min(100, Number(raw) || 0)),
 		apply: (v) => patchGizmo(gid, { troughOpacity: v }),
-		decimals: 0,
 		current: () => live().settings.troughOpacity
 	});
 	troughRow.appendChild(trough);

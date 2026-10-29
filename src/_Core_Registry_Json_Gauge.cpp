@@ -40,6 +40,7 @@ namespace CogRegistryJson
 	}
 
 
+	/** Real colour sources only: bar | border | icon. Empty = unrecognized (caller migrates). */
 	std::string NormalizeIconColorMode(std::string raw)
 	{
 		raw = Lower(std::move(raw));
@@ -49,13 +50,14 @@ namespace CogRegistryJson
 		if (raw == "bar" || raw == "usebar" || raw == "use bar colour" || raw == "use bar color") {
 			return "bar";
 		}
-		if (raw == "label" || raw == "uselabel" || raw == "use label colour" || raw == "use label color") {
-			return "label";
+		if (raw == "icon" || raw == "matchicon" || raw == "match icon colours" || raw == "match icon colors") {
+			return "icon";
 		}
-		return "keep";
+		return {};
 	}
 
 
+	/** Real colour sources only: bar | border | icon. Empty = unrecognized (caller migrates). */
 	std::string NormalizeLabelColorMode(std::string raw)
 	{
 		raw = Lower(std::move(raw));
@@ -68,7 +70,7 @@ namespace CogRegistryJson
 		if (raw == "icon" || raw == "matchicon" || raw == "match icon colours" || raw == "match icon colors") {
 			return "icon";
 		}
-		return "keep";
+		return {};
 	}
 
 
@@ -304,24 +306,43 @@ namespace CogRegistryJson
 			s.fillDirection = "left";
 		}
 		{
+			// Migration Code for Transition from v1.01 or earlier to v1.1:
+			// Colour modes are bar | border | icon only (drop keep / title / number copies).
 			auto rawIcon = settingString("iconColorMode");
-			s.iconColorMode = NormalizeIconColorMode(rawIcon);
-			if (rawIcon.empty()) {
+			auto next = NormalizeIconColorMode(rawIcon);
+			if (next.empty()) {
+				if (!rawIcon.empty()) {
+					NoteMigration(ctx, "iconColorMode '" + rawIcon + "' → border");
+				}
 				s.iconColorMode = "border";
+			} else {
+				s.iconColorMode = std::move(next);
 			}
 		}
 		{
+			// Migration Code for Transition from v1.01 or earlier to v1.1:
 			auto rawLabel = settingString("labelColorMode");
-			s.labelColorMode = NormalizeLabelColorMode(rawLabel);
-			if (rawLabel.empty()) {
+			auto next = NormalizeLabelColorMode(rawLabel);
+			if (next.empty()) {
+				if (!rawLabel.empty()) {
+					NoteMigration(ctx, "labelColorMode '" + rawLabel + "' → border");
+				}
 				s.labelColorMode = "border";
+			} else {
+				s.labelColorMode = std::move(next);
 			}
 		}
 		{
+			// Migration Code for Transition from v1.01 or earlier to v1.1:
 			auto raw = settingString("numberColorMode");
-			s.numberColorMode = NormalizeLabelColorMode(raw);
-			if (raw.empty()) {
+			auto next = NormalizeLabelColorMode(raw);
+			if (next.empty()) {
+				if (!raw.empty()) {
+					NoteMigration(ctx, "numberColorMode '" + raw + "' → border");
+				}
 				s.numberColorMode = "border";
+			} else {
+				s.numberColorMode = std::move(next);
 			}
 		}
 		s.numberAsPercent = settingBool("numberAsPercent", false);

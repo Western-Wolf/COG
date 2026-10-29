@@ -122,14 +122,19 @@ function sampleRampForSource(ramp, src) {
 }
 
 function resolvedPalette(src, gear, group) {
+	// Group Border & Text is always the chrome colour (trough / title / number), even when
+	// Use Group Theme is off — empty falls back to General Border & Text.
+	const groupStyle = group ? ensureGroupSettings(group) : null;
+	const chromeBorder =
+		(groupStyle && optionalHex(groupStyle.borderColor)) || themeBorder();
 	if (usesGroupColors(gear, group)) {
-		const style = ensureGroupSettings(group);
+		const style = groupStyle || ensureGroupSettings(group);
 		const iconRamp = normalizeColorRampValue(style.iconColor, style.startColor, style.endColor);
 		const barRamp = normalizeColorRampValue(style.barColor, "", "");
 		return {
 			iconColor: iconRamp,
 			barColor: barRamp,
-			borderColor: optionalHex(style.borderColor) || themeBorder(),
+			borderColor: chromeBorder,
 			iconSample: sampleRampForSource(iconRamp, src) || themeIconColor(),
 			barSample: sampleRampForSource(barRamp, src) || themeFill()
 		};
@@ -140,7 +145,7 @@ function resolvedPalette(src, gear, group) {
 	return {
 		iconColor: iconRamp,
 		barColor: barRamp,
-		borderColor: themeBorder(),
+		borderColor: chromeBorder,
 		iconSample: sampleRampForSource(iconRamp, src) || themeIconColor(),
 		barSample: sampleRampForSource(barRamp, src) || themeFill()
 	};
@@ -422,8 +427,7 @@ function hideAtEditorParts(raw, type) {
 		const v = Math.round(rule.threshold * 1000) / 1000;
 		return { op: rule.op, value: String(v) };
 	}
-	const pct = Math.round(rule.threshold * 100000) / 1000;
-	return { op: rule.op, value: String(pct) };
+	return { op: rule.op, value: fmtPct(rule.threshold * 100) };
 }
 
 /** Build stored hideAt from editor controls. */

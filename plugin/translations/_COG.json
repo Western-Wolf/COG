@@ -172,24 +172,24 @@
     "fr-CA": "Dégradé doux derrière chaque message. Une opacité à 0 le désactive."
   },
   "cog-backup-bar": {
-    "en-CA": "Backup bar",
-    "fr-CA": "Barre de secours"
+    "en-CA": "Bar Fill",
+    "fr-CA": "Remplissage de barre"
   },
   "cog-backup-border": {
-    "en-CA": "Backup border",
-    "fr-CA": "Bordure de secours"
+    "en-CA": "Border & Text",
+    "fr-CA": "Bordure et texte"
   },
   "cog-backup-colours": {
     "en-CA": "Backup colours",
     "fr-CA": "Couleurs de secours"
   },
   "cog-backup-colours-lede": {
-    "en-CA": "Used when a gear or group does not set its own. Bar is the meter fill; border is the bar trough; icon is a single tint for meter icons. Fancy multi-stop colours belong on a gear or group.",
-    "fr-CA": "Utilisées lorsqu'un engrenage ou un groupe ne définit pas les siennes. La barre est le remplissage du compteur; la bordure est le fond de la barre; l'icône est une teinte unique pour les icônes de compteur. Les couleurs élaborées à plusieurs arrêts se définissent sur un engrenage ou un groupe."
+    "en-CA": "Used when a gear or group does not set its own. Bar Fill is the meter fill; Border & Text is the bar trough plus titles and numbers; Icon is a single tint for meter icons. Fancy multi-stop colours belong on a gear or group.",
+    "fr-CA": "Utilisées lorsqu'un engrenage ou un groupe ne définit pas les siennes. Remplissage de barre est le remplissage du compteur; Bordure et texte est le fond de la barre ainsi que les titres et les nombres; Icône est une teinte unique pour les icônes de compteur. Les couleurs élaborées à plusieurs arrêts se définissent sur un engrenage ou un groupe."
   },
   "cog-backup-icon": {
-    "en-CA": "Backup icon",
-    "fr-CA": "Icône de secours"
+    "en-CA": "Icon",
+    "fr-CA": "Icône"
   },
   "cog-bar": {
     "en-CA": "Bar",
@@ -234,6 +234,10 @@
   "cog-border": {
     "en-CA": "Border",
     "fr-CA": "Bordure"
+  },
+  "cog-border-and-text": {
+    "en-CA": "Border & Text",
+    "fr-CA": "Bordure et texte"
   },
   "cog-border-colour": {
     "en-CA": "Border Colour",
@@ -436,8 +440,8 @@
     "fr-CA": "Extrémités"
   },
   "cog-exempt-from-group-colours": {
-    "en-CA": "Exempt from group colours",
-    "fr-CA": "Exempté des couleurs du groupe"
+    "en-CA": "Exempt from group theme",
+    "fr-CA": "Exempté du thème du groupe"
   },
   "cog-extend-border": {
     "en-CA": "Extend Border",
@@ -608,8 +612,8 @@
     "fr-CA": "Gizmos ajoutés par des mods"
   },
   "cog-group-colour-ramp-tip": {
-    "en-CA": "Stop values are shared by every gear on this line. Percent and timer gears only use stops up to 100 (at 100% they take the last stop at or below 100). Count gears use the same map past 100.",
-    "fr-CA": "Les valeurs d'arrêt sont partagées par tous les engrenages de cette ligne. Les engrenages de pourcentage et de minuterie n'utilisent que les arrêts jusqu'à 100 (à 100 %, ils prennent le dernier arrêt inférieur ou égal à 100). Les engrenages de compte utilisent la même échelle au-delà de 100."
+    "en-CA": "Stop values are shared by every gear on this line. Percent and timer gears only use stops up to 100 (at 100% they take the last stop at or below 100). Count gears use the same map past 100. Empty inherits the General backup.",
+    "fr-CA": "Les valeurs d'arrêt sont partagées par tous les engrenages de cette ligne. Les engrenages de pourcentage et de minuterie n'utilisent que les arrêts jusqu'à 100 (à 100 %, ils prennent le dernier arrêt inférieur ou égal à 100). Les engrenages de compte utilisent la même échelle au-delà de 100. Un champ vide reprend la couleur de secours de Général."
   },
   "cog-group-fill-from-hidden-tip": {
     "en-CA": "How percent/timer gears with Hide when reveal. Off = hard hide. Alpha fades opacity. Up/Down keep a greyscale icon and fill with colour from the bottom or top (soft seam). Alpha & Up/Down also fade the unfilled area to bar-trough opacity. GIF/WebP fill uses native colours when icon ends are blank. Counts still hard-hide.",
@@ -628,8 +632,8 @@
     "fr-CA": "Paramètres du groupe"
   },
   "cog-group-use-colours-tip": {
-    "en-CA": "When on, gears in this group use these colours unless they are exempt. Empty bar/border fields fall back to General. Empty icon colour falls back to General for SVG/PNG; for GIF/WebP, empty keeps native colours.",
-    "fr-CA": "Lorsque cette option est activée, les engrenages de ce groupe utilisent ces couleurs, sauf s'ils en sont exemptés. Si les champs de barre ou de bordure sont vides, les couleurs de Général s'appliquent. Si la couleur d'icône est vide, Général s'applique aussi pour SVG/PNG; pour GIF/WebP, un champ vide conserve les couleurs natives."
+    "en-CA": "When on, gears in this group use the icon and bar colour maps below unless they are exempt. Empty stops fall back to General (GIF/WebP icons stay native when icon colour is empty).",
+    "fr-CA": "Lorsque cette option est activée, les engrenages de ce groupe utilisent les cartes de couleurs d'icône et de barre ci-dessous, sauf s'ils en sont exemptés. Les arrêts vides reprennent Général (les icônes GIF/WebP restent natives si la couleur d'icône est vide)."
   },
   "cog-groups-intro": {
     "en-CA": "A group is a line that starts at X/Y. Size is the icon square, or the gear height when icons are off. Title and numbers sit away from the icon; the bar stays next to it. Stack chooses which side of the icon they sit on. Up/Down reorder the list — later groups draw on top of earlier ones.",
@@ -728,8 +732,8 @@
     "fr-CA": "Types de jauges"
   },
   "cog-help-gauge-types-body": {
-    "en-CA": "Add Gauge creates a free-floating indicator for one gear (independent of groups). Open a gauge accordion to raise it above the editor for drag, rotate, and resize. Type is Meter (Bar or Arc) or Frame.\n\nMeter: Show Icon and Show Label each offer none / left / right / centered / up / down. When both use the same placement, the label sits farther from the gauge than the icon (on arcs, left/right share the hollow: icon on the chosen side, label fills the remaining width). Icon Colour and Label Colour default to border colour; other options keep gear colours or match bar / label / icon / border tints. On bars, left/right label text is aligned away from the bar; arc labels wrap and scale to fit the hollow. On arcs, up is above the peak and down is below the baseline. Shape is Bar (default) or Arc. Bar and Arc share border, trough, endcaps, and fill direction — Arc is a semicircle band.\n\nFrame: pick a Frames silhouette, fill/border colours, and Display mode Gear or Picture. Frame rotation turns the bezel only. Gear mode shows the bound gear’s icon/bar/value/title inside the plate. Picture mode shows chosen Pictures artwork only (progress from the bound gear); direction is relative to the frame, not the picture’s own rotation. Always Visible (on by default) keeps the frame shown even when the vanilla HUD is hidden or the gear’s Hide when rule would soft-hide it.",
-    "fr-CA": "Ajouter une jauge crée un indicateur flottant pour un engrenage (indépendant des groupes). Ouvrez un accordéon de jauge pour la remonter au-dessus de l'éditeur afin de la glisser, la faire pivoter et la redimensionner. Le type est Compteur (Barre ou Arc) ou Cadre.\n\nCompteur : Afficher l'icône et Afficher l'étiquette offrent chacune aucun / gauche / droite / centré / haut / bas. Quand les deux utilisent le même emplacement, l'étiquette se place plus loin de la jauge que l'icône (sur les arcs, gauche/droite partagent le creux : icône du côté choisi, l'étiquette remplit la largeur restante). Couleur de l'icône et Couleur de l'étiquette utilisent par défaut la couleur de bordure; les autres options gardent les couleurs de l'engrenage ou reprennent les teintes barre / étiquette / icône / bordure. Sur les barres, le texte d'étiquette gauche/droite s'aligne à l'opposé de la barre; sur les arcs, les étiquettes passent à la ligne et s'ajustent pour tenir dans le creux. Sur les arcs, haut est au-dessus du sommet et bas sous la ligne de base. La forme est Barre (par défaut) ou Arc. Barre et Arc partagent bordure, fond, embouts et direction de remplissage — l'Arc est une bande en demi-cercle.\n\nCadre : choisissez une silhouette Frames, les couleurs de remplissage/bordure, et le mode d'affichage Engrenage ou Image. La rotation du cadre ne tourne que le cadre. Le mode Engrenage montre l'icône/barre/valeur/titre de l'engrenage lié dans la plaque. Le mode Image montre uniquement l'illustration Pictures choisie (progression selon l'engrenage lié); la direction est relative au cadre, pas à la rotation propre de l'image. Toujours visible (activé par défaut) garde le cadre affiché même quand le HUD vanilla est masqué ou que la règle Masquer quand de l'engrenage le masquerait en douceur."
+    "en-CA": "Add Gauge creates a free-floating indicator for one gear (independent of groups). Open a gauge accordion to raise it above the editor for drag, rotate, and resize. Type is Meter (Bar or Arc) or Frame.\n\nMeter: Show Icon and Show Label each offer none / left / right / centered / up / down. When both use the same placement, the label sits farther from the gauge than the icon (on arcs, left/right share the hollow: icon on the chosen side, label fills the remaining width). Icon, Title, and Number colour modes pick a real source — Bar, Border, or Icon — and default to Border. On bars, left/right label text is aligned away from the bar; arc labels wrap and scale to fit the hollow. On arcs, up is above the peak and down is below the baseline. Shape is Bar (default) or Arc. Bar and Arc share border, trough, endcaps, and fill direction — Arc is a semicircle band.\n\nFrame: pick a Frames silhouette, fill/border colours, and Display mode Gear or Picture. Frame rotation turns the bezel only. Gear mode shows the bound gear’s icon/bar/value/title inside the plate. Picture mode shows chosen Pictures artwork only (progress from the bound gear); direction is relative to the frame, not the picture’s own rotation. Always Visible (on by default) keeps the frame shown even when the vanilla HUD is hidden or the gear’s Hide when rule would soft-hide it.",
+    "fr-CA": "Ajouter une jauge crée un indicateur flottant pour un engrenage (indépendant des groupes). Ouvrez un accordéon de jauge pour la remonter au-dessus de l'éditeur afin de la glisser, la faire pivoter et la redimensionner. Le type est Compteur (Barre ou Arc) ou Cadre.\n\nCompteur : Afficher l'icône et Afficher l'étiquette offrent chacune aucun / gauche / droite / centré / haut / bas. Quand les deux utilisent le même emplacement, l'étiquette se place plus loin de la jauge que l'icône (sur les arcs, gauche/droite partagent le creux : icône du côté choisi, l'étiquette remplit la largeur restante). Les modes Couleur de l'icône, Couleur du titre et Couleur du nombre choisissent une vraie source — Barre, Bordure ou Icône — et utilisent Bordure par défaut. Sur les barres, le texte d'étiquette gauche/droite s'aligne à l'opposé de la barre; sur les arcs, les étiquettes passent à la ligne et s'ajustent pour tenir dans le creux. Sur les arcs, haut est au-dessus du sommet et bas sous la ligne de base. La forme est Barre (par défaut) ou Arc. Barre et Arc partagent bordure, fond, embouts et direction de remplissage — l'Arc est une bande en demi-cercle.\n\nCadre : choisissez une silhouette Frames, les couleurs de remplissage/bordure, et le mode d'affichage Engrenage ou Image. La rotation du cadre ne tourne que le cadre. Le mode Engrenage montre l'icône/barre/valeur/titre de l'engrenage lié dans la plaque. Le mode Image montre uniquement l'illustration Pictures choisie (progression selon l'engrenage lié); la direction est relative au cadre, pas à la rotation propre de l'image. Toujours visible (activé par défaut) garde le cadre affiché même quand le HUD vanilla est masqué ou que la règle Masquer quand de l'engrenage le masquerait en douceur."
   },
   "cog-help-gears-tab": {
     "en-CA": "The Gears tab",
@@ -744,7 +748,7 @@
     "fr-CA": "Onglet Général"
   },
   "cog-help-general-tab-body": {
-    "en-CA": "Show Default Group toggles the built-in line for unassigned gears.\n\nBackup colours (bar, border, icon) apply when a gear or group does not override them. Most icons use the backup icon tint when their own colour ramp is blank; GIF and WebP icons keep their native colours instead until you set an icon colour.",
+    "en-CA": "Show Default Group toggles the built-in line for unassigned gears.\n\nBackup colours (Bar Fill, Border & Text, Icon) apply when a gear or group does not override them. Border & Text also tints group titles and numbers. Most icons use the backup icon tint when their own colour ramp is blank; GIF and WebP icons keep their native colours instead until you set an icon colour.",
     "fr-CA": "Afficher le groupe par défaut active ou désactive la ligne intégrée pour les engrenages non assignés.\n\nLes couleurs de secours (barre, bordure, icône) s'appliquent lorsqu'un engrenage ou un groupe ne les remplace pas. La plupart des icônes utilisent la teinte d'icône de secours lorsque leur propre dégradé de couleur est vide; les icônes GIF et WebP gardent leurs couleurs natives jusqu'à ce que vous définissiez une couleur d'icône."
   },
   "cog-help-groups-tab": {
@@ -752,8 +756,8 @@
     "fr-CA": "Onglet Groupes"
   },
   "cog-help-groups-tab-body": {
-    "en-CA": "Create and arrange lines. Add gears, reorder them, set size/spacing/stack, and optionally use group colours. Exempt from group colours keeps a gear on its own palette when the group theme is on. Open a group accordion to raise that line above the editor for dragging.",
-    "fr-CA": "Créez et organisez des lignes. Ajoutez des engrenages, réordonnez-les, réglez la taille, l'espacement et l'empilement, puis utilisez les couleurs du groupe si vous le souhaitez. Exempté des couleurs du groupe permet à un engrenage de conserver sa propre palette lorsque le thème du groupe est activé. Ouvrez le panneau d'un groupe pour placer sa ligne au-dessus de l'éditeur afin de la déplacer."
+    "en-CA": "Create and arrange lines. Add gears, reorder them, set size/spacing/stack, Border & Text (trough, titles, numbers), and optionally Use Group Theme for icon/bar colour maps. Exempt from group theme keeps a gear on its own icon/bar palette when the group theme is on. Open a group accordion to raise that line above the editor for dragging.",
+    "fr-CA": "Créez et organisez des lignes. Ajoutez des engrenages, réordonnez-les, réglez la taille, l'espacement, l'empilement et Bordure et texte (fond de barre, titres, nombres), puis Utiliser le thème du groupe pour les cartes de couleurs d'icône et de barre. Exempté du thème du groupe permet à un engrenage de conserver sa propre palette d'icône/barre lorsque le thème du groupe est activé. Ouvrez le panneau d'un groupe pour placer sa ligne au-dessus de l'éditeur afin de la déplacer."
   },
   "cog-help-howl-cooldown": {
     "en-CA": "Why doesn't Howl Cooldown ever show?",
@@ -1620,8 +1624,8 @@
     "fr-CA": "Utiliser l'embout"
   },
   "cog-use-group-colours": {
-    "en-CA": "Use group colours",
-    "fr-CA": "Utiliser les couleurs du groupe"
+    "en-CA": "Use Group Theme",
+    "fr-CA": "Utiliser le thème du groupe"
   },
   "cog-use-icon-colours": {
     "en-CA": "Use Icon Colours",

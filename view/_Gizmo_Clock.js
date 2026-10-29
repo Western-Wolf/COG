@@ -639,11 +639,11 @@ function ensureClockGizmo(gizmo) {
 	s.timeFormat = normalizeTimeFormat(s.timeFormat);
 	s.endCapMode = normalizeEndCapMode(s.endCapMode, s.endCap);
 	s.endCap = migrateEndCapPath(String(s.endCap || "")) || defaultEndCapArtPath();
-	s.endCapOverlap = quantizeDec(Math.max(0, Math.min(45, Number(s.endCapOverlap) || 0)), 1);
+	s.endCapOverlap = quantizePct(Math.max(0, Math.min(45, Number(s.endCapOverlap) || 0)));
 	{
 		const thickRaw = Number(s.borderThickness);
 		s.borderThickness = Number.isFinite(thickRaw)
-			? quantizeDec(Math.max(0, Math.min(50, thickRaw)), 1)
+			? quantizePct(Math.max(0, Math.min(50, thickRaw)))
 			: DEFAULT_BORDER_THICKNESS_PCT;
 	}
 	s.celestialShow = normalizeCelestialShow(s.celestialShow);
@@ -1807,15 +1807,14 @@ function fillClockGizmoEditor(panel, gizmo) {
 		endArtRow.appendChild(endCaps);
 		const overlap = document.createElement("label");
 		overlap.className = "pos-field compact narrow overlap-cap-field";
-		overlap.innerHTML = `<span>Overlap</span><input type="number" min="0" max="45" step="0.5" data-role="endCapOverlap">`;
+		overlap.innerHTML = `<span>Overlap</span><input type="number" min="0" max="45" step="0.001" data-role="endCapOverlap">`;
 		tagFieldLabel(overlap, "cog-overlap", "Overlap");
 		const overlapInput = overlap.querySelector("input");
-		overlapInput.value = fmtDec(gizmo.settings.endCapOverlap, 1);
+		overlapInput.value = fmtPct(gizmo.settings.endCapOverlap);
 		bindNumberField(overlapInput, {
 			suffix: "%",
 			parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(45, Number(raw) || 0))),
 			apply: (v) => patchGizmo(gid, { endCapOverlap: v }),
-			decimals: 1,
 			current: () => live().settings.endCapOverlap
 		});
 		endArtRow.appendChild(overlap);
@@ -1834,15 +1833,14 @@ function fillClockGizmoEditor(panel, gizmo) {
 	celestialColorRow.appendChild(borderColor);
 	const thick = document.createElement("label");
 	thick.className = "pos-field compact narrow";
-	thick.innerHTML = `<span>Border Thickness</span><input type="number" min="0" max="50" step="0.5" data-role="borderThickness">`;
+	thick.innerHTML = `<span>Border Thickness</span><input type="number" min="0" max="50" step="0.001" data-role="borderThickness">`;
 	tagFieldLabel(thick, "cog-border-thickness", "Border Thickness");
 	const thickInput = thick.querySelector("input");
-	thickInput.value = fmtDec(gizmo.settings.borderThickness, 1);
+	thickInput.value = fmtPct(gizmo.settings.borderThickness);
 	bindNumberField(thickInput, {
 		suffix: "%",
 		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(50, Number(raw) || 0))),
 		apply: (v) => patchGizmo(gid, { borderThickness: v }),
-		decimals: 1,
 		current: () => live().settings.borderThickness
 	});
 	celestialColorRow.appendChild(thick);

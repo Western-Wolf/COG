@@ -280,7 +280,12 @@ function bindNumberField(el, opts) {
 	if (opts.prefix || opts.suffix) {
 		wrapInputAffix(el, { prefix: opts.prefix || "", suffix: opts.suffix || "" });
 	}
-	const decimals = opts.decimals != null && Number.isFinite(Number(opts.decimals)) ? Number(opts.decimals) : null;
+	// Percentage fields (% suffix) always use three decimal places unless decimals is set explicitly.
+	let decimals =
+		opts.decimals != null && Number.isFinite(Number(opts.decimals)) ? Number(opts.decimals) : null;
+	if (decimals == null && opts.suffix === "%") {
+		decimals = typeof PCT_DECIMALS === "number" ? PCT_DECIMALS : 3;
+	}
 	const format =
 		opts.format ||
 		((v) => (decimals != null ? fmtDec(v, decimals) : String(v)));

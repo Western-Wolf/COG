@@ -632,8 +632,9 @@ function makeIconRampEditor(label, value, fallbackPath, onCommit, options) {
 			return 0;
 		}
 		n = Math.max(0, n);
-		return isCountAxis ? n : Math.min(100, n);
+		return isCountAxis ? n : quantizePct(Math.min(100, n));
 	};
+	const formatAxis = (n) => (isCountAxis ? String(n) : fmtPct(n));
 
 	const hasHundredStop = () => !isCountAxis && stops.some((s) => s.pct >= 100 - 1e-9);
 	let addBtn = null;
@@ -725,7 +726,7 @@ function makeIconRampEditor(label, value, fallbackPath, onCommit, options) {
 			pctInput.type = "text";
 			pctInput.inputMode = "decimal";
 			pctInput.spellcheck = false;
-			pctInput.value = String(stop.pct);
+			pctInput.value = formatAxis(stop.pct);
 			if (typeof setTranslatedAriaLabel === "function") {
 				if (isCountAxis) {
 					setTranslatedAriaLabel(pctInput, "cog-ramp-value", "Value");
@@ -748,7 +749,7 @@ function makeIconRampEditor(label, value, fallbackPath, onCommit, options) {
 			pctInput.addEventListener("change", () => {
 				let n = Number(pctInput.value);
 				n = clampAxis(n);
-				pctInput.value = String(n);
+				pctInput.value = formatAxis(n);
 				stops[index] = { ...stops[index], pct: n };
 				stops = parseIconRamp(stops);
 				emit(false);

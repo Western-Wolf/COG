@@ -225,11 +225,11 @@ function renderGeneral(body) {
 		setTranslatedText(
 			colorLede,
 			"cog-backup-colours-lede",
-			"Used when a gear or group does not set its own. Bar is the meter fill; border is the bar trough; icon is a single tint for meter icons. Fancy multi-stop colours belong on a gear or group."
+			"Used when a gear or group does not set its own. Bar Fill is the meter fill; Border & Text is the bar trough plus titles and numbers; Icon is a single tint for meter icons. Fancy multi-stop colours belong on a gear or group."
 		);
 	} else {
 		colorLede.textContent =
-			"Used when a gear or group does not set its own. Bar is the meter fill; border is the bar trough; icon is a single tint for meter icons. Fancy multi-stop colours belong on a gear or group.";
+			"Used when a gear or group does not set its own. Bar Fill is the meter fill; Border & Text is the bar trough plus titles and numbers; Icon is a single tint for meter icons. Fancy multi-stop colours belong on a gear or group.";
 	}
 	body.appendChild(colorLede);
 
@@ -238,14 +238,24 @@ function renderGeneral(body) {
 	if (!snapshot.general.iconColor && (snapshot.general.iconStartColor || snapshot.general.iconEndColor)) {
 		snapshot.general.iconColor = themeIconColor();
 	}
-	const backupBar = makeColorField("Backup bar", "fillColor", snapshot.general.fillColor, defaultFillColor());
-	tagFieldLabel(backupBar, "cog-backup-bar", "Backup bar");
+	const backupBar = makeColorField("Bar Fill", "fillColor", snapshot.general.fillColor, defaultFillColor());
+	tagFieldLabel(backupBar, "cog-backup-bar", "Bar Fill");
 	colors.appendChild(backupBar);
-	const backupBorder = makeColorField("Backup border", "borderColor", snapshot.general.borderColor, defaultBorderColor());
-	tagFieldLabel(backupBorder, "cog-backup-border", "Backup border");
+	const backupBorder = makeColorField(
+		"Border & Text",
+		"borderColor",
+		snapshot.general.borderColor,
+		defaultBorderColor()
+	);
+	tagFieldLabel(backupBorder, "cog-backup-border", "Border & Text");
 	colors.appendChild(backupBorder);
-	const backupIcon = makeColorField("Backup icon", "iconColor", snapshot.general.iconColor || themeIconColor(), defaultIconColor());
-	tagFieldLabel(backupIcon, "cog-backup-icon", "Backup icon");
+	const backupIcon = makeColorField(
+		"Icon",
+		"iconColor",
+		snapshot.general.iconColor || themeIconColor(),
+		defaultIconColor()
+	);
+	tagFieldLabel(backupIcon, "cog-backup-icon", "Icon");
 	colors.appendChild(backupIcon);
 	body.appendChild(colors);
 	enhanceSelects(colors);

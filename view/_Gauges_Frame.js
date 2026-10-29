@@ -726,30 +726,28 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 
 	const thick = document.createElement("label");
 	thick.className = "pos-field compact mid";
-	thick.innerHTML = `<span>Border Thickness</span><input type="number" min="0" max="50" step="0.5" data-role="frameBorderThickness">`;
+	thick.innerHTML = `<span>Border Thickness</span><input type="number" min="0" max="50" step="0.001" data-role="frameBorderThickness">`;
 	tagFieldLabel(thick, "cog-border-thickness", "Border Thickness");
 	const thickInput = thick.querySelector("input");
-	thickInput.value = fmtDec(gaugeSettings(gauge).frameBorderThickness, 1);
+	thickInput.value = fmtPct(gaugeSettings(gauge).frameBorderThickness);
 	bindNumberField(thickInput, {
 		suffix: "%",
 		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(50, Number(raw) || 0))),
 		apply: (v) => patchGauge(gid, { frameBorderThickness: v }),
-		decimals: 1,
 		current: () => gaugeSettings(live()).frameBorderThickness
 	});
 	rowA.appendChild(thick);
 
 	const inside = document.createElement("label");
 	inside.className = "pos-field compact narrow";
-	inside.innerHTML = `<span>Inside Size</span><input type="number" min="5" max="100" step="1" data-role="insideSize">`;
+	inside.innerHTML = `<span>Inside Size</span><input type="number" min="5" max="100" step="0.001" data-role="insideSize">`;
 	tagFieldLabel(inside, "cog-inside-size", "Inside Size");
 	const insideInput = inside.querySelector("input");
-	insideInput.value = fmtDec(gaugeSettings(gauge).insideSize, 0);
+	insideInput.value = fmtPct(gaugeSettings(gauge).insideSize);
 	bindNumberField(insideInput, {
 		suffix: "%",
 		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(5, Math.min(100, Number(raw) || 0))),
 		apply: (v) => patchGauge(gid, { insideSize: v }),
-		decimals: 0,
 		current: () => gaugeSettings(live()).insideSize
 	});
 	rowA.appendChild(inside);

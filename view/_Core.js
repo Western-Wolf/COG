@@ -500,14 +500,22 @@ function sourceFor(sourceMod, varName) {
 	);
 }
 
+/** Editor percentage fields: display + store snap (X/Y, alpha, thickness, opacity, …). */
+const PCT_DECIMALS = 3;
+
 function fmtPct(n) {
-	return fmtDec(n, 3);
+	return fmtDec(n, PCT_DECIMALS);
+}
+
+function quantizePct(n) {
+	return quantizeDec(n, PCT_DECIMALS);
 }
 
 /** Fixed-decimal display for editor floats (kills float32 noise like 1.299999952). */
 function fmtDec(n, digits = 3) {
 	const d = Math.max(0, Math.min(10, Number(digits) || 0));
-	return (Number(n) || 0).toFixed(d);
+	const v = Number(n);
+	return (Number.isFinite(v) ? v : 0).toFixed(d);
 }
 
 /** Snap a number to `digits` decimal places before store / apply. */
@@ -620,7 +628,7 @@ function migrateEntityDisplay(entity, defaults = {}) {
 		x: pick("x", defaults.x ?? DEFAULT_HUD_X),
 		y: pick("y", defaults.y ?? DEFAULT_HUD_Y),
 		rotation: pick("rotation", defaults.rotation ?? 0),
-		maxAlpha: Math.max(0, Math.min(100, pick("maxAlpha", defaults.maxAlpha ?? 100)))
+		maxAlpha: quantizePct(Math.max(0, Math.min(100, pick("maxAlpha", defaults.maxAlpha ?? 100))))
 	};
 	if (defaults.sized) {
 		const minW = defaults.minW ?? 0;

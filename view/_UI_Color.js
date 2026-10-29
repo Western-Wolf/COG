@@ -937,11 +937,13 @@ function makeOptionalColorField(label, value, fallback, onCommit) {
 /**
  * Multi-stop colour ramp editor (iconColor / barColor).
  * Single-line chips (colour + axis + ×) with inline +. Empty stops → inherit fallback.
- * @param {{ axis?: "percent"|"count" }} [options] count = unbounded number fields (no % / no 100 cap).
+ * @param {{ axis?: "percent"|"count", hideHint?: boolean }} [options]
+ *   count = unbounded number fields (no % / no 100 cap); hideHint skips the lede under the heading.
  */
 function makeColorRampEditor(label, value, fallback, onCommit, options) {
 	const axis = options && options.axis === "count" ? "count" : "percent";
 	const isCountAxis = axis === "count";
+	const hideHint = !!(options && options.hideHint);
 	const wrap = document.createElement("div");
 	wrap.className = "color-ramp-editor";
 	wrap.dataset.rampAxis = axis;
@@ -949,28 +951,30 @@ function makeColorRampEditor(label, value, fallback, onCommit, options) {
 	heading.className = "color-ramp-heading";
 	heading.textContent = label;
 	wrap.appendChild(heading);
-	const hint = document.createElement("p");
-	hint.className = "lede color-ramp-hint";
-	if (typeof setTranslatedText === "function") {
-		if (isCountAxis) {
-			setTranslatedText(
-				hint,
-				"cog-color-ramp-hint-count",
-				"Empty inherits the backup. Multiple stops fade between values (counts may go past 100)."
-			);
+	if (!hideHint) {
+		const hint = document.createElement("p");
+		hint.className = "lede color-ramp-hint";
+		if (typeof setTranslatedText === "function") {
+			if (isCountAxis) {
+				setTranslatedText(
+					hint,
+					"cog-color-ramp-hint-count",
+					"Empty inherits the backup. Multiple stops fade between values (counts may go past 100)."
+				);
+			} else {
+				setTranslatedText(
+					hint,
+					"cog-color-ramp-hint",
+					"Empty inherits the backup. Multiple stops fade between percentages."
+				);
+			}
 		} else {
-			setTranslatedText(
-				hint,
-				"cog-color-ramp-hint",
-				"Empty inherits the backup. Multiple stops fade between percentages."
-			);
+			hint.textContent = isCountAxis
+				? "Empty inherits the backup. Multiple stops fade between values (counts may go past 100)."
+				: "Empty inherits the backup. Multiple stops fade between percentages.";
 		}
-	} else {
-		hint.textContent = isCountAxis
-			? "Empty inherits the backup. Multiple stops fade between values (counts may go past 100)."
-			: "Empty inherits the backup. Multiple stops fade between percentages.";
+		wrap.appendChild(hint);
 	}
-	wrap.appendChild(hint);
 	const list = document.createElement("div");
 	list.className = "color-ramp-stops";
 	wrap.appendChild(list);
@@ -987,8 +991,9 @@ function makeColorRampEditor(label, value, fallback, onCommit, options) {
 			return 0;
 		}
 		n = Math.max(0, n);
-		return isCountAxis ? n : Math.min(100, n);
+		return isCountAxis ? n : quantizePct(Math.min(100, n));
 	};
+	const formatAxis = (n) => (isCountAxis ? String(n) : fmtPct(n));
 
 	const hasHundredStop = () => !isCountAxis && stops.some((s) => s.pct >= 100 - 1e-9);
 	let addBtn = null;
@@ -1081,7 +1086,7 @@ function makeColorRampEditor(label, value, fallback, onCommit, options) {
 			pctInput.type = "text";
 			pctInput.inputMode = "decimal";
 			pctInput.spellcheck = false;
-			pctInput.value = String(stop.pct);
+			pctInput.value = formatAxis(stop.pct);
 			if (typeof setTranslatedAriaLabel === "function") {
 				if (isCountAxis) {
 					setTranslatedAriaLabel(pctInput, "cog-ramp-value", "Value");
@@ -1104,7 +1109,7 @@ function makeColorRampEditor(label, value, fallback, onCommit, options) {
 			pctInput.addEventListener("change", () => {
 				let n = Number(pctInput.value);
 				n = clampAxis(n);
-				pctInput.value = String(n);
+				pctInput.value = formatAxis(n);
 				stops[index] = { ...stops[index], pct: n };
 				stops = parseColorRamp(stops);
 				emit(false);

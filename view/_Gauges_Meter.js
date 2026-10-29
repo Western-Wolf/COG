@@ -129,11 +129,9 @@ function gaugeIconPaint(gauge, src, gear) {
 	if (mode === "bar") {
 		return src ? sourceBarColor(src, gear, null) : themeFill();
 	}
-	if (mode === "label") {
-		const paint = gaugeLabelPaint(gauge, src, gear);
-		return paint || themeIconStart();
-	}
-	return src ? sourceIconPaint(src, gear, null) : "";
+	// icon — gear / source icon colour ramp (or theme fallback)
+	const paint = src ? sourceIconPaint(src, gear, null) : "";
+	return paint || themeIconStart();
 }
 
 function gaugeOverlayStacked(gauge) {
@@ -1094,10 +1092,13 @@ function fillGaugeEditor(panel, gauge) {
 
 	const maxAlphaField = document.createElement("label");
 	maxAlphaField.className = "pos-field compact mid";
-	maxAlphaField.innerHTML = `<span>Max Alpha</span><input type="number" min="0" max="100" step="1" data-role="maxAlpha">`;
+	maxAlphaField.innerHTML = `<span>Max Alpha</span><input type="number" min="0" max="100" step="0.001" data-role="maxAlpha">`;
 	tagFieldLabel(maxAlphaField, "cog-max-alpha", "Max Alpha");
 	const maxAlphaInput = maxAlphaField.querySelector("input");
-	maxAlphaInput.value = String(Math.round(Number(gauge.display.maxAlpha) || 100));
+	{
+		const a = Number(gauge.display.maxAlpha);
+		maxAlphaInput.value = fmtPct(Number.isFinite(a) ? a : 100);
+	}
 	topRow.appendChild(maxAlphaField);
 
 	const alwaysVis = document.createElement("label");
@@ -1123,8 +1124,8 @@ function fillGaugeEditor(panel, gauge) {
 	const pos = document.createElement("div");
 	pos.className = "pos-row";
 	pos.innerHTML = `
-		<label class="pos-field"><span>X</span><input type="number" min="0" max="100" step="0.1" data-role="x"></label>
-		<label class="pos-field"><span>Y</span><input type="number" min="0" max="100" step="0.1" data-role="y"></label>
+		<label class="pos-field"><span>X</span><input type="number" min="0" max="100" step="0.001" data-role="x"></label>
+		<label class="pos-field"><span>Y</span><input type="number" min="0" max="100" step="0.001" data-role="y"></label>
 		<label class="pos-field"><span>${isFrame ? "Frame Rotation" : "Rotation"}</span><input type="number" min="-180" max="180" step="0.1" data-role="rotation"></label>
 		<label class="pos-field"><span>Width</span><input type="number" min="8" max="2000" step="1" data-role="width"></label>
 		<label class="pos-field"><span>Height</span><input type="number" min="4" max="512" step="1" data-role="height"></label>`;
@@ -1162,19 +1163,18 @@ function fillGaugeEditor(panel, gauge) {
 				return null;
 			}
 			const v = Number(raw);
-			return Number.isFinite(v) ? clampPct(v, 0, 100) / 100 : null;
+			return Number.isFinite(v) ? clampPct(v, 0, 100) : null;
 		},
 		apply: (v) => {
 			const g = live();
 			const box = gaugeEditorBox();
 			const cur = hudItemEditorPosPct(g, box.w, box.h);
-			patchGauge(gid, hudItemEditorPosPatch(g, box.w, box.h, v * 100, cur.y));
+			patchGauge(gid, hudItemEditorPosPatch(g, box.w, box.h, v, cur.y));
 		},
-		format: (v) => fmtPct(v * 100),
 		current: () => {
 			const g = live();
 			const box = gaugeEditorBox();
-			return hudItemEditorPosPct(g, box.w, box.h).x / 100;
+			return hudItemEditorPosPct(g, box.w, box.h).x;
 		}
 	});
 	bindNumberField(yInput, {
@@ -1184,19 +1184,18 @@ function fillGaugeEditor(panel, gauge) {
 				return null;
 			}
 			const v = Number(raw);
-			return Number.isFinite(v) ? clampPct(v, 0, 100) / 100 : null;
+			return Number.isFinite(v) ? clampPct(v, 0, 100) : null;
 		},
 		apply: (v) => {
 			const g = live();
 			const box = gaugeEditorBox();
 			const cur = hudItemEditorPosPct(g, box.w, box.h);
-			patchGauge(gid, hudItemEditorPosPatch(g, box.w, box.h, cur.x, v * 100));
+			patchGauge(gid, hudItemEditorPosPatch(g, box.w, box.h, cur.x, v));
 		},
-		format: (v) => fmtPct(v * 100),
 		current: () => {
 			const g = live();
 			const box = gaugeEditorBox();
-			return hudItemEditorPosPct(g, box.w, box.h).y / 100;
+			return hudItemEditorPosPct(g, box.w, box.h).y;
 		}
 	});
 	bindNumberField(rotInput, {
@@ -1228,7 +1227,6 @@ function fillGaugeEditor(panel, gauge) {
 			return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : null;
 		},
 		apply: (v) => patchGauge(gid, { display: { maxAlpha: v } }),
-		format: (v) => String(Math.round(Number(v) || 100)),
 		current: () => {
 			const a = Number(live().display.maxAlpha);
 			return Number.isFinite(a) ? a : 100;
@@ -1303,18 +1301,16 @@ function fillGaugeEditor(panel, gauge) {
 	const iconColor = document.createElement("label");
 	iconColor.className = "pos-field compact mid";
 	iconColor.innerHTML = `<span>Icon Colour</span><select data-role="iconColorMode">
-		<option value="border">Use Border Colour</option>
-		<option value="keep">Keep Icon Colours</option>
-		<option value="bar">Use Bar Colour</option>
-		<option value="label">Use Title Colour</option>
+		<option value="border">Border</option>
+		<option value="bar">Bar</option>
+		<option value="icon">Icon</option>
 	</select>`;
 	tagFieldLabel(iconColor, "cog-icon-colour", "Icon Colour");
 	const iconColorSel = iconColor.querySelector("select");
 	tagSelectOptions(iconColorSel, {
-		border: ["cog-use-border-colour", "Use Border Colour"],
-		keep: ["cog-keep-icon-colours", "Keep Icon Colours"],
-		bar: ["cog-use-bar-colour", "Use Bar Colour"],
-		label: ["cog-use-title-colour", "Use Title Colour"]
+		border: ["cog-border", "Border"],
+		bar: ["cog-bar", "Bar"],
+		icon: ["cog-icon", "Icon"]
 	});
 	iconColorSel.value = normalizeIconColorMode(gaugeSettings(gauge).iconColorMode);
 	iconColorSel.addEventListener("change", (ev) => {
@@ -1338,18 +1334,16 @@ function fillGaugeEditor(panel, gauge) {
 	const titleColor = document.createElement("label");
 	titleColor.className = "pos-field compact mid";
 	titleColor.innerHTML = `<span>Title Colour</span><select data-role="labelColorMode">
-		<option value="border">Use Border Colour</option>
-		<option value="keep">Keep Title Colour</option>
-		<option value="bar">Use Bar Colour</option>
-		<option value="icon">Use Icon Colours</option>
+		<option value="border">Border</option>
+		<option value="bar">Bar</option>
+		<option value="icon">Icon</option>
 	</select>`;
 	tagFieldLabel(titleColor, "cog-title-colour", "Title Colour");
 	const titleColorSel = titleColor.querySelector("select");
 	tagSelectOptions(titleColorSel, {
-		border: ["cog-use-border-colour", "Use Border Colour"],
-		keep: ["cog-keep-title-colour", "Keep Title Colour"],
-		bar: ["cog-use-bar-colour", "Use Bar Colour"],
-		icon: ["cog-use-icon-colours", "Use Icon Colours"]
+		border: ["cog-border", "Border"],
+		bar: ["cog-bar", "Bar"],
+		icon: ["cog-icon", "Icon"]
 	});
 	titleColorSel.value = normalizeLabelColorMode(gaugeSettings(gauge).labelColorMode);
 	titleColorSel.addEventListener("change", (ev) => {
@@ -1373,18 +1367,16 @@ function fillGaugeEditor(panel, gauge) {
 	const countColor = document.createElement("label");
 	countColor.className = "pos-field compact mid";
 	countColor.innerHTML = `<span>Number Colour</span><select data-role="numberColorMode">
-		<option value="border">Use Border Colour</option>
-		<option value="keep">Keep Number Colour</option>
-		<option value="bar">Use Bar Colour</option>
-		<option value="icon">Use Icon Colours</option>
+		<option value="border">Border</option>
+		<option value="bar">Bar</option>
+		<option value="icon">Icon</option>
 	</select>`;
 	tagFieldLabel(countColor, "cog-number-colour", "Number Colour");
 	const countColorSel = countColor.querySelector("select");
 	tagSelectOptions(countColorSel, {
-		border: ["cog-use-border-colour", "Use Border Colour"],
-		keep: ["cog-keep-number-colour", "Keep Number Colour"],
-		bar: ["cog-use-bar-colour", "Use Bar Colour"],
-		icon: ["cog-use-icon-colours", "Use Icon Colours"]
+		border: ["cog-border", "Border"],
+		bar: ["cog-bar", "Bar"],
+		icon: ["cog-icon", "Icon"]
 	});
 	countColorSel.value = normalizeLabelColorMode(gaugeSettings(gauge).numberColorMode);
 	countColorSel.addEventListener("change", (ev) => {
@@ -1450,15 +1442,14 @@ function fillGaugeEditor(panel, gauge) {
 
 		const thick = document.createElement("label");
 		thick.className = "pos-field compact mid border-thickness-field";
-		thick.innerHTML = `<span>Border Thickness</span><input type="number" min="0" max="50" step="0.5" data-role="borderThickness">`;
+		thick.innerHTML = `<span>Border Thickness</span><input type="number" min="0" max="50" step="0.001" data-role="borderThickness">`;
 		tagFieldLabel(thick, "cog-border-thickness", "Border Thickness");
 		const thickInput = thick.querySelector("input");
-		thickInput.value = fmtDec(gaugeSettings(gauge).borderThickness, 1);
+		thickInput.value = fmtPct(gaugeSettings(gauge).borderThickness);
 		bindNumberField(thickInput, {
 			suffix: "%",
 			parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(50, Number(raw) || 0))),
 			apply: (v) => patchGauge(gid, { borderThickness: v }),
-			decimals: 1,
 			current: () => gaugeSettings(live()).borderThickness
 		});
 		rowA.appendChild(thick);
@@ -1512,15 +1503,14 @@ function fillGaugeEditor(panel, gauge) {
 			const overlap = document.createElement("label");
 			overlap.className = "pos-field compact mid overlap-cap-field";
 			overlap.dataset.role = "endCapOverlapWrap";
-			overlap.innerHTML = `<span>Overlap</span><input type="number" min="0" max="45" step="0.5" data-role="endCapOverlap">`;
+			overlap.innerHTML = `<span>Overlap</span><input type="number" min="0" max="45" step="0.001" data-role="endCapOverlap">`;
 			tagFieldLabel(overlap, "cog-overlap", "Overlap");
 			const overlapInput = overlap.querySelector("input");
-			overlapInput.value = fmtDec(gaugeSettings(gauge).endCapOverlap, 1);
+			overlapInput.value = fmtPct(gaugeSettings(gauge).endCapOverlap);
 			bindNumberField(overlapInput, {
 				suffix: "%",
 				parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(45, Number(raw) || 0))),
 				apply: (v) => patchGauge(gid, { endCapOverlap: v }),
-				decimals: 1,
 				current: () => gaugeSettings(live()).endCapOverlap
 			});
 			endArtRow.appendChild(overlap);
@@ -1531,15 +1521,14 @@ function fillGaugeEditor(panel, gauge) {
 		rowC.className = "style-row";
 		const trough = document.createElement("label");
 		trough.className = "pos-field compact mid";
-		trough.innerHTML = `<span>Trough Opacity</span><input type="number" min="0" max="100" step="1" data-role="troughOpacity">`;
+		trough.innerHTML = `<span>Trough Opacity</span><input type="number" min="0" max="100" step="0.001" data-role="troughOpacity">`;
 		tagFieldLabel(trough, "cog-trough-opacity", "Trough Opacity");
 		const troughInput = trough.querySelector("input");
-		troughInput.value = fmtDec(gaugeSettings(gauge).troughOpacity, 0);
+		troughInput.value = fmtPct(gaugeSettings(gauge).troughOpacity);
 		bindNumberField(troughInput, {
 			suffix: "%",
 			parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(100, Number(raw) || 0))),
 			apply: (v) => patchGauge(gid, { troughOpacity: v }),
-			decimals: 0,
 			current: () => gaugeSettings(live()).troughOpacity
 		});
 		rowC.appendChild(trough);

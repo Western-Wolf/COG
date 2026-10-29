@@ -1606,7 +1606,7 @@ button.action:hover,
 	margin-top: 0.55em;
 }
 
-/* Display row: Stack / Fill from Hidden / Max Alpha — size to label, field floor. */
+/* Display row: Stack / Fill from Hidden / Max Alpha / Border & Text — size to label, field floor. */
 .group-acc .style-row > .pos-field.compact.mid:has([data-role="stack"]),
 .group-acc .style-row > .pos-field.compact.mid[data-role="fillFromHiddenRow"],
 .group-acc .style-row > .pos-field.compact.mid:has([data-role="maxAlpha"]) {
@@ -1614,6 +1614,17 @@ button.action:hover,
 	min-width: 8.25em;
 	max-width: 100%;
 	width: max-content;
+}
+
+.group-acc .style-row > .color-field.compact {
+	flex: 0 0 auto;
+	min-width: 8.25em;
+	max-width: 100%;
+	width: max-content;
+}
+
+.group-acc .group-checks-row {
+	margin-top: 0.9em;
 }
 
 .gear-edit-picker {
@@ -2353,6 +2364,13 @@ button.action:hover,
 .color-ramp-heading {
 	font-weight: 600;
 	color: #e8d2a0;
+}
+
+.color-ramp-heading-row {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35em;
+	flex-wrap: wrap;
 }
 
 .color-ramp-hint {

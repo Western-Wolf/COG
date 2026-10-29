@@ -332,7 +332,10 @@ function ensureFeedGizmo(gizmo) {
 	s.maxVisible = Math.max(1, Math.min(20, Math.round(Number(s.maxVisible) || DEFAULT_FEED_MAX)));
 	s.stackOrigin = normalizeStackOrigin(s.stackOrigin || DEFAULT_FEED_STACK_ORIGIN);
 	s.durationMs = Math.max(500, Math.min(60000, Number(s.durationMs) || DEFAULT_FEED_DURATION_MS));
-	s.fadeMs = Math.max(0, Math.min(2000, Number(s.fadeMs) || DEFAULT_FEED_FADE_MS));
+	{
+		const n = Number(s.fadeMs);
+		s.fadeMs = Math.max(0, Math.min(2000, Number.isFinite(n) ? n : DEFAULT_FEED_FADE_MS));
+	}
 	s.showNotifications = s.showNotifications === true || s.showNotifications === "true";
 	s.showInventory = s.showInventory === true || s.showInventory === "true";
 	s.showLocation = s.showLocation === true || s.showLocation === "true";
@@ -400,11 +403,13 @@ function ensureFeedGizmo(gizmo) {
 	s.skillProgressColor = optionalHex(s.skillProgressColor);
 	s.levelProgressColor = optionalHex(s.levelProgressColor);
 	s.backdropColor = optionalHex(s.backdropColor);
-	s.backdropOpacity = Math.max(
-		0,
-		Math.min(
-			100,
-			Number.isFinite(Number(s.backdropOpacity)) ? Number(s.backdropOpacity) : DEFAULT_FEED_BACKDROP_OPACITY
+	s.backdropOpacity = quantizePct(
+		Math.max(
+			0,
+			Math.min(
+				100,
+				Number.isFinite(Number(s.backdropOpacity)) ? Number(s.backdropOpacity) : DEFAULT_FEED_BACKDROP_OPACITY
+			)
 		)
 	);
 	s.backdropDirection = normalizeFeedBackdropDirection(s.backdropDirection || DEFAULT_FEED_BACKDROP_DIRECTION);
@@ -464,7 +469,7 @@ function formatFeedLevelProgressValue(line, asTotal) {
 function feedProgressBarWidth(settings) {
 	const s = settings || {};
 	const raw = Number(s.progressBarWidth) || DEFAULT_FEED_PROGRESS_BAR_WIDTH;
-	return Math.max(5, Math.min(100, raw));
+	return quantizePct(Math.max(5, Math.min(100, raw)));
 }
 
 function effectPassesTimeWindow(effect, gizmo, opts) {
@@ -2256,15 +2261,20 @@ function fillFeedGizmoEditor(panel, gizmo) {
 
 	const opacityField = document.createElement("label");
 	opacityField.className = "pos-field compact";
-	opacityField.innerHTML = `<span>Opacity</span><input type="number" min="0" max="100" step="1" data-role="backdropOpacity">`;
+	opacityField.innerHTML = `<span>Opacity</span><input type="number" min="0" max="100" step="0.001" data-role="backdropOpacity">`;
 	tagFieldLabel(opacityField, "cog-opacity", "Opacity");
 	const opacityInput = opacityField.querySelector("input");
-	opacityInput.value = String(gizmo.settings.backdropOpacity);
+	opacityInput.value = fmtPct(gizmo.settings.backdropOpacity);
 	bindNumberField(opacityInput, {
 		suffix: "%",
-		parse: (raw) => Math.max(0, Math.min(100, Math.round(Number(raw)))),
+		parse: (raw) => {
+			if (String(raw).trim() === "" || raw === "." || raw === "-") {
+				return null;
+			}
+			const v = Number(raw);
+			return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : null;
+		},
 		apply: (v) => patchGizmo(gid, { backdropOpacity: v }),
-		format: (v) => String(Math.round(v)),
 		current: () => live().settings.backdropOpacity
 	});
 	backdropRow.appendChild(opacityField);
@@ -2328,10 +2338,10 @@ function fillFeedGizmoEditor(panel, gizmo) {
 	progressRow.appendChild(barColorField);
 	const barWidthField = document.createElement("label");
 	barWidthField.className = "pos-field compact";
-	barWidthField.innerHTML = `<span>Bar Width</span><input type="number" min="5" max="100" step="1" data-role="progressBarWidth">`;
+	barWidthField.innerHTML = `<span>Bar Width</span><input type="number" min="5" max="100" step="0.001" data-role="progressBarWidth">`;
 	tagFieldLabel(barWidthField, "cog-bar-width", "Bar Width");
 	const barWidthInput = barWidthField.querySelector("input");
-	barWidthInput.value = fmtDec(gizmo.settings.progressBarWidth, 0);
+	barWidthInput.value = fmtPct(gizmo.settings.progressBarWidth);
 	bindNumberField(barWidthInput, {
 		suffix: "%",
 		parse: (raw) =>
@@ -2339,7 +2349,6 @@ function fillFeedGizmoEditor(panel, gizmo) {
 				? null
 				: Math.max(5, Math.min(100, Number(raw) || DEFAULT_FEED_PROGRESS_BAR_WIDTH)),
 		apply: (v) => patchGizmo(gid, { progressBarWidth: v }),
-		decimals: 0,
 		current: () => feedProgressBarWidth((gizmoFor(gid) || gizmo).settings)
 	});
 	progressRow.appendChild(barWidthField);

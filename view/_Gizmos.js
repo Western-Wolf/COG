@@ -833,7 +833,10 @@ function appendGizmoPositionSizeEditor(panel, gizmo) {
 	xInput.value = fmtPct(editorPos.x);
 	yInput.value = fmtPct(editorPos.y);
 	rotInput.value = (Number(gizmo.display.rotation) || 0).toFixed(1);
-	maxAlphaInput.value = String(Math.round(Number(gizmo.display.maxAlpha) || 100));
+	{
+		const a = Number(gizmo.display.maxAlpha);
+		maxAlphaInput.value = fmtPct(Number.isFinite(a) ? a : 100);
+	}
 	wInput.value = String(Math.round(gizmo.display.width));
 	hInput.value = String(Math.round(gizmo.display.height));
 	bindNumberField(xInput, {
@@ -843,19 +846,18 @@ function appendGizmoPositionSizeEditor(panel, gizmo) {
 				return null;
 			}
 			const v = Number(raw);
-			return Number.isFinite(v) ? clampPct(v, 0, 100) / 100 : null;
+			return Number.isFinite(v) ? clampPct(v, 0, 100) : null;
 		},
 		apply: (v) => {
 			const g = live();
 			const box = gizmoLayoutBox(g);
 			const cur = hudItemEditorPosPct(g, box.w, box.h);
-			patchGizmo(gid, hudItemEditorPosPatch(g, box.w, box.h, v * 100, cur.y));
+			patchGizmo(gid, hudItemEditorPosPatch(g, box.w, box.h, v, cur.y));
 		},
-		format: (v) => fmtPct(v * 100),
 		current: () => {
 			const g = live();
 			const box = gizmoLayoutBox(g);
-			return hudItemEditorPosPct(g, box.w, box.h).x / 100;
+			return hudItemEditorPosPct(g, box.w, box.h).x;
 		}
 	});
 	bindNumberField(yInput, {
@@ -865,19 +867,18 @@ function appendGizmoPositionSizeEditor(panel, gizmo) {
 				return null;
 			}
 			const v = Number(raw);
-			return Number.isFinite(v) ? clampPct(v, 0, 100) / 100 : null;
+			return Number.isFinite(v) ? clampPct(v, 0, 100) : null;
 		},
 		apply: (v) => {
 			const g = live();
 			const box = gizmoLayoutBox(g);
 			const cur = hudItemEditorPosPct(g, box.w, box.h);
-			patchGizmo(gid, hudItemEditorPosPatch(g, box.w, box.h, cur.x, v * 100));
+			patchGizmo(gid, hudItemEditorPosPatch(g, box.w, box.h, cur.x, v));
 		},
-		format: (v) => fmtPct(v * 100),
 		current: () => {
 			const g = live();
 			const box = gizmoLayoutBox(g);
-			return hudItemEditorPosPct(g, box.w, box.h).y / 100;
+			return hudItemEditorPosPct(g, box.w, box.h).y;
 		}
 	});
 	bindNumberField(rotInput, {
@@ -910,7 +911,6 @@ function appendGizmoPositionSizeEditor(panel, gizmo) {
 			return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : null;
 		},
 		apply: (v) => patchGizmo(gid, { display: { maxAlpha: v } }),
-		format: (v) => String(Math.round(Number(v) || 100)),
 		current: () => {
 			const a = Number(live().display.maxAlpha);
 			return Number.isFinite(a) ? a : 100;
