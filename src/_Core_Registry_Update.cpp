@@ -39,6 +39,10 @@ namespace
 		return Lower(mod) + "\x1F" + Lower(name);
 	}
 
+	// Rising-edge detector for Transformation timer peak latch. Cleared on load close so
+	// beast→beast reloads re-latch maximum to the save's remaining time.
+	bool g_wasWerewolfForm = false;
+
 	void AssignIfProvided(std::string& dest, std::string value)
 	{
 		if (!value.empty()) {
@@ -104,6 +108,29 @@ namespace
 	bool GizmoSettingsBool(const CogGizmo& g, std::string_view key, bool fallback)
 	{
 		return CogRegistryJson::GizmoSettingsBool(g, key, fallback);
+	}
+
+	/** Shared play-Feed walk. key2 empty → only key1. Call under CogRegistry::_mutex. */
+	bool AnyPlayFeedMatching(
+		const std::vector<CogGizmo>& gizmos,
+		std::string_view key1,
+		bool def1,
+		std::string_view key2 = {},
+		bool def2 = false)
+	{
+		for (const auto& g : gizmos) {
+			if (!GizmoIsPlayActive(g) || NormalizeGizmoType(g.typeId) != "cog-feed") {
+				continue;
+			}
+			if (!GizmoSettingsBool(g, key1, def1)) {
+				continue;
+			}
+			if (!key2.empty() && !GizmoSettingsBool(g, key2, def2)) {
+				continue;
+			}
+			return true;
+		}
+		return false;
 	}
 
 	std::string SanitizeGizmoTypeId(std::string raw)
@@ -380,6 +407,7 @@ void CogRegistry::OnLoadingMenuClosed()
 		_senderReconcileDone = false;
 		_presentThisSession.clear();
 		_modBatchOpen.clear();
+		_batchCommitPending = false;
 		_gizmoTypeReceipts.clear();
 		_gizmoTypeReceiptIndex.clear();
 		// Force a full snapshot on the first tick after load (not a lean live patch).
@@ -540,25 +568,15 @@ void CogRegistry::ToggleUiHidden()
 bool CogRegistry::HasVisibleFeedShowingNotifications() const
 {
 	std::lock_guard lock(_mutex);
-	for (const auto& g : _gizmos) {
-		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.typeId) == "cog-feed" && GizmoSettingsBool(g, "showNotifications", false)) {
-	return true;
-}
-	}
-	return false;
+	return AnyPlayFeedMatching(_gizmos, "showNotifications", false);
 }
 
 
 
 bool CogRegistry::HasVisibleFeedShowingInventory() const
-	{
-		std::lock_guard lock(_mutex);
-	for (const auto& g : _gizmos) {
-		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.typeId) == "cog-feed" && GizmoSettingsBool(g, "showInventory", false)) {
-			return true;
-		}
-	}
-	return false;
+{
+	std::lock_guard lock(_mutex);
+	return AnyPlayFeedMatching(_gizmos, "showInventory", false);
 }
 
 
@@ -566,13 +584,7 @@ bool CogRegistry::HasVisibleFeedShowingInventory() const
 bool CogRegistry::HasVisibleFeedDivertingLocationDiscovery() const
 {
 	std::lock_guard lock(_mutex);
-	for (const auto& g : _gizmos) {
-		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.typeId) == "cog-feed" && GizmoSettingsBool(g, "showLocation", false) &&
-			GizmoSettingsBool(g, "showLocationDiscovery", true)) {
-			return true;
-		}
-	}
-	return false;
+	return AnyPlayFeedMatching(_gizmos, "showLocation", false, "showLocationDiscovery", true);
 }
 
 
@@ -580,13 +592,7 @@ bool CogRegistry::HasVisibleFeedDivertingLocationDiscovery() const
 bool CogRegistry::HasVisibleFeedDivertingCurrentLocation() const
 {
 	std::lock_guard lock(_mutex);
-	for (const auto& g : _gizmos) {
-		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.typeId) == "cog-feed" && GizmoSettingsBool(g, "showLocation", false) &&
-			GizmoSettingsBool(g, "showCurrentLocation", true)) {
-			return true;
-		}
-	}
-	return false;
+	return AnyPlayFeedMatching(_gizmos, "showLocation", false, "showCurrentLocation", true);
 }
 
 
@@ -594,14 +600,15 @@ bool CogRegistry::HasVisibleFeedDivertingCurrentLocation() const
 bool CogRegistry::HasVisibleFeedShowingSkills() const
 {
 	std::lock_guard lock(_mutex);
-	for (const auto& g : _gizmos) {
-		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.typeId) == "cog-feed" &&
-			GizmoSettingsBool(g, "showSkills", false) &&
-			GizmoSettingsBool(g, "showSkillProgress", true)) {
-			return true;
-		}
-	}
-	return false;
+	return AnyPlayFeedMatching(_gizmos, "showSkills", false);
+}
+
+
+
+bool CogRegistry::HasVisibleFeedShowingSkillProgress() const
+{
+	std::lock_guard lock(_mutex);
+	return AnyPlayFeedMatching(_gizmos, "showSkills", false, "showSkillProgress", true);
 }
 
 
@@ -609,13 +616,7 @@ bool CogRegistry::HasVisibleFeedShowingSkills() const
 bool CogRegistry::HasVisibleFeedShowingLevelProgress() const
 {
 	std::lock_guard lock(_mutex);
-	for (const auto& g : _gizmos) {
-		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.typeId) == "cog-feed" &&
-			GizmoSettingsBool(g, "showSkills", false) && GizmoSettingsBool(g, "showLevelProgress", true)) {
-			return true;
-		}
-	}
-	return false;
+	return AnyPlayFeedMatching(_gizmos, "showSkills", false, "showLevelProgress", true);
 }
 
 
@@ -641,6 +642,8 @@ std::string CogRegistry::FirstVisibleFeedSetting(
 	return std::string{ fallback };
 }
 
+
+
 bool CogRegistry::FirstVisibleFeedSettingBool(
 	std::string_view showKey,
 	std::string_view settingKey,
@@ -659,15 +662,12 @@ bool CogRegistry::FirstVisibleFeedSettingBool(
 	return fallback;
 }
 
+
+
 bool CogRegistry::AnyVisibleFeedShowsActiveEffects() const
 {
 	std::lock_guard lock(_mutex);
-	for (const auto& g : _gizmos) {
-		if (GizmoIsPlayActive(g) && NormalizeGizmoType(g.typeId) == "cog-feed" && GizmoSettingsBool(g, "showActiveEffects", false)) {
-			return true;
-		}
-	}
-	return false;
+	return AnyPlayFeedMatching(_gizmos, "showActiveEffects", false);
 }
 
 
@@ -754,16 +754,15 @@ void CogRegistry::RefreshLiveUnlocked()
 
 	CogLive::ReadPlayerBreath(current, maximum);
 	setTimer(sourceNamed("COG.Builtin", "Oxygen"), current);
-	static bool wasWerewolf = false;
 	const bool isWerewolf = CogLive::PlayerIsWerewolf();
 	const float werewolfRemaining = CogLive::BeastSecondsLeft(0xCDD84, "Skyrim.esm", 0x2BA19, "Skyrim.esm");
 	if (auto* werewolf = sourceNamed("COG.Builtin", "Werewolf")) {
-		if (isWerewolf && !wasWerewolf && werewolfRemaining > 0.0f) {
+		if (isWerewolf && !g_wasWerewolfForm && werewolfRemaining > 0.0f) {
 			werewolf->maximum = 0.0;
 		}
 		setTimer(werewolf, werewolfRemaining);
 	}
-	wasWerewolf = isWerewolf;
+	g_wasWerewolfForm = isWerewolf;
 	setTimer(sourceNamed("COG.Builtin", "Shout"), CogLive::PlayerShoutRemaining());
 	setTimer(sourceNamed("COG.Builtin", "Howl"), CogLive::PlayerHowlRemaining());
 	setPercent(sourceNamed("COG.Builtin", "VampiricHunger"), static_cast<float>(CogLive::VampireStage()), 4.0f);
@@ -838,18 +837,39 @@ void CogRegistry::PushLivePercent(const char* mod, const char* name, float curre
 	if (IsLoading()) {
 		return;
 	}
-	std::ostringstream o;
-	o << "{\"sourceMod\":\"" << EscapeJson(mod) << "\",\"varName\":\"" << EscapeJson(name)
-	  << "\",\"value\":" << value << ",\"current\":" << current << ",\"maximum\":" << maximum << "}";
-	CogUi::Interop("applyLivePercent", o.str());
+
+	/*
+	 * V3 — coalesce PushLivePercent into pending tick live patch
+	 * ----------------------------------------------------------
+	 * BowDraw is pushed every PlayerUpdate frame for smooth draw (see
+	 * Gears_LiveStats PlayerUpdateHook). The overlay also gets a lean
+	 * applyLivePatch every ~50 ms via JS "tick" → PushToUi. When a tick is
+	 * already queued, the next applyLivePatch will carry this source
+	 * (RefreshLiveUnlocked / BuildLivePatchJson) — a separate applyLivePercent
+	 * Interop the same frame is redundant.
+	 *
+	 * Between ticks (no queue), we still Interop applyLivePercent so bow draw
+	 * stays frame-rate smooth.
+	 *
+	 * REVERT: set COG_COALESCE_LIVE_PERCENT_INTO_TICK to 0.
+	 */
+#ifndef COG_COALESCE_LIVE_PERCENT_INTO_TICK
+#	define COG_COALESCE_LIVE_PERCENT_INTO_TICK 1
+#endif
+#if COG_COALESCE_LIVE_PERCENT_INTO_TICK
+	const bool coalesceIntoPendingLivePatch = CogUi::IsJsTickQueued();
+#else
+	const bool coalesceIntoPendingLivePatch = false;
+#endif
+	if (!coalesceIntoPendingLivePatch) {
+		std::ostringstream o;
+		o << "{\"sourceMod\":\"" << EscapeJson(mod) << "\",\"varName\":\"" << EscapeJson(name)
+		  << "\",\"value\":" << value << ",\"current\":" << current << ",\"maximum\":" << maximum << "}";
+		CogUi::Interop("applyLivePercent", o.str());
+	}
 
 	// Bow draw / spell charge remount HUD clips; re-assert all soft-hides (ungated).
 	if (std::strcmp(name, "BowDraw") == 0 || std::strcmp(name, "SpellCharge") == 0) {
 		CogHudSuppress::ReapplyHidden();
-	if (auto* tasks = SKSE::GetTaskInterface()) {
-			tasks->AddTask([]() { CogHudSuppress::ReapplyHidden(); });
-		}
 	}
 }
-
-

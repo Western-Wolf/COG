@@ -56,7 +56,6 @@ struct CogGroupSettings
 	std::string iconColor;
 	std::string barColor;
 	std::string borderColor;
-	std::string neutralIconMode = "white";
 	float gearSize = 50.0f;
 	float spacing = 25.0f;
 	std::string stack = "below";
@@ -213,7 +212,6 @@ struct CogGeneral
 	std::string borderColor = "#e8d2a0";
 	/** Single backup icon tint when gear/group iconColor is unset. */
 	std::string iconColor = "#ffffff";
-	std::string neutralIconMode = "white";
 	std::string gadgetFont = "Roboto";
 	/** Editor UI language (BCP 47). Default en-CA. */
 	std::string language = "en-CA";
@@ -269,6 +267,8 @@ public:
 	void Unregister(std::int32_t receipt);
 	void BeginRegister(std::string mod, std::string pluginFile = {}, std::string sniffedPlugin = {});
 	void EndRegister(std::string mod);
+	/** True while BeginRegister…EndRegister is open for this sourceMod (Save/Push deferred). */
+	bool IsRegisterBatchOpen(std::string_view mod) const;
 
 	/** Register/upsert a custom gizmo type; returns a session receipt (0 on failure). */
 	std::int32_t RegisterGizmo(
@@ -331,12 +331,17 @@ public:
 	/** Next PushToUi sends a full applySnapshot (entities + live), not a lean live patch. */
 	void MarkLayoutDirty();
 
-	void SetViewReady(bool ready);
+	/** DOM-ready diagnostics + MarkCatalogDirty + drain pending Feed events. */
+	void OnViewReady();
 	bool HasVisibleFeedShowingNotifications() const;
 	bool HasVisibleFeedShowingInventory() const;
 	bool HasVisibleFeedDivertingLocationDiscovery() const;
 	bool HasVisibleFeedDivertingCurrentLocation() const;
+	/** Play-visible Feed with Skills section on (showSkills) — soft-hides hud.questUpdates. */
 	bool HasVisibleFeedShowingSkills() const;
+	/** Skills section + Skill Progress checkbox — enqueue skill-up lines into Feed. */
+	bool HasVisibleFeedShowingSkillProgress() const;
+	/** Skills section + Level Progress checkbox — enqueue level-up / XP meter into Feed. */
 	bool HasVisibleFeedShowingLevelProgress() const;
 	bool AnyVisibleFeedShowsActiveEffects() const;
 	bool ShouldSuppressInventoryNotifications() const;
@@ -414,7 +419,8 @@ private:
 	const CogGizmoType* FindGizmoTypeUnlocked(std::string_view typeId) const;
 	bool ApplyStateJson(const std::string& json);
 	void SaveConfigUnlocked() const;
-
+	/** Persist deferred Register / RegisterGizmo work; does not close batches or omit-prune. */
+	void FlushBatchCommitUnlocked();
 	mutable std::mutex _mutex;
 	std::int32_t _nextReceipt = 1;
 	std::unordered_map<std::int32_t, CogSource> _sources;
@@ -435,11 +441,12 @@ private:
 	/** Session receipts for RegisterGizmo (shared _nextReceipt space with gears). */
 	std::unordered_map<std::int32_t, std::string> _gizmoTypeReceipts;
 	std::unordered_map<std::string, std::int32_t> _gizmoTypeReceiptIndex;
-	bool _viewReady = false;
 	bool _configLoaded = false;
 	std::unordered_set<std::string> _modBatchOpen;
 	std::unordered_set<std::string> _seenSources;
 	std::unordered_map<std::string, CogSenderInfo> _senders;
+	/** Gear/gizmo register mutated state while a batch was open — Save deferred until EndRegister or next PushToUi. */
+	bool _batchCommitPending = false;
 	/** path (relative to assets/imports/icons) -> section (first path segment). */
 	std::unordered_map<std::string, std::string> _importedIcons;
 	std::unordered_set<std::string> _presentThisSession;

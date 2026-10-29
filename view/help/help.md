@@ -9,7 +9,7 @@ Press the bound key (default **F3**) to focus the overlay editor. Press it again
 
 Show Default Group toggles the built-in line for unassigned gears. 
 
-Backup colours (bar, border, icon 0%/100%, neutral icon colour for counts) apply when a gear or group does not override them. Most icons use those backup icon colours when their own ends are blank; GIF and WebP icons keep their native colours instead until you set an icon end.
+Backup colours (bar, border, icon) apply when a gear or group does not override them. Most icons use the backup icon tint when their own colour ramp is blank; GIF and WebP icons keep their native colours instead until you set an icon colour.
  +++
 
 ### Gears #cog-help-sec-gears
@@ -28,12 +28,12 @@ COG ships with the ability to suppress HUD elements, allowing you to replace the
 Gears have suppression options as a field that's registered when the gear is, but you can also edit it. Just make sure you know the exact location of the element you want to suppress (hud.stamina, for example, or hud.oxygen)
  +++
 
-+++ Why are my count icons always the "full" colour? #cog-help-count-icons-full-colour
++++ How do count colour stops work? #cog-help-count-colour-stops
 
-Counts have no 0–100% meter. Use the neutral icon colour setting under General backup colours (or under group colours) so those icons stay calm next to progressive meters. Default is Always White; the other options use bar, border, or the icon 0% / 50% / 100% colours from that same backup (or group) set.
+Count gears use the same multi-stop icon and bar colour editors as percent gears, but the stop fields are plain numbers that may go past 100. The live count picks the colour along that map. Percent and timer gears on a shared group colour map only use stops up to 100 (at 100% they take the last stop at or below 100). Leave the ramp empty to inherit the General backup icon or bar colour (GIF/WebP stay native when icon colour is empty).
  +++
 
-+++ Why isn't my mod's menu coming back after I removed the Gear from my screen? #cog-help-menu-not-coming-back
++++ Why isn't my mod's HUD element coming back after I removed the Gear from my screen? #cog-help-menu-not-coming-back
 
 COG can soft-hide a linked HUD target while a Gear that opts into that link is exposed on a visible Group or Gauge. Gizmos may also be programmed to hide specific elements.
 

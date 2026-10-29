@@ -432,18 +432,34 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 	});
 	const iconSlot = form.querySelector('[data-role="iconSlot"]');
 	iconSlot.classList.add("color-ramp-stack");
-	const iconRamp = makeIconRampEditor("Icon", look.icon || "", FALLBACK_ICON_REL, (ramp) => {
-		patchGearSettings(gear.id, { icon: ramp });
-	});
+	const rampAxis = hideType === "count" ? "count" : "percent";
+	const rampOpts = { axis: rampAxis };
+	const iconRamp = makeIconRampEditor(
+		"Icon",
+		look.icon || "",
+		FALLBACK_ICON_REL,
+		(ramp) => {
+			patchGearSettings(gear.id, { icon: ramp });
+		},
+		rampOpts
+	);
 	const iconHeading = iconRamp.querySelector(".color-ramp-heading");
 	const iconHint = iconRamp.querySelector(".color-ramp-hint");
 	if (typeof setTranslatedText === "function") {
 		setTranslatedText(iconHeading, "cog-icon", "Icon");
-		setTranslatedText(
-			iconHint,
-			"cog-icon-ramp-hint",
-			"Each stop switches the icon at that percentage. Icons do not fade between stops."
-		);
+		if (rampAxis === "count") {
+			setTranslatedText(
+				iconHint,
+				"cog-icon-ramp-hint-count",
+				"Each stop switches the icon at that value. Icons do not fade between stops. Counts may go past 100."
+			);
+		} else {
+			setTranslatedText(
+				iconHint,
+				"cog-icon-ramp-hint",
+				"Each stop switches the icon at that percentage. Icons do not fade between stops."
+			);
+		}
 	}
 	iconSlot.appendChild(iconRamp);
 	const colors = form.querySelector('[data-role="colors"]');
@@ -453,28 +469,48 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 		const hint = editor.querySelector(".color-ramp-hint");
 		if (typeof setTranslatedText === "function") {
 			setTranslatedText(heading, headingTag, headingFallback);
-			setTranslatedText(
-				hint,
-				"cog-color-ramp-hint",
-				"Empty inherits the backup. Multiple stops fade between percentages."
-			);
+			if (rampAxis === "count") {
+				setTranslatedText(
+					hint,
+					"cog-color-ramp-hint-count",
+					"Empty inherits the backup. Multiple stops fade between values (counts may go past 100)."
+				);
+			} else {
+				setTranslatedText(
+					hint,
+					"cog-color-ramp-hint",
+					"Empty inherits the backup. Multiple stops fade between percentages."
+				);
+			}
 		}
 		return editor;
 	};
 	colors.appendChild(
 		tagColorRamp(
-			makeColorRampEditor("Icon colours", look.iconColor, themeIconColor(), (ramp, live) => {
-				patchGearSettings(gear.id, { iconColor: ramp }, live);
-			}),
+			makeColorRampEditor(
+				"Icon colours",
+				look.iconColor,
+				themeIconColor(),
+				(ramp, live) => {
+					patchGearSettings(gear.id, { iconColor: ramp }, live);
+				},
+				rampOpts
+			),
 			"cog-icon-colours",
 			"Icon colours"
 		)
 	);
 	colors.appendChild(
 		tagColorRamp(
-			makeColorRampEditor("Bar colours", look.barColor, themeFill(), (ramp, live) => {
-				patchGearSettings(gear.id, { barColor: ramp }, live);
-			}),
+			makeColorRampEditor(
+				"Bar colours",
+				look.barColor,
+				themeFill(),
+				(ramp, live) => {
+					patchGearSettings(gear.id, { barColor: ramp }, live);
+				},
+				rampOpts
+			),
 			"cog-bar-colours",
 			"Bar colours"
 		)
@@ -1151,40 +1187,4 @@ function makeGearColorField(label, gearId, key, value, fallback) {
 	return makeOptionalColorField(label, value, fallback, (hex, live) => patchGearSettings(gearId, { [key]: hex }, live));
 }
 
-function makeNeutralIconField(selectEl) {
-	const field = document.createElement("label");
-	field.className = "color-field color-field-select";
-	const labelSpan = document.createElement("span");
-	if (typeof setTranslatedText === "function") {
-		setTranslatedText(labelSpan, "cog-neutral-icon-colour", "Neutral icon colour");
-	} else {
-		labelSpan.textContent = "Neutral icon colour";
-	}
-	field.appendChild(labelSpan);
-	field.appendChild(selectEl);
-	return field;
-}
-
-function makeNeutralIconSelect(value, onChange) {
-	const sel = document.createElement("select");
-	sel.dataset.role = "neutralIconMode";
-	sel.innerHTML = `
-		<option value="white">Always White</option>
-		<option value="bar">Bar</option>
-		<option value="border">Border</option>
-		<option value="icon0">Icon 0%</option>
-		<option value="icon50">Icon 50%</option>
-		<option value="icon100">Icon 100%</option>`;
-	tagSelectOptions(sel, {
-		white: ["cog-always-white", "Always White"],
-		bar: ["cog-bar", "Bar"],
-		border: ["cog-border", "Border"],
-		icon0: ["cog-icon-0", "Icon 0%"],
-		icon50: ["cog-icon-50", "Icon 50%"],
-		icon100: ["cog-icon-100", "Icon 100%"]
-	});
-	sel.value = normalizeNeutralIconMode(value);
-	sel.addEventListener("change", () => onChange(normalizeNeutralIconMode(sel.value)));
-	return sel;
-}
 

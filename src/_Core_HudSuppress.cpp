@@ -573,7 +573,7 @@ std::string CogHudSuppress::CanonicalKey(std::string_view linked)
 	if (lower == "hud.currentlocation" || lower == "currentlocation" || lower == "locationlockbase") {
 		return std::string(RE::HUDMenu::MENU_NAME) + "|HUDMovieBaseInstance.LocationLockBase";
 	}
-	// Retired suppress keys — Feed-owned divert only (QuestUpdateBaseInstance / hud.questUpdates clip).
+	// Retired aliases — location discovery diverts without its own clip; use hud.questUpdates for Skills.
 	if (lower == "hud.locationdiscovery" || lower == "locationdiscovery" || lower == "hud.location" ||
 		lower == "hud.skills" || lower == "skills") {
 		return {};
@@ -722,8 +722,8 @@ std::string CogHudSuppress::LabelForKey(std::string_view canonicalKeyOrAlias)
 
 bool CogHudSuppress::IsSoftHideKey(std::string_view canonicalKeyOrAlias)
 {
-	// All suppress keys with a CanonicalKey soft-hide. Location discovery / skills have no
-	// suppress key (Feed divert only). Inventory toast starve is Feed-owned separately.
+	// All suppress keys with a CanonicalKey soft-hide. Location discovery has no suppress key
+	// (Feed divert only). Skills soft-hides hud.questUpdates. Inventory toast starve is Feed-owned.
 	return !Trim(std::string{ canonicalKeyOrAlias }).empty();
 }
 
@@ -878,6 +878,8 @@ namespace
 	std::unordered_set<std::string> g_policySuppressedKeys;
 	std::unordered_set<std::string> g_lastSyncedHideKeys;
 	std::unordered_set<std::string> g_preparedHideKeys;
+	/** Last PrepareSync row serialization — SuppressionsJson reuses this (no second layout walk). */
+	std::string g_preparedSuppressionsJson;
 
 	std::string PolicyLower(std::string s)
 	{
@@ -1249,12 +1251,15 @@ void CogHudSuppress::CollectSuppressions(const CogRegistry& reg, std::vector<Cog
 		const bool showInventory = CogRegistryJson::GizmoSettingsBool(gizmo, "showInventory", false);
 		const bool showLocation = CogRegistryJson::GizmoSettingsBool(gizmo, "showLocation", false);
 		const bool showActiveEffects = CogRegistryJson::GizmoSettingsBool(gizmo, "showActiveEffects", false);
+		const bool showSkills = CogRegistryJson::GizmoSettingsBool(gizmo, "showSkills", false);
 		addFeed("hud.notifications", showNotifications);
 		addFeed("hud.inventory", showInventory);
 		addFeed(
 			"hud.currentLocation",
 			showLocation && CogRegistryJson::GizmoSettingsBool(gizmo, "showCurrentLocation", true));
 		addFeed("hud.activeEffects", showActiveEffects);
+		// Skill/level banners share QuestUpdateBaseInstance with quest toasts — whole clip when Skills is on.
+		addFeed("hud.questUpdates", showSkills);
 	}
 
 	out.reserve(byKey.size());
@@ -1331,7 +1336,7 @@ bool CogHudSuppress::IsKeySuppressed(std::string_view aliasOrKey)
 
 void CogHudSuppress::PrepareSync(const CogRegistry& reg, bool& outUnchanged)
 {
-	// One layout walk — cache + hide-key set both derive from the same rows.
+	// One layout walk — cache, hide-key set, and SuppressionsJson all derive from the same rows.
 	std::vector<CogHudSuppressRow> rows;
 	CollectSuppressions(reg, rows);
 	FillSuppressedCacheFromRows(rows);
@@ -1342,6 +1347,10 @@ void CogHudSuppress::PrepareSync(const CogRegistry& reg, bool& outUnchanged)
 		g_lastSyncedHideKeys = hideKeys;
 	}
 	g_preparedHideKeys = std::move(hideKeys);
+	{
+		std::lock_guard lock(g_policyMutex);
+		g_preparedSuppressionsJson = SerializeSuppressRows(rows);
+	}
 }
 
 void CogHudSuppress::ApplyPreparedSync(bool unchanged)

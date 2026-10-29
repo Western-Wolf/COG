@@ -218,6 +218,34 @@ void CogRegistry::BeginRegister(std::string mod, std::string pluginFile, std::st
 
 
 
+bool CogRegistry::IsRegisterBatchOpen(std::string_view mod) const
+{
+	if (mod.empty()) {
+		return false;
+	}
+	std::lock_guard lock(_mutex);
+	return _modBatchOpen.contains(std::string(mod));
+}
+
+
+
+void CogRegistry::FlushBatchCommitUnlocked()
+{
+	if (!_batchCommitPending) {
+		return;
+	}
+	SaveConfigUnlocked();
+	SaveGizmoTypesUnlocked();
+	_batchCommitPending = false;
+	if (!_modBatchOpen.empty()) {
+		logger::info(
+			"COG: flushed deferred register commit ({} batch(es) still open — omit-prune waits for EndRegister)",
+			_modBatchOpen.size());
+	}
+}
+
+
+
 void CogRegistry::EndRegister(std::string mod)
 {
 	if (mod.empty()) {
@@ -229,8 +257,8 @@ void CogRegistry::EndRegister(std::string mod)
 		std::lock_guard lock(_mutex);
 		_modBatchOpen.erase(mod);
 		_presentThisSession.insert(mod);
-	auto& sender = _senders[mod];
-			sender.strikes = 0;
+		auto& sender = _senders[mod];
+		sender.strikes = 0;
 		// Only prune this mod's missing varNames / typeIds. Global missing-plugin cleanup
 		// belongs to MaybeReconcileSenders (settle grace) — calling it here wiped
 		// ESL-flagged senders when LookupLoaded* briefly failed right after Register.
@@ -238,17 +266,18 @@ void CogRegistry::EndRegister(std::string mod)
 		dirty = PruneModGizmoTypesUnlocked(mod) || dirty;
 		const bool filled = ApplyGizmoTypeDefaultsUnlocked();
 		SaveGizmoTypesUnlocked();
-		if (dirty || filled) {
+		if (dirty || filled || _batchCommitPending) {
 			SaveConfigUnlocked();
-			layoutDirty = dirty || filled;
-	} else {
-	SaveSendersUnlocked();
-}
+			_batchCommitPending = false;
+			layoutDirty = true;
+		} else {
+			SaveSendersUnlocked();
+		}
 
 		std::size_t gearCount = 0;
 		std::size_t liveCount = 0;
 		std::size_t typeCount = 0;
-	for (const auto& gear : _gears) {
+		for (const auto& gear : _gears) {
 			if (gear.sourceMod == mod) {
 				++gearCount;
 			}
@@ -259,7 +288,7 @@ void CogRegistry::EndRegister(std::string mod)
 				++liveCount;
 			}
 		}
-	for (const auto& t : _gizmoTypes) {
+		for (const auto& t : _gizmoTypes) {
 			if (t.sourceMod == mod) {
 				++typeCount;
 			}

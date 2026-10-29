@@ -14,7 +14,10 @@ let openGizmoId = "";
 let activeGizmoId = "";
 
 const gizmoRenderers = new Map();
+/** Paths whose <script> loaded successfully (CogRegisterGizmoRenderer may still be pending). */
 const loadedGizmoViewScripts = new Set();
+/** Paths with an in-flight <script> inject — avoid duplicate tags before onload/onerror. */
+const pendingGizmoViewScripts = new Set();
 
 /** Any typeId starting with "cog-" is reserved for COG. */
 function isReservedCogGizmoTypeId(typeId) {
@@ -134,14 +137,20 @@ function ensureGizmoViewScripts() {
 		if (!scriptPath || scriptPath.includes("..") || scriptPath.includes(":")) {
 			continue;
 		}
-		if (loadedGizmoViewScripts.has(scriptPath)) {
+		if (loadedGizmoViewScripts.has(scriptPath) || pendingGizmoViewScripts.has(scriptPath)) {
 			continue;
 		}
-		loadedGizmoViewScripts.add(scriptPath);
+		pendingGizmoViewScripts.add(scriptPath);
 		const el = document.createElement("script");
 		el.src = "../" + scriptPath;
 		el.async = false;
+		el.onload = () => {
+			pendingGizmoViewScripts.delete(scriptPath);
+			loadedGizmoViewScripts.add(scriptPath);
+		};
 		el.onerror = () => {
+			pendingGizmoViewScripts.delete(scriptPath);
+			// Leave out of loadedGizmoViewScripts so a later ensure can retry (late/MO2 deploy).
 			if (typeof window.cogReportError === "function") {
 				window.cogReportError("gizmo view script", scriptPath);
 			} else {
@@ -582,8 +591,27 @@ function appendGizmoVisibilityEditor(panel, gizmo) {
 	panel.appendChild(row);
 }
 
+/** Schema field label → cog-* tag (or explicit field.labelTag). Type catalogs supply translations. */
+function schemaFieldLabelTag(field) {
+	if (field && field.labelTag != null && String(field.labelTag).trim() !== "") {
+		return String(field.labelTag).trim();
+	}
+	const label = String((field && (field.label || field.key)) || "").trim();
+	if (!label) {
+		return "";
+	}
+	return (
+		"cog-" +
+		label
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, "-")
+			.replace(/^-+|-+$/g, "")
+	);
+}
+
 function fillSchemaGizmoEditor(panel, gizmo) {
 	const gid = gizmo.id;
+	const typeId = gizmo.typeId;
 	const live = () => gizmoFor(gid) || gizmo;
 	const typeDef = gizmoTypeDef(gizmo.typeId);
 	const schema = parseGizmoSettingsSchema(typeDef);
@@ -606,6 +634,7 @@ function fillSchemaGizmoEditor(panel, gizmo) {
 		intro.textContent = "Gizmo settings.";
 	}
 	panel.appendChild(intro);
+	appendGizmoVisibilityEditor(panel, gizmo);
 	appendEditorRule(panel);
 	if (!schema.length) {
 		const empty = document.createElement("p");
@@ -628,14 +657,22 @@ function fillSchemaGizmoEditor(panel, gizmo) {
 		}
 		const kind = String(field.kind || "string").toLowerCase();
 		const label = field.label || field.key;
+		const labelTag = schemaFieldLabelTag(field);
 		const settings = () => syncGizmoSettingsJson(live());
 		if (kind === "color") {
 			const current = settings()[field.key];
-			row.appendChild(
-				makeOptionalColorField(label, current, field.default || DEFAULT_GIZMO_GOLD, (hex, live) => {
-					patchGizmoSetting(gid, field.key, hex, live);
-				})
+			const colorField = makeOptionalColorField(
+				label,
+				current,
+				field.default || DEFAULT_GIZMO_GOLD,
+				(hex, livePaint) => {
+					patchGizmoSetting(gid, field.key, hex, livePaint);
+				}
 			);
+			if (labelTag && typeof tagFieldLabel === "function") {
+				tagFieldLabel(colorField, labelTag, label, typeId);
+			}
+			row.appendChild(colorField);
 			continue;
 		}
 		if (kind === "bool" || kind === "boolean") {
@@ -651,7 +688,11 @@ function fillSchemaGizmoEditor(panel, gizmo) {
 				cur === "1" ||
 				(cur == null && (field.default === true || field.default === "true"));
 			const span = document.createElement("span");
-			span.textContent = label;
+			if (labelTag && typeof setTranslatedText === "function") {
+				setTranslatedText(span, labelTag, label, undefined, typeId);
+			} else {
+				span.textContent = label;
+			}
 			wrap.appendChild(box);
 			wrap.appendChild(span);
 			box.addEventListener("change", () => {
@@ -664,7 +705,13 @@ function fillSchemaGizmoEditor(panel, gizmo) {
 			const wrap = document.createElement("label");
 			wrap.className = "pos-field compact";
 			const opts = Array.isArray(field.options) ? field.options : [];
-			wrap.innerHTML = "<span>" + label + "</span><select></select>";
+			wrap.innerHTML = "<span></span><select></select>";
+			const titleSpan = wrap.querySelector("span");
+			if (labelTag && typeof setTranslatedText === "function") {
+				setTranslatedText(titleSpan, labelTag, label, undefined, typeId);
+			} else {
+				titleSpan.textContent = label;
+			}
 			const sel = wrap.querySelector("select");
 			for (const opt of opts) {
 				const o = document.createElement("option");
@@ -683,7 +730,13 @@ function fillSchemaGizmoEditor(panel, gizmo) {
 		if (kind === "int" || kind === "float" || kind === "number") {
 			const wrap = document.createElement("label");
 			wrap.className = "pos-field compact";
-			wrap.innerHTML = "<span>" + label + '</span><input type="text" inputmode="numeric">';
+			wrap.innerHTML = '<span></span><input type="text" inputmode="numeric">';
+			const titleSpan = wrap.querySelector("span");
+			if (labelTag && typeof setTranslatedText === "function") {
+				setTranslatedText(titleSpan, labelTag, label, undefined, typeId);
+			} else {
+				titleSpan.textContent = label;
+			}
 			const input = wrap.querySelector("input");
 			const isInt = kind === "int";
 			const min = field.min != null ? Number(field.min) : null;
@@ -719,7 +772,13 @@ function fillSchemaGizmoEditor(panel, gizmo) {
 		}
 		const wrap = document.createElement("label");
 		wrap.className = "pos-field compact";
-		wrap.innerHTML = "<span>" + label + '</span><input type="text" spellcheck="false">';
+		wrap.innerHTML = '<span></span><input type="text" spellcheck="false">';
+		const titleSpan = wrap.querySelector("span");
+		if (labelTag && typeof setTranslatedText === "function") {
+			setTranslatedText(titleSpan, labelTag, label, undefined, typeId);
+		} else {
+			titleSpan.textContent = label;
+		}
 		const input = wrap.querySelector("input");
 		input.value = settings()[field.key] != null ? String(settings()[field.key]) : String(field.default || "");
 		const commitStr = () => patchGizmoSetting(gid, field.key, input.value);

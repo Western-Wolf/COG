@@ -2,7 +2,6 @@
 
 #include <string>
 #include <string_view>
-#include <vector>
 
 namespace CogFeed
 {
@@ -15,9 +14,6 @@ namespace CogFeed
 		bool stolen = false,
 		std::string icon = "Treasure/bag.svg");
 	void LoadInventoryIconRules();
-
-	/** Drain newly queued inventory entries as JSON objects (no surrounding array). */
-	[[nodiscard]] std::vector<std::string> DrainInventoryEventsJson();
 
 	bool TryParseInventoryToast(
 		std::string_view text,

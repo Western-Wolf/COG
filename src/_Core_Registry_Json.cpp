@@ -145,9 +145,6 @@ namespace CogRegistryJson
 				if (pct < 0) {
 					pct = 0;
 				}
-				if (pct > 100) {
-					pct = 100;
-				}
 				stops.emplace_back(pct, std::move(path));
 			}
 			return FormatIconRamp(std::move(stops));
@@ -406,9 +403,6 @@ namespace CogRegistryJson
 				if (pct < 0) {
 					pct = 0;
 				}
-				if (pct > 100) {
-					pct = 100;
-				}
 				stops.push_back(ColorStop{ pct, std::move(color) });
 			}
 			return stops;
@@ -634,16 +628,6 @@ namespace CogRegistryJson
 			return CogKeys::kDefaultEditorKey;
 		}
 		return name;
-	}
-
-
-	std::string NormalizeNeutralIconMode(std::string raw)
-	{
-		const auto mode = Lower(raw);
-		if (mode == "bar" || mode == "border" || mode == "icon0" || mode == "icon50" || mode == "icon100") {
-			return mode;
-		}
-		return "white";
 	}
 
 

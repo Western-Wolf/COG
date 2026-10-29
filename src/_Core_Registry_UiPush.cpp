@@ -277,7 +277,6 @@ std::string CogRegistry::BuildSnapshotJson()
 	  << (_general.hideIncludesFlash ? "true" : "false") << ",\"uiHidden\":" << (_uiHidden ? "true" : "false")
 	  << ",\"fillColor\":\"" << EscapeJson(_general.fillColor) << "\",\"borderColor\":\""
 	  << EscapeJson(_general.borderColor) << "\",\"iconColor\":\"" << EscapeJson(_general.iconColor)
-	  << "\",\"neutralIconMode\":\"" << EscapeJson(_general.neutralIconMode)
 	  << "\",\"gadgetFont\":\"" << EscapeJson(_general.gadgetFont) << "\",\"language\":\""
 	  << EscapeJson(_general.language.empty() ? "en-CA" : _general.language)
 	  << "\",\"highlightMissingTranslations\":"
@@ -612,6 +611,11 @@ void CogRegistry::PushToUi()
 	bool fullSnapshot = false;
 	{
 		std::lock_guard lock(_mutex);
+		// Missed EndRegister (or Wait mid-batch): persist deferred registers without closing the batch.
+		if (_batchCommitPending) {
+			FlushBatchCommitUnlocked();
+			_layoutDirty = true;
+		}
 		fullSnapshot = _layoutDirty || _catalogDirty;
 	}
 	if (fullSnapshot) {

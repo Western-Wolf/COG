@@ -422,9 +422,9 @@ void CogFeed::PushActiveEffectsToUi()
 	});
 
 	auto& reg = CogRegistry::Get();
-	const auto color = reg.FirstVisibleFeedSetting("showActiveEffects", "effectsColor", "#e8d2a0");
 	const bool suppressTransform =
 		reg.FirstVisibleFeedSettingBool("showActiveEffects", "suppressTransformEffects", true);
+	constexpr const char* kEffectsColorVar = "effectsColor";
 	std::unordered_set<RE::FormID> seen;
 	seen.reserve(rows.size());
 	constexpr std::uint32_t kMaxPush = 48;
@@ -442,7 +442,7 @@ void CogFeed::PushActiveEffectsToUi()
 		}
 		const auto receipt = Notify(
 			row.name,
-			color,
+			kEffectsColorVar,
 			row.icon,
 			kSourceEffects,
 			row.remaining,

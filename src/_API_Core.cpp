@@ -71,7 +71,8 @@ namespace
 
 	bool IsReady(RE::StaticFunctionTag*)
 	{
-		return true;
+		// False while LoadingMenu / PreLoadGame gate is armed — safe-to-register aligns with COG_Ready settle.
+		return !CogRegistry::Get().IsLoading();
 	}
 
 	bool IsPluginLoaded(RE::StaticFunctionTag*, std::string pluginFile)

@@ -12,71 +12,12 @@
 #include "_Core_HudSuppress.h"
 
 #include <cctype>
-#include <deque>
-#include <mutex>
 #include <sstream>
 #include <string_view>
 #include <vector>
 
 namespace
 {
-	constexpr std::size_t kRingCap = 32;
-
-	struct Entry
-	{
-		std::uint64_t id = 0;
-		std::string text;
-		std::string color;
-		std::string icon;
-	};
-
-	struct LocationEntry
-	{
-		std::uint64_t id = 0;
-		std::string text;
-		std::string kind;
-		std::string icon;
-	};
-
-	std::mutex g_mutex;
-	std::deque<Entry> g_ring;
-	std::deque<LocationEntry> g_locationRing;
-	std::uint64_t g_nextId = 1;
-	std::uint64_t g_nextLocationId = 1;
-	// Prisma Interop is reliable on the JS tick path (PushToUi). Event/HUD threads
-	// enqueue here; Flush* drains ids newer than these watermarks.
-	std::uint64_t g_flushedNotificationId = 0;
-	std::uint64_t g_flushedLocationId = 0;
-
-	std::string EscapeJson(std::string_view raw)
-	{
-		std::string out;
-		out.reserve(raw.size() + 8);
-		for (char c : raw) {
-			switch (c) {
-			case '\\':
-				out += "\\\\";
-				break;
-			case '"':
-				out += "\\\"";
-				break;
-			case '\n':
-				out += "\\n";
-				break;
-			case '\r':
-				out += "\\r";
-				break;
-			case '\t':
-				out += "\\t";
-				break;
-			default:
-				out += c;
-				break;
-			}
-		}
-		return out;
-	}
-
 	std::string TranslateHudText(std::string text)
 	{
 		while (!text.empty() && (text.back() == '\n' || text.back() == '\r')) {
@@ -314,13 +255,11 @@ namespace
 							return RE::UI_MESSAGE_RESULTS::kIgnore;
 						}
 					} else if (kind == RE::HUD_MESSAGE_TYPE::kSkillIncrease) {
-						// No suppress key — skill/level banners share QuestUpdateBaseInstance with
-						// hud.questUpdates. Feed Skills owns divert/enqueue only.
-						auto& reg = CogRegistry::Get();
-						if (reg.HasVisibleFeedShowingSkills() ||
-							reg.HasVisibleFeedShowingLevelProgress()) {
+						// Skills section soft-hides hud.questUpdates (shared clip). Always divert
+						// skill/level banners when the section is on; checkboxes only gate Feed enqueue.
+						if (CogRegistry::Get().HasVisibleFeedShowingSkills()) {
 							if (text && text[0]) {
-								CogFeed::HandleSkillIncreaseHud(text);
+								(void)CogFeed::HandleSkillIncreaseHud(text);
 							}
 							return RE::UI_MESSAGE_RESULTS::kIgnore;
 						}
@@ -457,12 +396,12 @@ void CogFeed::EnqueueLocation(std::string text, std::string kind)
 		if (!reg.HasVisibleFeedDivertingCurrentLocation()) {
 			return;
 		}
-		color = reg.FirstVisibleFeedSetting("showLocation", "currentLocationColor", "#e8d2a0");
+		color = "currentLocationColor";
 	} else {
 		if (!reg.HasVisibleFeedDivertingLocationDiscovery()) {
 			return;
 		}
-		color = reg.FirstVisibleFeedSetting("showLocation", "locationDiscoveryColor", "#e8d2a0");
+		color = "locationDiscoveryColor";
 	}
 	std::string icon = CogFeed::ResolveLocationIcon(text, kind);
 	(void)Notify(std::move(text), std::move(color), std::move(icon), kSourceLocation);

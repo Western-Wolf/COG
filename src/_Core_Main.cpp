@@ -15,15 +15,11 @@
 #include "_Core_HudSuppress.h"
 #include "_Core_Icon.h"
 
-#include <atomic>
 #include <string>
 
 namespace
 {
 	constexpr const char* kViewPath = "COG/overlay.html";
-
-	// Coalesce Prisma "tick" — only one main-thread PushToUi queued at a time.
-	std::atomic<bool> g_jsTickQueued{ false };
 
 	const char* BuildConfig()
 	{
@@ -103,7 +99,7 @@ namespace
 		logger::info("COG: [phase] view — DOM ready (id={})", view);
 		// Prisma may invoke this off the game thread — defer engine/Prisma work.
 		CogUi::RunOnMainThread([]() {
-			CogRegistry::Get().SetViewReady(true);
+			CogRegistry::Get().OnViewReady();
 			// CreateView/Show can leave the view focused; without Unfocus the game eats input
 			// until the player opens and closes the COG menu.
 			CogUi::Unfocus();
@@ -125,12 +121,11 @@ namespace
 		}
 		const std::string msg{ data };
 		if (msg == "tick") {
-			bool expected = false;
-			if (!g_jsTickQueued.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
+			if (!CogUi::TryQueueJsTick()) {
 				return;
 			}
 			CogUi::RunOnMainThread([]() {
-				g_jsTickQueued.store(false, std::memory_order_release);
+				CogUi::ClearJsTickQueued();
 				// Visibility still runs during load (hard-hide); live PushToUi does not.
 				CogUi::SyncVisibility();
 				if (CogRegistry::Get().IsLoading()) {
@@ -213,7 +208,6 @@ namespace
 			CogUi::RunOnMainThread([]() { CogRegistry::Get().PushImportedIconsToUi(); });
 			return;
 		}
-		logger::info("JS -> SKSE: {}", msg);
 		if (msg.rfind("feedExpire:", 0) == 0) {
 			const auto id = static_cast<std::int32_t>(std::strtol(msg.c_str() + 11, nullptr, 10));
 			CogUi::RunOnMainThread([id]() { CogFeed::ExpireReceipt(id); });

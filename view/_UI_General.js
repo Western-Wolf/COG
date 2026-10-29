@@ -225,11 +225,11 @@ function renderGeneral(body) {
 		setTranslatedText(
 			colorLede,
 			"cog-backup-colours-lede",
-			"Used when a gear or group does not set its own. Bar is the meter fill; border is the bar trough; icon is a single tint for meter icons. Fancy multi-stop colours belong on a gear or group. Neutral icon colour is only for count gears — Always White, or Bar / Border / Icon 0%–100% sampled from the effective ramp."
+			"Used when a gear or group does not set its own. Bar is the meter fill; border is the bar trough; icon is a single tint for meter icons. Fancy multi-stop colours belong on a gear or group."
 		);
 	} else {
 		colorLede.textContent =
-			"Used when a gear or group does not set its own. Bar is the meter fill; border is the bar trough; icon is a single tint for meter icons. Fancy multi-stop colours belong on a gear or group. Neutral icon colour is only for count gears — Always White, or Bar / Border / Icon 0%–100% sampled from the effective ramp.";
+			"Used when a gear or group does not set its own. Bar is the meter fill; border is the bar trough; icon is a single tint for meter icons. Fancy multi-stop colours belong on a gear or group.";
 	}
 	body.appendChild(colorLede);
 
@@ -247,15 +247,6 @@ function renderGeneral(body) {
 	const backupIcon = makeColorField("Backup icon", "iconColor", snapshot.general.iconColor || themeIconColor(), defaultIconColor());
 	tagFieldLabel(backupIcon, "cog-backup-icon", "Backup icon");
 	colors.appendChild(backupIcon);
-	colors.appendChild(
-		makeNeutralIconField(
-			makeNeutralIconSelect(snapshot.general.neutralIconMode, (mode) => {
-				snapshot.general.neutralIconMode = mode;
-				scheduleSave(true);
-				renderGears();
-			})
-		)
-	);
 	body.appendChild(colors);
 	enhanceSelects(colors);
 	const reset = document.createElement("button");
@@ -272,7 +263,7 @@ function renderGeneral(body) {
 		snapshot.general.iconColor = defaultIconColor();
 		delete snapshot.general.iconStartColor;
 		delete snapshot.general.iconEndColor;
-		snapshot.general.neutralIconMode = "white";
+		delete snapshot.general.neutralIconMode;
 		applyTheme();
 		scheduleSave(true);
 		renderGears();

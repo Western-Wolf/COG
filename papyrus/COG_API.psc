@@ -1,6 +1,8 @@
 ScriptName COG_API Hidden
 {Public Papyrus API for Custom Overlay Gadgets. Receipts last for the SKSE session only.}
 
+; True when COG is not mid-load (Loading Menu / PreLoadGame). False while that gate is armed.
+; Prefer COG_Ready for setup; use IsReady to skip work during load or poll until settle.
 Bool Function IsReady() Global Native
 
 ; True when pluginFile is in the active load order (full or light / ESL-flagged .esp).
@@ -92,7 +94,7 @@ Int Function GetPlayerBoltCount() Global Native
 ; No-op when no matching feed is on-screen. Prefer this (or SkyUILib) over Debug.Notification
 ; when you want coloured toasts that COG can own while a feed is active.
 ; asIcon is a path under assets/icons/ or a registered import under assets/imports/icons/
-; (e.g. "Actions/speak.svg" or "COG_Example/example.svg"); ignored unless the Feed has Show icons on.
+; (e.g. "Actions/speak.svg" or "COG_Example/light-bulb-fill.png"); ignored unless the Feed has Show icons on.
 Function Notify(String asMessage, String asColor = "#FFFFFF", String asIcon = "") Global Native
 
 ; --- Custom gizmo types ---

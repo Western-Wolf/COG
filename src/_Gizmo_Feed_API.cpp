@@ -158,7 +158,7 @@ bool CogFeed::SourceSectionVisible(std::string_view source)
 		return reg.HasVisibleFeedDivertingLocationDiscovery() || reg.HasVisibleFeedDivertingCurrentLocation();
 	}
 	if (source == kSourceSkills) {
-		return reg.HasVisibleFeedShowingSkills() || reg.HasVisibleFeedShowingLevelProgress();
+		return reg.HasVisibleFeedShowingSkills();
 	}
 	if (source == kSourceEffects) {
 		return reg.AnyVisibleFeedShowsActiveEffects();

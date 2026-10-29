@@ -338,23 +338,39 @@ function ensureFeedGizmo(gizmo) {
 	s.showLocation = s.showLocation === true || s.showLocation === "true";
 	s.showActiveEffects = s.showActiveEffects === true || s.showActiveEffects === "true";
 	s.showSkills = s.showSkills === true || s.showSkills === "true";
-	s.effectsMinSec = Number(s.effectsMinSec);
-	if (!Number.isFinite(s.effectsMinSec)) {
-		s.effectsMinSec = 1;
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// effectsMinSec/effectsMaxSec → timerMinSec/timerMaxSec (shared Progress Bar window).
+	if (Object.prototype.hasOwnProperty.call(s, "effectsMinSec")) {
+		const legacyMin = Number(s.effectsMinSec);
+		if (Number.isFinite(legacyMin)) {
+			s.timerMinSec = legacyMin;
+		}
+		delete s.effectsMinSec;
 	}
-	s.effectsMinSec = Math.max(0, Math.min(600, s.effectsMinSec));
-	s.effectsMaxSec = Number(s.effectsMaxSec);
-	if (!Number.isFinite(s.effectsMaxSec)) {
-		s.effectsMaxSec = 180;
+	if (Object.prototype.hasOwnProperty.call(s, "effectsMaxSec")) {
+		const legacyMax = Number(s.effectsMaxSec);
+		if (Number.isFinite(legacyMax)) {
+			s.timerMaxSec = legacyMax;
+		}
+		delete s.effectsMaxSec;
 	}
-	s.effectsMaxSec = Math.max(0, Math.min(3600, s.effectsMaxSec));
-	if (s.effectsMaxSec > 0 && s.effectsMinSec > s.effectsMaxSec) {
-		s.effectsMinSec = s.effectsMaxSec;
+	s.timerMinSec = Number(s.timerMinSec);
+	if (!Number.isFinite(s.timerMinSec)) {
+		s.timerMinSec = 1;
+	}
+	s.timerMinSec = Math.max(0, Math.min(600, s.timerMinSec));
+	s.timerMaxSec = Number(s.timerMaxSec);
+	if (!Number.isFinite(s.timerMaxSec)) {
+		s.timerMaxSec = 180;
+	}
+	s.timerMaxSec = Math.max(0, Math.min(3600, s.timerMaxSec));
+	if (s.timerMaxSec > 0 && s.timerMinSec > s.timerMaxSec) {
+		s.timerMinSec = s.timerMaxSec;
 	}
 	s.showEffectIcons = s.showEffectIcons !== false;
 	s.showEffectText = s.showEffectText !== false;
 	s.showEffectTimer = s.showEffectTimer !== false;
-	s.numberFormat = normalizeFeedNumberFormat(s.numberFormat);
+	s.numberFormat = normalizeNumberFormat(s.numberFormat, DEFAULT_FEED_NUMBER_FORMAT);
 	s.progressBarWidth = feedProgressBarWidth(s);
 	s.barColor = optionalHex(s.barColor);
 	s.effectIcon = normalizeFeedEffectIcon(s.effectIcon);
@@ -421,11 +437,6 @@ let levelProgressPulseAt = 0;
 /** Timed active effects: live map + fading leftovers after expiry. */
 let activeEffectLive = new Map();
 let activeEffectFading = new Map();
-
-function normalizeFeedNumberFormat(value) {
-	const raw = String(value || "").trim();
-	return NUMBER_FORMATS.includes(raw) ? raw : DEFAULT_FEED_NUMBER_FORMAT;
-}
 
 function formatEffectRemaining(seconds) {
 	const s = Math.max(0, Math.floor(Number(seconds) || 0));
@@ -1246,10 +1257,8 @@ function feedVisibleLines(gizmo, now, preview) {
 		if (editorOpen && !progress) {
 			progress = { name: "Level 12", level: 12, xp: 45, threshold: 100, progress: 0.45, percent: 45 };
 		}
-		if (newestSkillIdx >= 0 || pulseAlive || (editorOpen && progress)) {
-			if (!progress) {
-				progress = { name: "Level 1", level: 1, xp: 0, threshold: 1, progress: 0, percent: 0 };
-			}
+		// Live meter only when C++ pushed one (or editor demo). Never invent Level 1 / 0%.
+		if (progress && (newestSkillIdx >= 0 || pulseAlive || editorOpen)) {
 			const skillLine = newestSkillIdx >= 0 ? merged[newestSkillIdx] : null;
 			// Piggyback skill toast lifetime; pulse flash uses fixed pulseAt; editor demo mid-hold.
 			let addedAt = now - holdAge;
@@ -1358,7 +1367,7 @@ function rebuildFeedMeterLineContent(row, gizmo, opts) {
 	const showIcons = !!opts.showIcons;
 	const showText = opts.showText !== false;
 	const enableMeter = opts.enableMeter !== false;
-	const numberFormat = normalizeFeedNumberFormat(gizmo.settings.numberFormat);
+	const numberFormat = normalizeNumberFormat(gizmo.settings.numberFormat, DEFAULT_FEED_NUMBER_FORMAT);
 	const showBar = enableMeter && numberFormatShowsBar(numberFormat);
 	const showValue = enableMeter && numberFormatShowsValue(numberFormat);
 	const barWidth = feedProgressBarWidth(gizmo.settings);
@@ -1442,7 +1451,7 @@ function rebuildEffectLineContent(row, gizmo) {
 
 function rebuildLevelProgressLineContent(row, gizmo) {
 	const showIcons = gizmo.settings.showSkillIcons !== false;
-	const numberFormat = normalizeFeedNumberFormat(gizmo.settings.numberFormat);
+	const numberFormat = normalizeNumberFormat(gizmo.settings.numberFormat, DEFAULT_FEED_NUMBER_FORMAT);
 	const showBar = numberFormatShowsBar(numberFormat);
 	rebuildFeedMeterLineContent(row, gizmo, {
 		showIcons,
@@ -1480,6 +1489,68 @@ function layoutGizmoFeed(el, gizmo) {
 	el.classList.toggle("is-stack-top", stack !== "bottom");
 }
 
+/** General backup border — unrecognized Notify colour-var names fall back here. */
+function feedColourVarFallback() {
+	if (typeof themeBorder === "function") {
+		return themeBorder();
+	}
+	return typeof defaultBorderColor === "function" ? defaultBorderColor() : DEFAULT_GIZMO_GOLD;
+}
+
+/**
+ * Section-gated colour-var registry for one Feed instance.
+ * Builtin Notify passes these names; each Feed resolves to its own hex.
+ */
+function feedColourVarsForGizmo(gizmo) {
+	const s = (gizmo && gizmo.settings) || {};
+	const vars = Object.create(null);
+	if (s.showNotifications) {
+		vars.textColor = optionalHex(s.textColor);
+	}
+	if (s.showInventory) {
+		vars.addColor = optionalHex(s.addColor);
+		vars.removeColor = optionalHex(s.removeColor);
+		vars.stolenColor = optionalHex(s.stolenColor);
+	}
+	if (s.showLocation) {
+		if (s.showLocationDiscovery !== false) {
+			vars.locationDiscoveryColor = optionalHex(s.locationDiscoveryColor);
+		}
+		if (s.showCurrentLocation !== false) {
+			vars.currentLocationColor = optionalHex(s.currentLocationColor);
+		}
+	}
+	if (s.showActiveEffects) {
+		vars.effectsColor = optionalHex(s.effectsColor);
+	}
+	if (s.showSkills) {
+		if (s.showSkillProgress !== false) {
+			vars.skillProgressColor = optionalHex(s.skillProgressColor);
+		}
+		if (s.showLevelProgress !== false) {
+			vars.levelProgressColor = optionalHex(s.levelProgressColor);
+		}
+	}
+	return vars;
+}
+
+/** Resolve Notify asColor: hex pass-through, registered var → settings hex, else backup border. */
+function resolveFeedColorToken(gizmo, token) {
+	const raw = String(token == null ? "" : token).trim();
+	if (!raw) {
+		return "";
+	}
+	const hex = optionalHex(raw);
+	if (hex) {
+		return hex;
+	}
+	const vars = feedColourVarsForGizmo(gizmo);
+	if (Object.prototype.hasOwnProperty.call(vars, raw)) {
+		return vars[raw] || feedColourVarFallback();
+	}
+	return feedColourVarFallback();
+}
+
 function paintGizmoFeed(el, gizmo) {
 	// Settings are ensured on load / editor patch — paint trusts them (B2).
 	const stack = el.querySelector(".feed-stack");
@@ -1513,7 +1584,7 @@ function paintGizmoFeed(el, gizmo) {
 	const showEffectIcons = gizmo.settings.showEffectIcons === true;
 	const showEffectText = gizmo.settings.showEffectText !== false;
 	const showEffectTimer = gizmo.settings.showEffectTimer !== false;
-	const numberFormat = normalizeFeedNumberFormat(gizmo.settings.numberFormat);
+	const numberFormat = normalizeNumberFormat(gizmo.settings.numberFormat, DEFAULT_FEED_NUMBER_FORMAT);
 	const progressBarWidth = feedProgressBarWidth(gizmo.settings);
 	const showProgressBar = numberFormatShowsBar(numberFormat);
 	const showProgressTotal = numberFormatShowsTotal(numberFormat);
@@ -1585,10 +1656,10 @@ function paintGizmoFeed(el, gizmo) {
 			}
 			const paint =
 				wantKind === "location"
-					? optionalHex(line.color) ||
+					? resolveFeedColorToken(gizmo, line.color) ||
 						(line.locationKind === "current" ? currentPaint : discoveryPaint)
 					: gizmo.settings.allowModNotificationColor !== false && line.color
-						? line.color
+						? resolveFeedColorToken(gizmo, line.color) || notifDefault
 						: notifDefault;
 			const textEl = row.querySelector(".notification-line-text");
 			if (textEl) {
@@ -1626,7 +1697,7 @@ function paintGizmoFeed(el, gizmo) {
 			const showIcons = showSkillIcons;
 			const skillKind = normalizeSkillKind(line.skillKind);
 			const skillsPaint =
-				optionalHex(line.color) ||
+				resolveFeedColorToken(gizmo, line.color) ||
 				(skillKind === "level" ? levelProgressPaint : skillProgressPaint);
 			const needsRebuild =
 				!row ||
@@ -1741,10 +1812,11 @@ function paintGizmoFeed(el, gizmo) {
 					stack.appendChild(row);
 				}
 			}
+			const effectPaint = resolveFeedColorToken(gizmo, line.color) || effectsPaint;
 			const nameEl = row.querySelector(".effect-line-name");
 			if (nameEl) {
 				nameEl.textContent = line.name || "Effect";
-				nameEl.style.color = effectsPaint;
+				nameEl.style.color = effectPaint;
 			}
 			if (showEffectIcons) {
 				const iconHost = row.querySelector(".effect-line-icon");
@@ -1753,7 +1825,7 @@ function paintGizmoFeed(el, gizmo) {
 						normalizeIconRelPath(line.icon) || fallbackEffectIcon || DEFAULT_FEED_EFFECT_ICON;
 					const href = resolveDisplayIconHref(iconRel);
 					paintMaskedFace(iconHost, "notification-line-icon-face", {
-						color: effectsPaint,
+						color: effectPaint,
 						href
 					});
 				}
@@ -1767,13 +1839,13 @@ function paintGizmoFeed(el, gizmo) {
 			const bar = row.querySelector(".effect-line-bar");
 			if (bar) {
 				bar.style.setProperty("--cog-fill", fillColor);
-				bar.style.setProperty("--cog-border", effectsPaint);
+				bar.style.setProperty("--cog-border", effectPaint);
 				bar.style.setProperty("--effect-bar-width", `${progressBarWidth}%`);
 			}
 			const timerEl = row.querySelector(".effect-line-timer");
 			if (timerEl) {
 				timerEl.textContent = formatFeedEffectValue(line, showProgressTotal);
-				timerEl.style.color = effectsPaint;
+				timerEl.style.color = effectPaint;
 			}
 			const backdropEl = row.querySelector(".notification-line-backdrop");
 			if (backdropEl) {
@@ -1817,7 +1889,7 @@ function paintGizmoFeed(el, gizmo) {
 				const href = resolveDisplayIconHref(iconRel);
 				const changeText = formatInventoryChangeText(line.count, line.added);
 				const paint =
-					optionalHex(line.color) ||
+					resolveFeedColorToken(gizmo, line.color) ||
 					(!line.added ? removePaint : line.stolen ? stolenPaint : addPaint);
 				for (const child of contentEl.children) {
 					const slot = child.dataset.slot;
@@ -1926,17 +1998,9 @@ const FEED_SECTION_HIDE_NOTES = {
 		"cog-feed-location-hide-note-discovery",
 		"When enabled, this section diverts location discovery from hud.questUpdates."
 	],
-	skillsBoth: [
-		"cog-feed-skills-hide-note-both",
-		"When enabled, this section diverts skill / level-up banners from hud.questUpdates. Level Up Menu is never blocked."
-	],
-	skillsSkill: [
-		"cog-feed-skills-hide-note-skill",
-		"When enabled, this section diverts skill banners from hud.questUpdates. Level Up Menu is never blocked."
-	],
-	skillsLevel: [
-		"cog-feed-skills-hide-note-level",
-		"When enabled, this section diverts level-up banners from hud.questUpdates. Level Up Menu is never blocked."
+	skills: [
+		"cog-feed-skills-hide-note",
+		"When enabled, this section soft-hides hud.questUpdates (skill-up and level-up banners share that clip). Skill Progress and Level Progress only control what appears in this Feed. Level Up Menu is never blocked."
 	]
 };
 const FEED_SECTION_ICON_NOTES = {
@@ -2297,9 +2361,9 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		percent: ["cog-number-format-percent", "Show percentage"],
 		total: ["cog-number-format-total", "Show value"]
 	});
-	numberFormatSel.value = normalizeFeedNumberFormat(gizmo.settings.numberFormat);
+	numberFormatSel.value = normalizeNumberFormat(gizmo.settings.numberFormat, DEFAULT_FEED_NUMBER_FORMAT);
 	numberFormatSel.addEventListener("change", () => {
-		patchGizmo(gid, { numberFormat: normalizeFeedNumberFormat(numberFormatSel.value) });
+		patchGizmo(gid, { numberFormat: normalizeNumberFormat(numberFormatSel.value, DEFAULT_FEED_NUMBER_FORMAT) });
 	});
 	progressRow.appendChild(numberFormatField);
 	progressSection.appendChild(progressRow);
@@ -2807,6 +2871,155 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		panel.appendChild(locDefaults);
 	}
 
+	if (gizmo.settings.showNotifications) {
+		appendEditorRule(panel);
+		const notifSection = document.createElement("div");
+		notifSection.className = "gizmo-text-settings";
+		const notifLede = document.createElement("p");
+		notifLede.className = "lede";
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(notifLede, "cog-notifications", "Notifications");
+		} else {
+			notifLede.textContent = "Notifications";
+		}
+		notifSection.appendChild(notifLede);
+
+		const defaultsRow = document.createElement("div");
+		defaultsRow.className = "style-row";
+		const textColor = makeOptionalColorField(
+			"Colour",
+			gizmo.settings.textColor,
+			DEFAULT_GIZMO_GOLD,
+			(hex, live) => patchGizmo(gid, { textColor: hex }, false, live)
+		);
+		textColor.classList.add("compact");
+		tagFieldLabel(textColor, "cog-colour", "Colour");
+		defaultsRow.appendChild(textColor);
+
+		const notifIcon = makeIconControl({
+			label: "Icon",
+			value: gizmo.settings.notificationIcon || DEFAULT_FEED_NOTIFICATION_ICON,
+			showName: true,
+			clearLabel: typeof t === "function" ? t("cog-use-default", "Use default") : "Use default",
+			onCommit: (icon) => {
+				patchGizmo(gid, {
+					notificationIcon: normalizeFeedNotificationIcon(icon || DEFAULT_FEED_NOTIFICATION_ICON)
+				});
+			}
+		});
+		tagFieldLabel(notifIcon, "cog-icon", "Icon");
+		defaultsRow.appendChild(notifIcon);
+
+		const iconsField = document.createElement("label");
+		iconsField.className = "check-row compact";
+		const iconsInput = document.createElement("input");
+		iconsInput.type = "checkbox";
+		iconsInput.dataset.role = "showNotificationIcons";
+		iconsInput.checked = gizmo.settings.showNotificationIcons !== false;
+		iconsField.appendChild(iconsInput);
+		iconsField.appendChild(document.createTextNode(" "));
+		const iconsSpan = document.createElement("span");
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(iconsSpan, "cog-show-icons", "Show Icons");
+		} else {
+			iconsSpan.textContent = "Show Icons";
+		}
+		iconsField.appendChild(iconsSpan);
+		iconsInput.addEventListener("change", () => {
+			patchGizmo(gid, { showNotificationIcons: iconsInput.checked });
+		});
+		defaultsRow.appendChild(iconsField);
+		notifSection.appendChild(defaultsRow);
+
+		if (!gizmo.settings.showInventory) {
+			const suppressRow = document.createElement("div");
+			suppressRow.className = "style-row";
+			const suppressField = document.createElement("label");
+			suppressField.className = "check-row compact";
+			const suppressInput = document.createElement("input");
+			suppressInput.type = "checkbox";
+			suppressInput.dataset.role = "suppressInventory";
+			suppressInput.checked = gizmo.settings.suppressInventory !== false;
+			const suppressTitle = document.createElement("span");
+			suppressTitle.className = "field-title-row";
+			const suppressLabel = document.createElement("span");
+			if (typeof setTranslatedText === "function") {
+				setTranslatedText(suppressLabel, "cog-suppress-inventory", "Suppress inventory");
+			} else {
+				suppressLabel.textContent = "Suppress inventory";
+			}
+			suppressTitle.appendChild(suppressLabel);
+			const suppressTip = makeInfoTip(
+				"When on, inventory-style notification toasts are suppressed (not shown on the vanilla HUD or in this Notifications feed) while Notifications are active. Many activators and containers fire those even when you are not looting — leave this on unless you want them on the vanilla HUD. The Inventory section tracks real item changes separately.",
+				"cog-suppress-inventory-tip"
+			);
+			suppressTitle.appendChild(suppressTip);
+			suppressField.appendChild(suppressInput);
+			suppressField.appendChild(suppressTitle);
+			suppressInput.addEventListener("change", () => {
+				patchGizmo(gid, { suppressInventory: suppressInput.checked });
+			});
+			suppressRow.appendChild(suppressField);
+			notifSection.appendChild(suppressRow);
+		}
+
+		const makeOverrideCheck = (role, tag, fallback, checked, tipTag, tipFallback, patchKey) => {
+			const row = document.createElement("div");
+			row.className = "style-row";
+			const field = document.createElement("label");
+			field.className = "check-row compact";
+			const input = document.createElement("input");
+			input.type = "checkbox";
+			input.dataset.role = role;
+			input.checked = checked;
+			const title = document.createElement("span");
+			title.className = "field-title-row";
+			const labelSpan = document.createElement("span");
+			if (typeof setTranslatedText === "function") {
+				setTranslatedText(labelSpan, tag, fallback);
+			} else {
+				labelSpan.textContent = fallback;
+			}
+			title.appendChild(labelSpan);
+			const tip = makeInfoTip(tipFallback, tipTag);
+			title.appendChild(tip);
+			field.appendChild(input);
+			field.appendChild(title);
+			input.addEventListener("change", () => {
+				patchGizmo(gid, { [patchKey]: input.checked });
+			});
+			row.appendChild(field);
+			return row;
+		};
+
+		notifSection.appendChild(
+			makeOverrideCheck(
+				"allowModNotificationIcon",
+				"cog-allow-mods-choose-icon",
+				"Allow Mods to Choose Icon",
+				gizmo.settings.allowModNotificationIcon !== false,
+				"cog-allow-mods-choose-icon-tip",
+				"When on, mods can use COG_Feed_API.Notify (or legacy COG_API.Notify) to supply a per-message icon path under assets/icons/. When off, every message uses the Notifications icon (if Show icons is on).",
+				"allowModNotificationIcon"
+			)
+		);
+		notifSection.appendChild(
+			makeOverrideCheck(
+				"allowModNotificationColor",
+				"cog-allow-mods-choose-colour",
+				"Allow Mods to Choose Colour",
+				gizmo.settings.allowModNotificationColor !== false,
+				"cog-allow-mods-choose-colour-tip",
+				"When on, message colour can come from SkyUILib (for compatibility) or COG_Feed_API.Notify / COG_API.Notify. When off, every message uses the Notifications colour.",
+				"allowModNotificationColor"
+			)
+		);
+		appendFeedSectionNotes(notifSection, "hud.notifications", `${feedStorage}/notifications/`, {
+			notificationsApi: true
+		});
+		panel.appendChild(notifSection);
+	}
+
 	if (gizmo.settings.showSkills) {
 		appendEditorRule(panel);
 		const skillsSection = document.createElement("div");
@@ -2946,169 +3159,10 @@ function fillFeedGizmoEditor(panel, gizmo) {
 			renderEditor(true);
 		});
 		skillsSection.appendChild(skillIconsField);
-		const showSkillProg = gizmo.settings.showSkillProgress !== false;
-		const showLevelProg = gizmo.settings.showLevelProgress !== false;
-		let skillsHideEntry = FEED_SECTION_HIDE_NOTES.skillsBoth;
-		if (showSkillProg && showLevelProg) {
-			skillsHideEntry = FEED_SECTION_HIDE_NOTES.skillsBoth;
-		} else if (showSkillProg) {
-			skillsHideEntry = FEED_SECTION_HIDE_NOTES.skillsSkill;
-		} else if (showLevelProg) {
-			skillsHideEntry = FEED_SECTION_HIDE_NOTES.skillsLevel;
-		}
 		appendFeedSectionNotes(skillsSection, "", `${feedStorage}/skills/`, {
-			hideEntry: skillsHideEntry
+			hideEntry: FEED_SECTION_HIDE_NOTES.skills
 		});
 		panel.appendChild(skillsSection);
-	}
-
-	if (gizmo.settings.showNotifications) {
-	appendEditorRule(panel);
-		const notifSection = document.createElement("div");
-		notifSection.className = "gizmo-text-settings";
-		const notifLede = document.createElement("p");
-		notifLede.className = "lede";
-		if (typeof setTranslatedText === "function") {
-			setTranslatedText(notifLede, "cog-notifications", "Notifications");
-		} else {
-			notifLede.textContent = "Notifications";
-		}
-		notifSection.appendChild(notifLede);
-
-		const defaultsRow = document.createElement("div");
-		defaultsRow.className = "style-row";
-		const textColor = makeOptionalColorField(
-			"Colour",
-			gizmo.settings.textColor,
-			DEFAULT_GIZMO_GOLD,
-			(hex, live) => patchGizmo(gid, { textColor: hex }, false, live)
-		);
-		textColor.classList.add("compact");
-		tagFieldLabel(textColor, "cog-colour", "Colour");
-		defaultsRow.appendChild(textColor);
-
-		const notifIcon = makeIconControl({
-			label: "Icon",
-			value: gizmo.settings.notificationIcon || DEFAULT_FEED_NOTIFICATION_ICON,
-			showName: true,
-			clearLabel: typeof t === "function" ? t("cog-use-default", "Use default") : "Use default",
-			onCommit: (icon) => {
-				patchGizmo(gid, {
-					notificationIcon: normalizeFeedNotificationIcon(icon || DEFAULT_FEED_NOTIFICATION_ICON)
-				});
-			}
-		});
-		tagFieldLabel(notifIcon, "cog-icon", "Icon");
-		defaultsRow.appendChild(notifIcon);
-
-		const iconsField = document.createElement("label");
-		iconsField.className = "check-row compact";
-		const iconsInput = document.createElement("input");
-		iconsInput.type = "checkbox";
-		iconsInput.dataset.role = "showNotificationIcons";
-		iconsInput.checked = gizmo.settings.showNotificationIcons !== false;
-		iconsField.appendChild(iconsInput);
-		iconsField.appendChild(document.createTextNode(" "));
-		const iconsSpan = document.createElement("span");
-		if (typeof setTranslatedText === "function") {
-			setTranslatedText(iconsSpan, "cog-show-icons", "Show Icons");
-		} else {
-			iconsSpan.textContent = "Show Icons";
-		}
-		iconsField.appendChild(iconsSpan);
-		iconsInput.addEventListener("change", () => {
-			patchGizmo(gid, { showNotificationIcons: iconsInput.checked });
-		});
-		defaultsRow.appendChild(iconsField);
-		notifSection.appendChild(defaultsRow);
-
-		if (!gizmo.settings.showInventory) {
-			const suppressRow = document.createElement("div");
-			suppressRow.className = "style-row";
-			const suppressField = document.createElement("label");
-			suppressField.className = "check-row compact";
-			const suppressInput = document.createElement("input");
-			suppressInput.type = "checkbox";
-			suppressInput.dataset.role = "suppressInventory";
-			suppressInput.checked = gizmo.settings.suppressInventory !== false;
-			const suppressTitle = document.createElement("span");
-			suppressTitle.className = "field-title-row";
-			const suppressLabel = document.createElement("span");
-			if (typeof setTranslatedText === "function") {
-				setTranslatedText(suppressLabel, "cog-suppress-inventory", "Suppress inventory");
-			} else {
-				suppressLabel.textContent = "Suppress inventory";
-			}
-			suppressTitle.appendChild(suppressLabel);
-			const suppressTip = makeInfoTip(
-				"When on, inventory-style notification toasts are suppressed (not shown on the vanilla HUD or in this Notifications feed) while Notifications are active. Many activators and containers fire those even when you are not looting — leave this on unless you want them on the vanilla HUD. The Inventory section tracks real item changes separately.",
-				"cog-suppress-inventory-tip"
-			);
-			suppressTitle.appendChild(suppressTip);
-			suppressField.appendChild(suppressInput);
-			suppressField.appendChild(suppressTitle);
-			suppressInput.addEventListener("change", () => {
-				patchGizmo(gid, { suppressInventory: suppressInput.checked });
-			});
-			suppressRow.appendChild(suppressField);
-			notifSection.appendChild(suppressRow);
-		}
-
-		const makeOverrideCheck = (role, tag, fallback, checked, tipTag, tipFallback, patchKey) => {
-			const row = document.createElement("div");
-			row.className = "style-row";
-			const field = document.createElement("label");
-			field.className = "check-row compact";
-			const input = document.createElement("input");
-			input.type = "checkbox";
-			input.dataset.role = role;
-			input.checked = checked;
-			const title = document.createElement("span");
-			title.className = "field-title-row";
-			const labelSpan = document.createElement("span");
-			if (typeof setTranslatedText === "function") {
-				setTranslatedText(labelSpan, tag, fallback);
-			} else {
-				labelSpan.textContent = fallback;
-			}
-			title.appendChild(labelSpan);
-			const tip = makeInfoTip(tipFallback, tipTag);
-			title.appendChild(tip);
-			field.appendChild(input);
-			field.appendChild(title);
-			input.addEventListener("change", () => {
-				patchGizmo(gid, { [patchKey]: input.checked });
-			});
-			row.appendChild(field);
-			return row;
-		};
-
-		notifSection.appendChild(
-			makeOverrideCheck(
-				"allowModNotificationIcon",
-				"cog-allow-mods-choose-icon",
-				"Allow Mods to Choose Icon",
-				gizmo.settings.allowModNotificationIcon !== false,
-				"cog-allow-mods-choose-icon-tip",
-				"When on, mods can use COG_API.Notify to supply a per-message icon path under assets/icons/. When off, every message uses the Notifications icon (if Show icons is on).",
-				"allowModNotificationIcon"
-			)
-		);
-		notifSection.appendChild(
-			makeOverrideCheck(
-				"allowModNotificationColor",
-				"cog-allow-mods-choose-colour",
-				"Allow Mods to Choose Colour",
-				gizmo.settings.allowModNotificationColor !== false,
-				"cog-allow-mods-choose-colour-tip",
-				"When on, message colour can come from SkyUILib (for compatibility) or COG_API.Notify. When off, every message uses the Notifications colour.",
-				"allowModNotificationColor"
-			)
-		);
-		appendFeedSectionNotes(notifSection, "hud.notifications", `${feedStorage}/notifications/`, {
-			notificationsApi: true
-		});
-		panel.appendChild(notifSection);
 	}
 
 

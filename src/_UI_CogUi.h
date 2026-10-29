@@ -19,6 +19,15 @@ namespace CogUi
 	bool CanOpenGameplayMenu();
 	std::string DescribeGameplayMenuBlock();
 	void Interop(const char* functionName, const std::string& argument);
+	/**
+	 * JS overlay "tick" (~50 ms) → one main-thread PushToUi. Used to coalesce
+	 * PushLivePercent into that pending applyLivePatch (see PushLivePercent).
+	 * REVERT bow-draw coalesce: these + the COG_COALESCE_LIVE_PERCENT_INTO_TICK
+	 * gate in PushLivePercent — see comment there.
+	 */
+	[[nodiscard]] bool TryQueueJsTick();
+	void ClearJsTickQueued();
+	[[nodiscard]] bool IsJsTickQueued();
 	void SendReadyEvent();
 	void RegisterMenuSink();
 	void SyncVisibility();

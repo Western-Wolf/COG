@@ -48,7 +48,6 @@ namespace CogRegistryJson
 	/** Append `"icon":<path|array>` into a snapshot stream. */
 	void AppendIconJson(std::ostringstream& o, std::string_view key, const std::string& icon);
 	std::string NormalizeEditorKey(const std::string& raw);
-	std::string NormalizeNeutralIconMode(std::string raw);
 	std::string NormalizeGizmoType(std::string raw);
 	/**
 	 * Resolve instance product id: prefer typeId, else legacy root "type".

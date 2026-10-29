@@ -122,10 +122,16 @@ const REBIND_ARM_MS = 450;
 
 
 /**
- * Shared number-format vocabulary for Groups/Gears and Feed (same menu modes).
- * Normalizers keep their own defaults (groups: barPercent; feed: barTotal).
+ * Shared number-format vocabulary for Groups / Gauges / Feed (same menu modes).
+ * Callers pass their product default (groups/gauges: barPercent; feed: barTotal).
  */
 const NUMBER_FORMATS = ["bar", "barPercent", "barTotal", "percent", "total"];
+
+function normalizeNumberFormat(value, defaultMode) {
+	const fallback = NUMBER_FORMATS.includes(defaultMode) ? defaultMode : "barPercent";
+	const raw = String(value == null ? "" : value).trim();
+	return NUMBER_FORMATS.includes(raw) ? raw : fallback;
+}
 
 function numberFormatShowsBar(mode) {
 	return mode === "bar" || mode === "barPercent" || mode === "barTotal";
@@ -200,7 +206,7 @@ function currentEditorKey() {
 	const gizmos = (snapshot.gizmos || []).map((z) =>
 		`${z.id}:${z.displayName || ""}:${z.typeId || ""}:${z.visibility || ""}:${(z.display && z.display.width) || ""}:${(z.display && z.display.height) || ""}:${typeof z.settingsJson === "string" ? z.settingsJson : JSON.stringify(z.settings || {})}`
 	).join("|");
-	return `${activeTab}|${helpMode ? "help" : "main"}|${helpSubTab}|${snapshot.general.showDefaultGroup}|${snapshot.general.editorKey}|${snapshot.general.hideToggleKey || ""}|${snapshot.general.hideIncludesFlash !== false}|${!!window.__cogHideKeyListening}|${snapshot.general.fillColor}|${snapshot.general.borderColor}|${snapshot.general.iconColor || themeIconColor()}|${snapshot.general.neutralIconMode}|${snapshot.general.gadgetFont}|${snapshot.general.language || ""}|${!!snapshot.general.highlightMissingTranslations}|${!!snapshot.general.updateStockTitlesOnTranslation}|${groups}|${gears}|${gauges}|${gizmos}|${typeof suppressionsFingerprint === "function" ? suppressionsFingerprint() : ""}`;
+	return `${activeTab}|${helpMode ? "help" : "main"}|${helpSubTab}|${snapshot.general.showDefaultGroup}|${snapshot.general.editorKey}|${snapshot.general.hideToggleKey || ""}|${snapshot.general.hideIncludesFlash !== false}|${!!window.__cogHideKeyListening}|${snapshot.general.fillColor}|${snapshot.general.borderColor}|${snapshot.general.iconColor || themeIconColor()}|${snapshot.general.gadgetFont}|${snapshot.general.language || ""}|${!!snapshot.general.highlightMissingTranslations}|${!!snapshot.general.updateStockTitlesOnTranslation}|${groups}|${gears}|${gauges}|${gizmos}|${typeof suppressionsFingerprint === "function" ? suppressionsFingerprint() : ""}`;
 }
 
 /** Tag a .pos-field / label's leading <span> via data-translation helpers. */
@@ -476,6 +482,8 @@ function renderEditor(force) {
 	// Tear down portaled selects/info before wiping wraps (same funnel as setFocused(false)).
 	closeAllEditorPopups();
 	body.innerHTML = "";
+	// Gizmos: pin intro; gallery + instances scroll independently (see #tab-body.is-gizmos).
+	body.classList.toggle("is-gizmos", !helpMode && activeTab === "gizmos");
 	if (helpMode) {
 		renderHelpTab(body);
 		if (typeof applyTranslations === "function") {

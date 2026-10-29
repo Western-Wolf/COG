@@ -28,7 +28,9 @@ local modules = {
 		script = "COG_Example_Gears",
 		alias = "COG_Example_Gears_Alias",
 		desc = "Description.Example.Gears",
-		scripts = { "COG_Example_Gears", "COG_Example_Gears_Alias" }
+		scripts = { "COG_Example_Gears", "COG_Example_Gears_Alias" },
+		-- Global catalog override (SKSE/Plugins/COG/translations/) — name: keys for Example gears.
+		name_translations = "Example.json"
 	},
 	{
 		stage = "COG - Example Feed",
@@ -132,6 +134,17 @@ target("COG_Example")
 				os.mkdir(view_dst)
 				os.cp(path.join(addon_dir, "view", "example.js"), path.join(view_dst, "example.js"))
 				os.cp(path.join(addon_dir, "view", "example_push.js"), path.join(view_dst, "example_push.js"))
+			end
+
+			if m.name_translations then
+				local src = path.join(addon_dir, "translations", m.name_translations)
+				if os.isfile(src) then
+					local dst_dir = path.join(deploy_root, "SKSE", "Plugins", "COG", "translations")
+					os.mkdir(dst_dir)
+					os.cp(src, path.join(dst_dir, m.name_translations))
+				else
+					print("warning: missing " .. src)
+				end
 			end
 
 			if m.gizmo_translations then

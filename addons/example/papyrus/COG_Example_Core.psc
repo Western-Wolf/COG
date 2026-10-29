@@ -1,8 +1,8 @@
 ScriptName COG_Example_Core extends Quest
 {COG Example Core — icons + countdown ModEvent.
  COG API demo: ImportIcon (fill + hollow).
- Example plumbing: Remaining loop, COG_Example_Tick ModEvent.
- Submodules soft-depend on this ESP and reuse the import paths below.}
+ Example plumbing: Remaining loop, COG_Example_IconsReady + COG_Example_Tick ModEvents.
+ Submodules wait for IconsReady (not merely Core ESP loaded) before registering / arming tick.}
 
 ; Stable ImportIcon folder name (not a COG registry sourceMod — Core registers nothing).
 String Property IconImportMod = "COG_Example" AutoReadOnly
@@ -61,10 +61,12 @@ Function Setup()
 	EndIf
 	SetupBusy = True
 
-	; === COG API: ImportIcon (must finish before any tick) ===
+	; === COG API: ImportIcon (must finish before IconsReady / any tick) ===
 	ImportExampleIcons()
 
-	; === Example plumbing: start countdown + ModEvent ===
+	; === Example plumbing: icons-ready then countdown ===
+	; Submodules soft-depend on this event (ESP loaded ≠ import finished).
+	NotifyIconsReady()
 	StartCountdown()
 
 	SetupBusy = False
@@ -81,6 +83,12 @@ Function ImportExampleIcons()
 	If IconHollow == ""
 		IconHollow = IconFill
 	EndIf
+EndFunction
+
+Function NotifyIconsReady()
+	; === Example plumbing: ModEvent icons-ready ===
+	; strArg = fill icon path; numArg unused (0). Safe to re-send after every Setup.
+	SendModEvent("COG_Example_IconsReady", IconFill, 0.0)
 EndFunction
 
 Function StartCountdown()
@@ -103,6 +111,8 @@ EndFunction
 
 Function TickCountdown()
 	; === Example plumbing: ModEvent tick ===
+	; Re-broadcast IconsReady so late-loading siblings bind within one second.
+	NotifyIconsReady()
 	; strArg = fill icon path (Feed Notify convenience); numArg = Remaining.
 	SendModEvent("COG_Example_Tick", IconFill, Remaining as Float)
 

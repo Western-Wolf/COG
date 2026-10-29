@@ -18,6 +18,7 @@ namespace
 		std::string settingsSchemaJson,
 		std::string defaultVisibility)
 	{
+		const std::string modKey = sourceMod;
 		const auto receipt = CogRegistry::Get().RegisterGizmo(
 			std::move(sourceMod),
 			std::move(typeId),
@@ -30,7 +31,10 @@ namespace
 			std::move(defaultVisibility));
 		if (receipt != 0) {
 			CogRegistry::Get().MarkLayoutDirty();
-			CogRegistry::Get().PushToUi();
+			// Inside BeginRegister…EndRegister: defer Push; EndRegister or next natural PushToUi commits.
+			if (!CogRegistry::Get().IsRegisterBatchOpen(modKey)) {
+				CogRegistry::Get().PushToUi();
+			}
 		}
 		return receipt;
 	}

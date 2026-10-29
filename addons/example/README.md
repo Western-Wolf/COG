@@ -4,7 +4,7 @@ Papyrus-only reference for public `COG_API` / `COG_Feed_API` usage. Four **esp-a
 
 | ESP | Role |
 |-----|------|
-| `COG - Example Core.esp` | `ImportIcon` (fill + hollow lightbulbs) **first**, then 10→0 countdown + `COG_Example_Tick` ModEvent |
+| `COG - Example Core.esp` | `ImportIcon` (fill + hollow lightbulbs) **first**, then `COG_Example_IconsReady`, then 10→0 countdown + `COG_Example_Tick` |
 | `COG - Example Gears.esp` | Registers count / percent / timer; updates from the tick |
 | `COG - Example Feed.esp` | `COG_Feed_API.Notify` when Remaining hits 0 |
 | `COG - Example Gizmos.esp` | Two gizmo types; gear-backed only if Gears is loaded |
@@ -27,16 +27,19 @@ Core imports:
 - `Interface/exported/COG_Example/light-bulb-fill.png` → `COG_Example/light-bulb-fill.png`
 - `Interface/exported/COG_Example/light-bulb-hollow.png` → `COG_Example/light-bulb-hollow.png`
 
-Import finishes **before** any tick. Gears / Feed / Gizmos **do not** call `ImportIcon`; they use those paths. Submodule `Setup` requires `COG_API.IsPluginLoaded("COG - Example Core.esp")`.
+Import finishes **before** `COG_Example_IconsReady` and any tick. Gears / Feed / Gizmos **do not** call `ImportIcon`; they use those paths.
+
+**Soft-dep:** `IsPluginLoaded("COG - Example Core.esp")` only means the plugin is in the load order. Submodules **bind** (register gears/gizmos, accept ticks) on `COG_Example_IconsReady` — after import — with a tick bootstrap if that event was missed.
 
 ## ModEvent contract
 
 ```
+SendModEvent("COG_Example_IconsReady", IconFillPath, 0.0)
 SendModEvent("COG_Example_Tick", IconFillPath, Remaining as Float)
 ```
 
-- `strArg` — fill icon path (Feed Notify convenience)
-- `numArg` — remaining count (0…10)
+- **IconsReady** — `strArg` = fill icon path; fired after every successful Core import and again each countdown tick (late joiners).
+- **Tick** — `strArg` = fill icon path (Feed Notify convenience); `numArg` = remaining count (0…10).
 
 ## Gears demo matrix
 
@@ -46,6 +49,8 @@ SendModEvent("COG_Example_Tick", IconFillPath, Remaining as Float)
 | **Percent** | Icon asset stops every 10% (fill/hollow), blank icon tint, 3-stop bar (green→gold→red) |
 | **Timer** | 3-stop icon tint, solid bar |
 
+**Translation override:** Example Gears ships `SKSE/Plugins/COG/translations/Example.json` with `name:Example` (category) plus `name:Example Count` / `Percent` / `Timer` (`en-CA` + `fr-CA`). COG loads all `translations/*.json` A→Z last-wins, so this file rides beside Core’s `_COG.json` and demonstrates author overrides without editing the main catalog. Enable **Update stock titles on translation** (or recreate gears) if an older English `displayName` is already on disk.
+
 ## Gizmos
 
 | Type | Demonstrates |
@@ -53,7 +58,7 @@ SendModEvent("COG_Example_Tick", IconFillPath, Remaining as Float)
 | `xmp-gearupdated` | `sourceFor("COG_Example_Gears","count")`, fill icon, `defaultVisibility` **hud**, soft-gated on Gears ESP |
 | `xmp-pushupdated` | `UpdateGizmo` payload, hollow icon, `defaultVisibility` **ui** |
 
-Both: schema colours + **Show Count** (digit beside icon, same size/colour). Translations under `SKSE/Plugins/COG/gizmos/<typeId>/translations/`.
+Both: schema colours + **Show Count** (digit beside icon, same size/colour). Schema `labelTag`s (`cog-zero-colour`, `cog-ten-colour`, `cog-show-count`) resolve from each type’s `SKSE/Plugins/COG/gizmos/<typeId>/translations/_COG.json` (not the global COG catalog). Editor also exposes Visibility (same control as builtin gizmos).
 
 ## Smoke
 

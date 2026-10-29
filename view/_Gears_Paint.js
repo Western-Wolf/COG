@@ -105,8 +105,23 @@ function meterPercent(src) {
 	return Math.max(0, Math.min(100, Number(src && src.value) || 0));
 }
 
+/** Ramp sample axis: percent/timer 0–100; count unbounded (≥0). */
+function meterAxis(src) {
+	if (usesRatio(src)) {
+		return meterPercent(src);
+	}
+	return Math.max(0, Number(src && src.value) || 0);
+}
+
+function sampleRampForSource(ramp, src) {
+	const axis = meterAxis(src);
+	if (usesRatio(src)) {
+		return sampleColorRamp(truncateColorRampAt100(ramp), axis);
+	}
+	return sampleColorRamp(ramp, axis);
+}
+
 function resolvedPalette(src, gear, group) {
-	const pct = meterPercent(src);
 	if (usesGroupColors(gear, group)) {
 		const style = ensureGroupSettings(group);
 		const iconRamp = normalizeColorRampValue(style.iconColor, style.startColor, style.endColor);
@@ -115,8 +130,8 @@ function resolvedPalette(src, gear, group) {
 			iconColor: iconRamp,
 			barColor: barRamp,
 			borderColor: optionalHex(style.borderColor) || themeBorder(),
-			iconSample: sampleColorRamp(iconRamp, pct) || themeIconColor(),
-			barSample: sampleColorRamp(barRamp, pct) || themeFill()
+			iconSample: sampleRampForSource(iconRamp, src) || themeIconColor(),
+			barSample: sampleRampForSource(barRamp, src) || themeFill()
 		};
 	}
 	const look = appearanceOf(gear, src);
@@ -126,8 +141,8 @@ function resolvedPalette(src, gear, group) {
 		iconColor: iconRamp,
 		barColor: barRamp,
 		borderColor: themeBorder(),
-		iconSample: sampleColorRamp(iconRamp, pct) || themeIconColor(),
-		barSample: sampleColorRamp(barRamp, pct) || themeFill()
+		iconSample: sampleRampForSource(iconRamp, src) || themeIconColor(),
+		barSample: sampleRampForSource(barRamp, src) || themeFill()
 	};
 }
 
@@ -149,37 +164,10 @@ function mixHex(a, b, t) {
 
 function iconRatio(src) {
 	if (usesRatio(src)) {
-		return Math.max(0, Math.min(1, (Number(src && src.value) || 0) / 100));
+		return Math.max(0, Math.min(1, meterAxis(src) / 100));
 	}
+	// Counts: ratio is not 0–1; raster path samples by absolute axis via meterAxis.
 	return 1;
-}
-
-function neutralIconModeFor(gear, group) {
-	return usesGroupColors(gear, group)
-		? normalizeNeutralIconMode(ensureGroupSettings(group).neutralIconMode)
-		: normalizeNeutralIconMode(snapshot.general && snapshot.general.neutralIconMode);
-}
-
-function neutralIconPaint(palette, mode) {
-	if (mode === "white") {
-		return "#ffffff";
-	}
-	if (mode === "bar") {
-		return palette.barSample || "";
-	}
-	if (mode === "border") {
-		return palette.borderColor || "";
-	}
-	if (mode === "icon0") {
-		return sampleColorRamp(palette.iconColor, 0) || themeIconColor();
-	}
-	if (mode === "icon100") {
-		return sampleColorRamp(palette.iconColor, 100) || themeIconColor();
-	}
-	if (mode === "icon50") {
-		return sampleColorRamp(palette.iconColor, 50) || themeIconColor();
-	}
-	return "#ffffff";
 }
 
 function sourceIconPaint(src, gear, group) {
@@ -189,13 +177,7 @@ function sourceIconPaint(src, gear, group) {
 		const plan = rasterIconColorPlan(src, gear, group);
 		return plan.kind === "tint" ? plan.color : "";
 	}
-	const palette = resolvedPalette(src, gear, group);
-	const mode = neutralIconModeFor(gear, group);
-	// Counts have no meter progress — Neutral picks a solid icon colour.
-	if (src && src.type === "count") {
-		return neutralIconPaint(palette, mode);
-	}
-	return palette.iconSample || "";
+	return resolvedPalette(src, gear, group).iconSample || "";
 }
 
 /** User iconColor ramp only — no General theme fallback (blank = native for GIF/WebP). */
@@ -214,11 +196,10 @@ function iconTintRamp(src, gear, group) {
  */
 function rasterIconColorPlan(src, gear, group) {
 	const ramp = iconTintRamp(src, gear, group);
-	const t = iconRatio(src);
 	if (!ramp) {
 		return { kind: "native" };
 	}
-	const color = sampleColorRamp(ramp, t * 100);
+	const color = sampleRampForSource(ramp, src);
 	if (!color) {
 		return { kind: "native" };
 	}
@@ -384,12 +365,12 @@ function applyIconPaint(el, src, gear, group) {
 function iconPaintSig(src, gear, group) {
 	const style = group ? ensureGroupSettings(group) : null;
 	const look = appearanceOf(gear, src);
-	const mode = neutralIconModeFor(gear, group);
 	const palette = resolvedPalette(src, gear, group);
 	return [
 		gear && group && gearExemptFromGroupColors(group, gear.id) ? "1" : "0",
 		style && style.useGroupColors ? "1" : "0",
-		src && src.type === "count" ? mode : "ratio",
+		src && src.type === "count" ? "count" : "ratio",
+		String(meterAxis(src)),
 		look.icon,
 		sourceIconRel(src, gear),
 		style && style.iconColor,

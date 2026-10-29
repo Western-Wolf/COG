@@ -22,7 +22,6 @@ function defaultGroupSettings() {
 		iconColor: "",
 		barColor: "",
 		borderColor: "",
-		neutralIconMode: "white",
 		gearSize: DEFAULT_GEAR_SIZE,
 		spacing: DEFAULT_SPACING,
 		stack: "below",
@@ -70,19 +69,12 @@ function setGearExemptFromGroupColors(group, gearId, exempt) {
 /** Group line / title keys nested under settings (also accepted flat on patch). */
 const GROUP_LINE_SETTINGS_KEYS = new Set(["displayName", "gearSize", "spacing", "stack", "gearIds"]);
 
-const NEUTRAL_ICON_MODES = ["white", "bar", "border", "icon0", "icon50", "icon100"];
-
 const FILL_FROM_HIDDEN_MODES = ["", "alpha", "up", "down", "alphaUp", "alphaDown"];
 
 /** Unfilled icon opacity for Alpha & Up / Alpha & Down — matches gear bar trough. */
 const FILL_FROM_HIDDEN_TROUGH_ALPHA = 0.55;
 
 const FILL_FROM_HIDDEN_GREY = "#9a9a9a";
-
-function normalizeNeutralIconMode(value) {
-	const mode = String(value || "").toLowerCase();
-	return NEUTRAL_ICON_MODES.includes(mode) ? mode : "white";
-}
 
 function normalizeFillFromHidden(value) {
 	const raw = String(value || "").trim();
@@ -116,14 +108,6 @@ function normalizeStack(value) {
 	return "below";
 }
 
-function normalizeNumberFormat(styleOrValue) {
-	const raw =
-		typeof styleOrValue === "string"
-			? String(styleOrValue || "").trim()
-			: String((styleOrValue && styleOrValue.numberFormat) || "").trim();
-	return NUMBER_FORMATS.includes(raw) ? raw : "barPercent";
-}
-
 function usesRatio(src) {
 	return src && (src.type === "percent" || src.type === "timer");
 }
@@ -154,7 +138,6 @@ function ensureGroupSettings(group) {
 		"iconColor",
 		"barColor",
 		"borderColor",
-		"neutralIconMode",
 		"gearSize",
 		"spacing",
 		"stack",
@@ -166,6 +149,12 @@ function ensureGroupSettings(group) {
 		legacySet: ["startColor", "endColor"],
 		deleteUnknown: false
 	});
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Neutral icon colour removed — counts sample iconColor ramps; drop dead key (allowlist no longer keeps it, but deleteUnknown is false).
+	if (Object.prototype.hasOwnProperty.call(bag, "neutralIconMode")) {
+		delete bag.neutralIconMode;
+		noteMigration(`group ${gid} drop neutralIconMode`);
+	}
 	noteMigrationIf(
 		(Object.prototype.hasOwnProperty.call(bag, "startColor") ||
 			Object.prototype.hasOwnProperty.call(bag, "endColor")) &&
@@ -261,7 +250,6 @@ function ensureGroupSettings(group) {
 		iconColor: normalizeColorRampValue(bag.iconColor, bag.startColor, bag.endColor),
 		barColor: normalizeColorRampValue(bag.barColor, "", ""),
 		borderColor: String(bag.borderColor || ""),
-		neutralIconMode: normalizeNeutralIconMode(bag.neutralIconMode),
 		gearSize: gearSizeRaw,
 		spacing: spacingRaw,
 		stack: stackRaw,
@@ -1306,7 +1294,7 @@ function renderGroups(body) {
 		if (useColorsRow) {
 			useColorsRow.appendChild(
 				makeInfoTip(
-					"When on, gears in this group use these colours unless they are exempt. Empty bar/border fields fall back to General. Empty icon ends fall back to General for SVG/PNG; for GIF/WebP, empty keeps native colours. Neutral icon colour applies to count gears on this line.",
+					"When on, gears in this group use these colours unless they are exempt. Empty bar/border fields fall back to General. Empty icon colour falls back to General for SVG/PNG; for GIF/WebP, empty keeps native colours.",
 					"cog-group-use-colours-tip"
 				)
 			);
@@ -1317,7 +1305,6 @@ function renderGroups(body) {
 		};
 		const writeStyle = (patch) => {
 			const live = currentStyle();
-			const neutralSel = details.querySelector('[data-role="neutralIconMode"]');
 			patchGroup(group.id, {
 				settings: {
 					...live,
@@ -1328,7 +1315,6 @@ function renderGroups(body) {
 					fillFromHidden: normalizeFillFromHidden(fadeSel.value),
 					numberFormat: normalizeNumberFormat({ numberFormat: modeSel.value }),
 					useGroupColors: useColorsBox.checked,
-					neutralIconMode: normalizeNeutralIconMode(neutralSel ? neutralSel.value : live.neutralIconMode),
 					...(patch || {})
 				}
 			});
@@ -1354,40 +1340,27 @@ function renderGroups(body) {
 		} else {
 			generalHeading.textContent = "General Colours";
 		}
-		generalColors.appendChild(generalHeading);
+		const generalHeadingRow = document.createElement("div");
+		generalHeadingRow.className = "style-row";
+		generalHeadingRow.style.alignItems = "center";
+		generalHeadingRow.style.gap = "0.35rem";
+		generalHeadingRow.appendChild(generalHeading);
+		generalHeadingRow.appendChild(
+			makeInfoTip(
+				"Stop values are shared by every gear on this line. Percent and timer gears only use stops up to 100 (at 100% they take the last stop at or below 100). Count gears use the same map past 100.",
+				"cog-group-colour-ramp-tip"
+			)
+		);
+		generalColors.appendChild(generalHeadingRow);
 		const generalRow = document.createElement("div");
 		generalRow.className = "style-row color-ramp-general-row";
 		const borderField = makeGroupColorField("Border", group.id, "borderColor", style.borderColor, themeBorder());
 		borderField.classList.add("compact");
 		tagFieldLabel(borderField, "cog-border", "Border");
 		generalRow.appendChild(borderField);
-		const neutralField = makeNeutralIconField(
-			makeNeutralIconSelect(style.neutralIconMode, (mode) => {
-				writeStyle({ neutralIconMode: mode });
-			})
-		);
-		neutralField.classList.add("compact");
-		const neutralLabel = neutralField.firstChild;
-		if (neutralLabel && neutralLabel.nodeType === Node.TEXT_NODE) {
-			const neutralSpan = document.createElement("span");
-			if (typeof setTranslatedText === "function") {
-				setTranslatedText(neutralSpan, "cog-neutral-icon-colour", "Neutral icon colour");
-			} else {
-				neutralSpan.textContent = "Neutral icon colour";
-			}
-			neutralField.replaceChild(neutralSpan, neutralLabel);
-		}
-		tagSelectOptions(neutralField.querySelector("select"), {
-			white: ["cog-always-white", "Always White"],
-			bar: ["cog-bar", "Bar"],
-			border: ["cog-border", "Border"],
-			icon0: ["cog-icon-0", "Icon 0%"],
-			icon50: ["cog-icon-50", "Icon 50%"],
-			icon100: ["cog-icon-100", "Icon 100%"]
-		});
-		generalRow.appendChild(neutralField);
 		generalColors.appendChild(generalRow);
 		colorFields.appendChild(generalColors);
+		const groupRampOpts = { axis: "count" };
 		const tagColorRamp = (editor, headingTag, headingFallback) => {
 			const heading = editor.querySelector(".color-ramp-heading");
 			const hint = editor.querySelector(".color-ramp-hint");
@@ -1395,44 +1368,56 @@ function renderGroups(body) {
 				setTranslatedText(heading, headingTag, headingFallback);
 				setTranslatedText(
 					hint,
-					"cog-color-ramp-hint",
-					"Empty inherits the backup. Multiple stops fade between percentages."
+					"cog-color-ramp-hint-count",
+					"Empty inherits the backup. Multiple stops fade between values (counts may go past 100)."
 				);
 			}
 			return editor;
 		};
 		colorFields.appendChild(
 			tagColorRamp(
-				makeColorRampEditor("Icon colours", style.iconColor, themeIconColor(), (ramp, live) => {
-					const liveGroup = groupFor(group.id);
-					if (!liveGroup) {
-						return;
-					}
-					patchGroup(
-						group.id,
-						{ settings: { ...ensureGroupSettings(liveGroup), iconColor: ramp } },
-						false,
-						live
-					);
-				}),
+				makeColorRampEditor(
+					"Icon colours",
+					style.iconColor,
+					themeIconColor(),
+					(ramp, live) => {
+						const liveGroup = groupFor(group.id);
+						if (!liveGroup) {
+							return;
+						}
+						patchGroup(
+							group.id,
+							{ settings: { ...ensureGroupSettings(liveGroup), iconColor: ramp } },
+							false,
+							live
+						);
+					},
+					groupRampOpts
+				),
 				"cog-icon-colours",
 				"Icon colours"
 			)
 		);
 		colorFields.appendChild(
 			tagColorRamp(
-				makeColorRampEditor("Bar colours", style.barColor, themeFill(), (ramp, live) => {
-					const liveGroup = groupFor(group.id);
-					if (!liveGroup) {
-						return;
-					}
-					patchGroup(
-						group.id,
-						{ settings: { ...ensureGroupSettings(liveGroup), barColor: ramp } },
-						false,
-						live
-					);
-				}),
+				makeColorRampEditor(
+					"Bar colours",
+					style.barColor,
+					themeFill(),
+					(ramp, live) => {
+						const liveGroup = groupFor(group.id);
+						if (!liveGroup) {
+							return;
+						}
+						patchGroup(
+							group.id,
+							{ settings: { ...ensureGroupSettings(liveGroup), barColor: ramp } },
+							false,
+							live
+						);
+					},
+					groupRampOpts
+				),
 				"cog-bar-colours",
 				"Bar colours"
 			)

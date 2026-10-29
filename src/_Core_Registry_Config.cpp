@@ -25,7 +25,6 @@ using CogRegistryJson::NormalizeEditorKey;
 using CogRegistryJson::NormalizeHexColor;
 using CogRegistryJson::OptionalHexColor;
 using CogRegistryJson::NormalizeIcon;
-using CogRegistryJson::NormalizeNeutralIconMode;
 using CogRegistryJson::ParseGauge;
 using CogRegistryJson::MigrateBuiltinBloodlustToVampiricHunger;
 using CogRegistryJson::MigrateLegacyGearExemptOntoGroups;
@@ -640,7 +639,8 @@ void CogRegistry::LoadGeneralFile(bool& repaired)
 		}
 		_general.iconColor = icon.empty() ? "#ffffff" : std::move(icon);
 	}
-	_general.neutralIconMode = NormalizeNeutralIconMode(ctx.GetString(root, "neutralIconMode"));
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Neutral icon colour removed — ignore legacy key on load (never written again).
 	{
 		auto font = ctx.GetString(root, "gadgetFont");
 		_general.gadgetFont = font.empty() ? "Roboto" : std::move(font);
@@ -1013,9 +1013,7 @@ bool CogRegistry::ApplyStateJson(const std::string& json)
 		} else if (ctx.Has(*src, "iconEndColor")) {
 			_general.iconColor = NormalizeHexColor(ctx.GetString(*src, "iconEndColor"), "#ffffff");
 		}
-		if (ctx.Has(*src, "neutralIconMode")) {
-			_general.neutralIconMode = NormalizeNeutralIconMode(ctx.GetString(*src, "neutralIconMode"));
-		}
+		// Migration Code for Transition from v1.01 or earlier to v1.1: ignore legacy neutralIconMode patches.
 		if (ctx.Has(*src, "gadgetFont")) {
 			auto font = ctx.GetString(*src, "gadgetFont");
 			_general.gadgetFont = font.empty() ? "Roboto" : std::move(font);
@@ -1161,7 +1159,6 @@ void CogRegistry::SaveConfigUnlocked() const
 			<< ",\n\t\"fillColor\": \"" << EscapeJson(_general.fillColor)
 			<< "\",\n\t\"borderColor\": \"" << EscapeJson(_general.borderColor)
 			<< "\",\n\t\"iconColor\": \"" << EscapeJson(_general.iconColor)
-			<< "\",\n\t\"neutralIconMode\": \"" << EscapeJson(_general.neutralIconMode)
 			<< "\",\n\t\"gadgetFont\": \"" << EscapeJson(_general.gadgetFont)
 			<< "\",\n\t\"language\": \"" << EscapeJson(_general.language.empty() ? "en-CA" : _general.language)
 			<< "\",\n\t\"highlightMissingTranslations\": "

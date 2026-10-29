@@ -5,3 +5,7 @@ Thumbs.db
 .idea/
 .vscode/
 .vs/
+
+# xmake local cache
+.xmake/
+

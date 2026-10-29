@@ -24,6 +24,9 @@ namespace
 	bool g_wantEditorFocus = false;
 	std::atomic_bool g_uiHiddenDirty{ false };
 	std::atomic_bool g_uiHiddenApplyQueued{ false };
+	// Coalesce Prisma "tick" — only one main-thread PushToUi queued at a time.
+	// Also gates PushLivePercent → applyLivePercent (see CogUi::IsJsTickQueued).
+	std::atomic_bool g_jsTickQueued{ false };
 	// Set when the editor Unfocuses while DialogueMenu (etc.) is open — Unfocus alone often
 	// leaves look/camera dead until a Focus/Unfocus cycle runs in free gameplay.
 	bool g_pendingCameraNudge = false;
@@ -470,6 +473,22 @@ std::string CogUi::DescribeGameplayMenuBlock()
 		}
 	}
 	return {};
+}
+
+bool CogUi::TryQueueJsTick()
+{
+	// true → already queued; false → claim the slot for this tick.
+	return !g_jsTickQueued.exchange(true);
+}
+
+void CogUi::ClearJsTickQueued()
+{
+	g_jsTickQueued.store(false);
+}
+
+bool CogUi::IsJsTickQueued()
+{
+	return g_jsTickQueued.load();
 }
 
 void CogUi::Interop(const char* functionName, const std::string& argument)

@@ -190,7 +190,8 @@ namespace CogRegistryJson
 			}
 			g.settings.barColor = ReadColorRampField(*settingsBag, ctx, "barColor", false);
 			g.settings.borderColor = ctx.GetString(*settingsBag, "borderColor");
-			g.settings.neutralIconMode = NormalizeNeutralIconMode(ctx.GetString(*settingsBag, "neutralIconMode"));
+			// Migration Code for Transition from v1.01 or earlier to v1.1:
+			// Neutral icon colour removed — ignore legacy group.settings.neutralIconMode.
 			if (const auto* exemptObj = ctx.GetObject(*settingsBag, "exemptFromGroupColors")) {
 				for (const auto& [gearId, val] : exemptObj->objectValue) {
 					if (val.IsBool() && val.boolValue && !gearId.empty()) {
@@ -202,9 +203,9 @@ namespace CogRegistryJson
 				ctx,
 				*settingsBag,
 				{ "displayName", "showLabel", "showIcon", "showNumber", "barTrough", "fillFromHidden",
-				  "numberFormat", "useGroupColors", "iconColor", "barColor", "borderColor", "neutralIconMode",
+				  "numberFormat", "useGroupColors", "iconColor", "barColor", "borderColor",
 				  "gearSize", "spacing", "stack", "exemptFromGroupColors", "gearIds" },
-				{ "startColor", "endColor" },
+				{ "startColor", "endColor", "neutralIconMode" },
 				"group.settings");
 		}
 		// Migration Code for Transition from v1.01 or earlier to v1.1:
@@ -485,7 +486,6 @@ namespace CogRegistryJson
 		WriteColorRampField(w, "iconColor", g.settings.iconColor);
 		WriteColorRampField(w, "barColor", g.settings.barColor);
 		w.KeyString("borderColor", g.settings.borderColor);
-		w.KeyString("neutralIconMode", g.settings.neutralIconMode);
 		w.KeyNumber("gearSize", g.settings.gearSize);
 		w.KeyNumber("spacing", g.settings.spacing);
 		w.KeyString("stack", g.settings.stack);

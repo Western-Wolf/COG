@@ -1,7 +1,10 @@
 ScriptName COG_Feed_API Hidden
 {Public Papyrus API for the COG Feed. Receipts last for the SKSE session only (expire after the line finishes fading).}
 
-; Push a line into a play-visible Feed. Sources fully resolve message / colour / icon before calling.
+; Push a line into a play-visible Feed.
+; asColor: #RRGGBB / #RGB, or a Feed colour-var name registered by a section on that Feed
+;   (e.g. skillProgressColor, addColor, effectsColor, textColor). Each Feed resolves the
+;   name to its own settings hex before paint; unknown names → General border colour.
 ; asSource: optional. Omit or "" is logged as "general" (no source given). COG builtins use cog-feed*
 ;   (cog-feednotifications, cog-feedinventory, cog-feedlocation, cog-feedskills, cog-feedeffects).
 ;   Mods: own id, never the cog- prefix.

@@ -1,0 +1,18 @@
+{
+  "name:Example": {
+    "en-CA": "Example",
+    "fr-CA": "Exemple"
+  },
+  "name:Example Count": {
+    "en-CA": "Example Count",
+    "fr-CA": "Exemple Compte"
+  },
+  "name:Example Percent": {
+    "en-CA": "Example Percent",
+    "fr-CA": "Exemple Pourcentage"
+  },
+  "name:Example Timer": {
+    "en-CA": "Example Timer",
+    "fr-CA": "Exemple Minuterie"
+  }
+}

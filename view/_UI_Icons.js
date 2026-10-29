@@ -83,7 +83,7 @@ function parseIconRamp(raw) {
 			if (!Number.isFinite(pct)) {
 				pct = 0;
 			}
-			pct = Math.max(0, Math.min(100, pct));
+			pct = Math.max(0, pct);
 			stops.push({ pct, path });
 		}
 		stops.sort((a, b) => a.pct - b.pct);
@@ -128,13 +128,19 @@ function normalizeIconRampValue(raw) {
 	return stops.length ? formatIconRamp(stops) : "";
 }
 
-/** Active icon path = last stop whose pct ≤ gear percent (holds through 100). */
-function pickIconRampFrame(stopsOrRaw, percent) {
+/** Drop icon stops with pct > 100 — percent/timer must not pick post-100 frames. */
+function truncateIconRampAt100(stopsOrRaw) {
+	const stops = Array.isArray(stopsOrRaw) ? parseIconRamp(stopsOrRaw) : parseIconRamp(stopsOrRaw);
+	return stops.filter((s) => s.pct <= 100 + 1e-9);
+}
+
+/** Active icon path = last stop whose pct ≤ axis value (holds past last stop). */
+function pickIconRampFrame(stopsOrRaw, axisValue) {
 	const stops = Array.isArray(stopsOrRaw) ? parseIconRamp(stopsOrRaw) : parseIconRamp(stopsOrRaw);
 	if (!stops.length) {
 		return "";
 	}
-	const pct = Math.max(0, Math.min(100, Number(percent) || 0));
+	const pct = Math.max(0, Number(axisValue) || 0);
 	let best = stops[0];
 	for (let i = 0; i < stops.length; i += 1) {
 		if (stops[i].pct <= pct + 1e-9) {
@@ -148,11 +154,15 @@ function pickIconRampFrame(stopsOrRaw, percent) {
 
 function sourceIconRel(src, gear) {
 	const raw = appearanceOf(gear, src).icon;
-	const pct =
-		typeof barPercent === "function"
-			? barPercent(src)
-			: Math.max(0, Math.min(100, Number(src && src.value) || 0));
-	return pickIconRampFrame(raw, pct);
+	const axis =
+		typeof meterAxis === "function"
+			? meterAxis(src)
+			: typeof barPercent === "function"
+				? barPercent(src)
+				: Math.max(0, Math.min(100, Number(src && src.value) || 0));
+	const stops =
+		typeof usesRatio === "function" && usesRatio(src) ? truncateIconRampAt100(raw) : parseIconRamp(raw);
+	return pickIconRampFrame(stops, axis);
 }
 
 function sourceIconPath(src, gear) {
@@ -567,11 +577,15 @@ function preloadEndCapAspects() {
 
 /**
  * Multi-stop icon ramp editor (gear.icon).
- * Same chrome as colour ramps; assets switch at percentages (no fade).
+ * Same chrome as colour ramps; assets switch at axis values (no fade).
+ * @param {{ axis?: "percent"|"count" }} [options] count = unbounded number fields (no % / no 100 cap).
  */
-function makeIconRampEditor(label, value, fallbackPath, onCommit) {
+function makeIconRampEditor(label, value, fallbackPath, onCommit, options) {
+	const axis = options && options.axis === "count" ? "count" : "percent";
+	const isCountAxis = axis === "count";
 	const wrap = document.createElement("div");
 	wrap.className = "color-ramp-editor icon-ramp-editor";
+	wrap.dataset.rampAxis = axis;
 	const heading = document.createElement("div");
 	heading.className = "color-ramp-heading";
 	heading.textContent = label;
@@ -579,14 +593,23 @@ function makeIconRampEditor(label, value, fallbackPath, onCommit) {
 	const hint = document.createElement("p");
 	hint.className = "lede color-ramp-hint";
 	if (typeof setTranslatedText === "function") {
-		setTranslatedText(
-			hint,
-			"cog-icon-ramp-hint",
-			"Each stop switches the icon at that percentage. Icons do not fade between stops."
-		);
+		if (isCountAxis) {
+			setTranslatedText(
+				hint,
+				"cog-icon-ramp-hint-count",
+				"Each stop switches the icon at that value. Icons do not fade between stops. Counts may go past 100."
+			);
+		} else {
+			setTranslatedText(
+				hint,
+				"cog-icon-ramp-hint",
+				"Each stop switches the icon at that percentage. Icons do not fade between stops."
+			);
+		}
 	} else {
-		hint.textContent =
-			"Each stop switches the icon at that percentage. Icons do not fade between stops.";
+		hint.textContent = isCountAxis
+			? "Each stop switches the icon at that value. Icons do not fade between stops. Counts may go past 100."
+			: "Each stop switches the icon at that percentage. Icons do not fade between stops.";
 	}
 	wrap.appendChild(hint);
 	const list = document.createElement("div");
@@ -604,7 +627,15 @@ function makeIconRampEditor(label, value, fallbackPath, onCommit) {
 		}
 	};
 
-	const hasHundredStop = () => stops.some((s) => s.pct >= 100 - 1e-9);
+	const clampAxis = (n) => {
+		if (!Number.isFinite(n)) {
+			return 0;
+		}
+		n = Math.max(0, n);
+		return isCountAxis ? n : Math.min(100, n);
+	};
+
+	const hasHundredStop = () => !isCountAxis && stops.some((s) => s.pct >= 100 - 1e-9);
 	let addBtn = null;
 	let addWrap = null;
 
@@ -649,7 +680,11 @@ function makeIconRampEditor(label, value, fallbackPath, onCommit) {
 			return;
 		}
 		const lastPct = stops.length ? stops[stops.length - 1].pct : 0;
-		const nextPct = stops.length ? Math.min(100, lastPct + 10) : 0;
+		const nextPct = stops.length
+			? isCountAxis
+				? lastPct + 10
+				: Math.min(100, lastPct + 10)
+			: 0;
 		const seedPath = stops.length ? stops[stops.length - 1].path : defaultPath;
 		stops.push({
 			pct: stops.length ? nextPct : 0,
@@ -692,26 +727,27 @@ function makeIconRampEditor(label, value, fallbackPath, onCommit) {
 			pctInput.spellcheck = false;
 			pctInput.value = String(stop.pct);
 			if (typeof setTranslatedAriaLabel === "function") {
-				setTranslatedAriaLabel(pctInput, "cog-percentage", "Percentage");
+				if (isCountAxis) {
+					setTranslatedAriaLabel(pctInput, "cog-ramp-value", "Value");
+				} else {
+					setTranslatedAriaLabel(pctInput, "cog-percentage", "Percentage");
+				}
 			} else {
-				pctInput.setAttribute("aria-label", "Percentage");
+				pctInput.setAttribute("aria-label", isCountAxis ? "Value" : "Percentage");
 			}
 			pctInput.addEventListener("input", () => {
 				let n = Number(pctInput.value);
 				if (!Number.isFinite(n)) {
 					return;
 				}
-				n = Math.max(0, Math.min(100, n));
+				n = clampAxis(n);
 				stops[index] = { ...stops[index], pct: n };
 				syncAddBtn();
 				emit(true);
 			});
 			pctInput.addEventListener("change", () => {
 				let n = Number(pctInput.value);
-				if (!Number.isFinite(n)) {
-					n = 0;
-				}
-				n = Math.max(0, Math.min(100, n));
+				n = clampAxis(n);
 				pctInput.value = String(n);
 				stops[index] = { ...stops[index], pct: n };
 				stops = parseIconRamp(stops);
@@ -719,7 +755,9 @@ function makeIconRampEditor(label, value, fallbackPath, onCommit) {
 				rebuild();
 			});
 			pctLab.appendChild(pctInput);
-			wrapInputAffix(pctInput, { suffix: "%" });
+			if (!isCountAxis) {
+				wrapInputAffix(pctInput, { suffix: "%" });
+			}
 			card.appendChild(pctLab);
 
 			const remove = document.createElement("button");

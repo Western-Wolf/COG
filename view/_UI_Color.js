@@ -166,7 +166,7 @@ function parseColorRamp(raw) {
 			if (!Number.isFinite(pct)) {
 				pct = 0;
 			}
-			pct = Math.max(0, Math.min(100, pct));
+			pct = Math.max(0, pct);
 			stops.push({ pct, color });
 		}
 		stops.sort((a, b) => a.pct - b.pct);
@@ -193,6 +193,12 @@ function parseColorRamp(raw) {
 	}
 	const hex = optionalHex(text);
 	return hex ? [{ pct: 0, color: hex }] : [];
+}
+
+/** Drop stops with pct > 100 — percent/timer sampling must not blend toward post-100 stops. */
+function truncateColorRampAt100(stopsOrRaw) {
+	const stops = Array.isArray(stopsOrRaw) ? parseColorRamp(stopsOrRaw) : parseColorRamp(stopsOrRaw);
+	return stops.filter((s) => s.pct <= 100 + 1e-9);
 }
 
 function formatColorRamp(stops) {
@@ -237,7 +243,7 @@ function mixHexColors(a, b, t) {
 		.join("")}`;
 }
 
-function sampleColorRamp(stopsOrRaw, percent) {
+function sampleColorRamp(stopsOrRaw, axisValue) {
 	const stops = Array.isArray(stopsOrRaw) ? parseColorRamp(stopsOrRaw) : parseColorRamp(stopsOrRaw);
 	if (!stops.length) {
 		return "";
@@ -245,7 +251,7 @@ function sampleColorRamp(stopsOrRaw, percent) {
 	if (stops.length === 1) {
 		return stops[0].color;
 	}
-	const pct = Math.max(0, Math.min(100, Number(percent) || 0));
+	const pct = Math.max(0, Number(axisValue) || 0);
 	if (pct <= stops[0].pct) {
 		return stops[0].color;
 	}
@@ -930,11 +936,15 @@ function makeOptionalColorField(label, value, fallback, onCommit) {
 
 /**
  * Multi-stop colour ramp editor (iconColor / barColor).
- * Single-line chips (colour + % + ×) with inline +. Empty stops → inherit fallback.
+ * Single-line chips (colour + axis + ×) with inline +. Empty stops → inherit fallback.
+ * @param {{ axis?: "percent"|"count" }} [options] count = unbounded number fields (no % / no 100 cap).
  */
-function makeColorRampEditor(label, value, fallback, onCommit) {
+function makeColorRampEditor(label, value, fallback, onCommit, options) {
+	const axis = options && options.axis === "count" ? "count" : "percent";
+	const isCountAxis = axis === "count";
 	const wrap = document.createElement("div");
 	wrap.className = "color-ramp-editor";
+	wrap.dataset.rampAxis = axis;
 	const heading = document.createElement("div");
 	heading.className = "color-ramp-heading";
 	heading.textContent = label;
@@ -942,13 +952,23 @@ function makeColorRampEditor(label, value, fallback, onCommit) {
 	const hint = document.createElement("p");
 	hint.className = "lede color-ramp-hint";
 	if (typeof setTranslatedText === "function") {
-		setTranslatedText(
-			hint,
-			"cog-color-ramp-hint",
-			"Empty inherits the backup. Multiple stops fade between percentages."
-		);
+		if (isCountAxis) {
+			setTranslatedText(
+				hint,
+				"cog-color-ramp-hint-count",
+				"Empty inherits the backup. Multiple stops fade between values (counts may go past 100)."
+			);
+		} else {
+			setTranslatedText(
+				hint,
+				"cog-color-ramp-hint",
+				"Empty inherits the backup. Multiple stops fade between percentages."
+			);
+		}
 	} else {
-		hint.textContent = "Empty inherits the backup. Multiple stops fade between percentages.";
+		hint.textContent = isCountAxis
+			? "Empty inherits the backup. Multiple stops fade between values (counts may go past 100)."
+			: "Empty inherits the backup. Multiple stops fade between percentages.";
 	}
 	wrap.appendChild(hint);
 	const list = document.createElement("div");
@@ -962,7 +982,15 @@ function makeColorRampEditor(label, value, fallback, onCommit) {
 		}
 	};
 
-	const hasHundredStop = () => stops.some((s) => s.pct >= 100 - 1e-9);
+	const clampAxis = (n) => {
+		if (!Number.isFinite(n)) {
+			return 0;
+		}
+		n = Math.max(0, n);
+		return isCountAxis ? n : Math.min(100, n);
+	};
+
+	const hasHundredStop = () => !isCountAxis && stops.some((s) => s.pct >= 100 - 1e-9);
 	let addBtn = null;
 	let addWrap = null;
 
@@ -1007,7 +1035,11 @@ function makeColorRampEditor(label, value, fallback, onCommit) {
 			return;
 		}
 		const lastPct = stops.length ? stops[stops.length - 1].pct : 0;
-		const nextPct = stops.length ? Math.min(100, lastPct + 10) : 0;
+		const nextPct = stops.length
+			? isCountAxis
+				? lastPct + 10
+				: Math.min(100, lastPct + 10)
+			: 0;
 		stops.push({
 			pct: stops.length ? nextPct : 0,
 			color: optionalHex(fallback) || "#ffffff"
@@ -1051,26 +1083,27 @@ function makeColorRampEditor(label, value, fallback, onCommit) {
 			pctInput.spellcheck = false;
 			pctInput.value = String(stop.pct);
 			if (typeof setTranslatedAriaLabel === "function") {
-				setTranslatedAriaLabel(pctInput, "cog-percentage", "Percentage");
+				if (isCountAxis) {
+					setTranslatedAriaLabel(pctInput, "cog-ramp-value", "Value");
+				} else {
+					setTranslatedAriaLabel(pctInput, "cog-percentage", "Percentage");
+				}
 			} else {
-				pctInput.setAttribute("aria-label", "Percentage");
+				pctInput.setAttribute("aria-label", isCountAxis ? "Value" : "Percentage");
 			}
 			pctInput.addEventListener("input", () => {
 				let n = Number(pctInput.value);
 				if (!Number.isFinite(n)) {
 					return;
 				}
-				n = Math.max(0, Math.min(100, n));
+				n = clampAxis(n);
 				stops[index] = { ...stops[index], pct: n };
 				syncAddBtn();
 				emit(true);
 			});
 			pctInput.addEventListener("change", () => {
 				let n = Number(pctInput.value);
-				if (!Number.isFinite(n)) {
-					n = 0;
-				}
-				n = Math.max(0, Math.min(100, n));
+				n = clampAxis(n);
 				pctInput.value = String(n);
 				stops[index] = { ...stops[index], pct: n };
 				stops = parseColorRamp(stops);
@@ -1078,7 +1111,9 @@ function makeColorRampEditor(label, value, fallback, onCommit) {
 				rebuild();
 			});
 			pctLab.appendChild(pctInput);
-			wrapInputAffix(pctInput, { suffix: "%" });
+			if (!isCountAxis) {
+				wrapInputAffix(pctInput, { suffix: "%" });
+			}
 			card.appendChild(pctLab);
 
 			const remove = document.createElement("button");

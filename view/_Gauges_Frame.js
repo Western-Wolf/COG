@@ -335,9 +335,7 @@ function frameGearStructureSig(gauge, src, gear, inset) {
 	const titleSlot = normalizeFrameSlot(gaugeSettings(gauge).showLabel);
 	const numberSlot = normalizeFrameSlot(gaugeSettings(gauge).showNumber);
 	const fmt =
-		typeof normalizeNumberFormat === "function"
-			? normalizeNumberFormat(gaugeSettings(gauge).numberFormat)
-			: normalizeNumberFormatGauge(gaugeSettings(gauge).numberFormat);
+		normalizeNumberFormat(gaugeSettings(gauge).numberFormat, "barPercent");
 	const isRatio = !!(src && typeof usesRatio === "function" && usesRatio(src));
 	const showBar =
 		numberSlot !== "none" &&
@@ -405,9 +403,7 @@ function patchGaugeFrameLive(el, gauge, src, gear) {
 	}
 	const group = { id: `frame:${gauge.id}`, style: {} };
 	const fmt =
-		typeof normalizeNumberFormat === "function"
-			? normalizeNumberFormat(gaugeSettings(gauge).numberFormat)
-			: normalizeNumberFormatGauge(gaugeSettings(gauge).numberFormat);
+		normalizeNumberFormat(gaugeSettings(gauge).numberFormat, "barPercent");
 	const isRatio = !!(typeof usesRatio === "function" && usesRatio(src));
 	const showTotal =
 		isRatio && typeof numberFormatShowsTotal === "function" && numberFormatShowsTotal(fmt);
@@ -465,9 +461,7 @@ function paintGaugeFrameGear(el, gauge, src, gear, inset) {
 	const titleSlot = normalizeFrameSlot(gaugeSettings(gauge).showLabel);
 	const numberSlot = normalizeFrameSlot(gaugeSettings(gauge).showNumber);
 	const fmt =
-		typeof normalizeNumberFormat === "function"
-			? normalizeNumberFormat(gaugeSettings(gauge).numberFormat)
-			: normalizeNumberFormatGauge(gaugeSettings(gauge).numberFormat);
+		normalizeNumberFormat(gaugeSettings(gauge).numberFormat, "barPercent");
 	const showIcon = iconSlot !== "none";
 	const showLabel = titleSlot !== "none";
 	const showNumber = numberSlot !== "none";
@@ -972,9 +966,9 @@ function fillGaugeFrameEditor(panel, gauge, gid, live) {
 		percent: ["cog-percentage", "Percentage"],
 		total: ["cog-total", "Total"]
 	});
-	numberFormatSel.value = normalizeNumberFormatGauge(gaugeSettings(gauge).numberFormat);
+	numberFormatSel.value = normalizeNumberFormat(gaugeSettings(gauge).numberFormat, "barPercent");
 	numberFormatSel.addEventListener("change", (ev) => {
-		patchGauge(gid, { numberFormat: normalizeNumberFormatGauge(ev.target.value) });
+		patchGauge(gid, { numberFormat: normalizeNumberFormat(ev.target.value, "barPercent") });
 	});
 	gearRow.appendChild(numberFormatField);
 

@@ -21,6 +21,7 @@ namespace
 		std::string hudLinkedElement,
 		bool hudHideDuplicate)
 	{
+		const std::string modKey = sourceMod;
 		const auto receipt = CogRegistry::Get().Register(
 			std::move(sourceMod),
 			std::move(varName),
@@ -35,7 +36,10 @@ namespace
 			std::move(hudLinkedElement),
 			hudHideDuplicate);
 		CogRegistry::Get().MarkLayoutDirty();
-		CogRegistry::Get().PushToUi();
+		// Inside BeginRegister…EndRegister: defer Push; EndRegister or next natural PushToUi commits.
+		if (!CogRegistry::Get().IsRegisterBatchOpen(modKey)) {
+			CogRegistry::Get().PushToUi();
+		}
 		return receipt;
 	}
 

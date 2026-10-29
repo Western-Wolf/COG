@@ -2,7 +2,7 @@
 // Classic script; loads last after all section scripts.
 
 // var (not let): _UI_Translation.js and other classic scripts read window.snapshot.
-var snapshot = { sources: [], shoutMeter: null, general: { showDefaultGroup: true, editorKey: "F3", hideToggleKey: "", hideIncludesFlash: true, uiHidden: false, fillColor: "#c4a35a", borderColor: "#e8d2a0", iconColor: "#ffffff", neutralIconMode: "white", gadgetFont: "Roboto", language: "en-CA", highlightMissingTranslations: false, updateStockTitlesOnTranslation: false }, groups: [], gears: [], gauges: [], gizmos: [], gizmoTypes: [], icons: [], importedIcons: [], fonts: [], suppressions: [], languages: ["en-CA"], translations: {}, gizmoTranslations: {} };
+var snapshot = { sources: [], shoutMeter: null, general: { showDefaultGroup: true, editorKey: "F3", hideToggleKey: "", hideIncludesFlash: true, uiHidden: false, fillColor: "#c4a35a", borderColor: "#e8d2a0", iconColor: "#ffffff", gadgetFont: "Roboto", language: "en-CA", highlightMissingTranslations: false, updateStockTitlesOnTranslation: false }, groups: [], gears: [], gauges: [], gizmos: [], gizmoTypes: [], icons: [], importedIcons: [], fonts: [], suppressions: [], languages: ["en-CA"], translations: {}, gizmoTranslations: {} };
 let saveTimer = null;
 let activeTab = "general";
 let drag = null;
@@ -389,7 +389,12 @@ function normalizeSnapshot() {
 		delete snapshot.general.iconStartColor;
 		delete snapshot.general.iconEndColor;
 	}
-	snapshot.general.neutralIconMode = normalizeNeutralIconMode(snapshot.general.neutralIconMode);
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// Neutral icon colour removed — counts sample iconColor ramps.
+	if (Object.prototype.hasOwnProperty.call(snapshot.general, "neutralIconMode")) {
+		delete snapshot.general.neutralIconMode;
+		noteMigration("general drop neutralIconMode");
+	}
 	if (!Array.isArray(snapshot.fonts)) {
 		snapshot.fonts = [];
 	}
@@ -1044,7 +1049,6 @@ function flushSave() {
 			fillColor: snapshot.general?.fillColor,
 			borderColor: snapshot.general?.borderColor,
 			iconColor: snapshot.general?.iconColor,
-			neutralIconMode: snapshot.general?.neutralIconMode,
 			gadgetFont: snapshot.general?.gadgetFont,
 			language: snapshot.general?.language || "en-CA",
 			highlightMissingTranslations: !!snapshot.general?.highlightMissingTranslations,

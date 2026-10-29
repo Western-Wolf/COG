@@ -20,17 +20,13 @@
 
 #include <chrono>
 #include <cmath>
-#include <deque>
 #include <filesystem>
 #include <mutex>
-#include <sstream>
-#include <vector>
 
 #include <spdlog/spdlog.h>
 
 namespace
 {
-	constexpr std::size_t kRingCap = 32;
 	// Player alchemy use invokes the remove path twice in-engine; collapse exact dupes.
 	constexpr auto kContainerDedupWindow = std::chrono::milliseconds(100);
 
@@ -984,26 +980,4 @@ void CogFeed::EnqueueInventory(
 	if (id != 0) {
 		CogUi::RunOnMainThread([]() { FlushNotificationsToUi(); });
 	}
-}
-
-std::vector<std::string> CogFeed::DrainInventoryEventsJson()
-{
-	std::vector<Entry> copy;
-	{
-		std::lock_guard lock(g_mutex);
-		for (const auto& e : g_ring) {
-			if (e.id > g_flushedId) {
-				copy.push_back(e);
-			}
-		}
-		if (!copy.empty()) {
-			g_flushedId = copy.back().id;
-		}
-	}
-	std::vector<std::string> out;
-	out.reserve(copy.size());
-	for (const auto& e : copy) {
-		out.push_back(EntryToJson(e));
-	}
-	return out;
 }

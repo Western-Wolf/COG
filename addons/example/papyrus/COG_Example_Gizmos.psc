@@ -1,7 +1,7 @@
 ScriptName COG_Example_Gizmos extends Quest
 {COG Example Gizmos — gear-backed + push-updated types.
  COG API demo: Begin/EndRegister, RegisterGizmo, GizmoStorage, UpdateGizmo.
- Example plumbing: wait for Core; soft-gate gear-backed on Gears ESP; ModEvent tick.}
+ Example plumbing: wait for COG_Example_IconsReady; soft-gate gear-backed on Gears ESP; ModEvent tick.}
 
 String Property SourceMod = "COG_Example_Gizmos" AutoReadOnly
 String Property PluginFile = "COG - Example Gizmos.esp" AutoReadOnly
@@ -14,7 +14,9 @@ String Property IconHollow = "COG_Example/light-bulb-hollow.png" AutoReadOnly
 Int Property GizmoGearReceipt = 0 Auto
 Int Property GizmoPushReceipt = 0 Auto
 Bool Property SetupBusy = False Auto
+Bool Property IconsListenerArmed = False Auto
 Bool Property TickArmed = False Auto
+Bool Property BoundToIcons = False Auto
 
 Event OnInit()
 	RegisterForModEvent("COG_Ready", "OnCOGReady")
@@ -37,9 +39,20 @@ Function GameLoad()
 	Setup()
 EndFunction
 
+; === Example plumbing: icons-ready (import finished) ===
+Event OnIconsReady(String eventName, String strArg, Float numArg, Form sender)
+	BindAfterIconsReady()
+EndEvent
+
 ; === Example plumbing: ModEvent receive ===
 Event OnExampleTick(String eventName, String strArg, Float numArg, Form sender)
 	If !COG_API.IsPluginLoaded(PluginFile) || !COG_API.IsPluginLoaded(CorePluginFile)
+		Return
+	EndIf
+	If !BoundToIcons
+		BindAfterIconsReady()
+	EndIf
+	If !BoundToIcons
 		Return
 	EndIf
 	Int remaining = numArg as Int
@@ -55,34 +68,65 @@ Function Setup()
 	If SetupBusy || !COG_API.IsReady()
 		Return
 	EndIf
-	If !COG_API.IsPluginLoaded(PluginFile) || !COG_API.IsPluginLoaded(CorePluginFile)
+	If !COG_API.IsPluginLoaded(PluginFile)
 		GizmoGearReceipt = 0
 		GizmoPushReceipt = 0
+		BoundToIcons = False
+		Return
+	EndIf
+	If !COG_API.IsPluginLoaded(CorePluginFile)
+		GizmoGearReceipt = 0
+		GizmoPushReceipt = 0
+		BoundToIcons = False
 		Return
 	EndIf
 	SetupBusy = True
-
-	RegisterGizmos()
+	BoundToIcons = False
+	ArmIconsReadyListener()
 	ArmTickListener()
-
 	SetupBusy = False
 EndFunction
 
+Function ArmIconsReadyListener()
+	; === Example plumbing: ModEvent register (icons) ===
+	If !IconsListenerArmed
+		RegisterForModEvent("COG_Example_IconsReady", "OnIconsReady")
+		IconsListenerArmed = True
+	EndIf
+EndFunction
+
 Function ArmTickListener()
-	; === Example plumbing: ModEvent register ===
+	; === Example plumbing: ModEvent register (tick) ===
 	If !TickArmed
 		RegisterForModEvent("COG_Example_Tick", "OnExampleTick")
 		TickArmed = True
 	EndIf
 EndFunction
 
+Function BindAfterIconsReady()
+	If BoundToIcons || SetupBusy
+		Return
+	EndIf
+	If !COG_API.IsPluginLoaded(PluginFile) || !COG_API.IsPluginLoaded(CorePluginFile)
+		GizmoGearReceipt = 0
+		GizmoPushReceipt = 0
+		BoundToIcons = False
+		Return
+	EndIf
+	SetupBusy = True
+	RegisterGizmos()
+	BoundToIcons = True
+	SetupBusy = False
+EndFunction
+
 Function RegisterGizmos()
 	; === COG API: schema + storage + RegisterGizmo ===
 	; Colours align with Gears 3-stop ramp endpoints; showCount paints the digit beside the icon.
+	; labelTag matches gizmos/<typeId>/translations/_COG.json (not in global COG catalog).
 	String schema = "["
-	schema += "{\"key\":\"zeroColor\",\"kind\":\"color\",\"label\":\"Zero colour\",\"default\":\"#20DF20\"},"
-	schema += "{\"key\":\"tenColor\",\"kind\":\"color\",\"label\":\"Ten colour\",\"default\":\"#DF2020\"},"
-	schema += "{\"key\":\"showCount\",\"kind\":\"bool\",\"label\":\"Show Count\",\"default\":true}"
+	schema += "{\"key\":\"zeroColor\",\"kind\":\"color\",\"label\":\"Zero colour\",\"labelTag\":\"cog-zero-colour\",\"default\":\"#20DF20\"},"
+	schema += "{\"key\":\"tenColor\",\"kind\":\"color\",\"label\":\"Ten colour\",\"labelTag\":\"cog-ten-colour\",\"default\":\"#DF2020\"},"
+	schema += "{\"key\":\"showCount\",\"kind\":\"bool\",\"label\":\"Show Count\",\"labelTag\":\"cog-show-count\",\"default\":true}"
 	schema += "]"
 
 	; Ensure per-type data folders exist (translations ship under gizmos/<typeId>/translations/).

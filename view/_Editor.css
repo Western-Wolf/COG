@@ -719,10 +719,10 @@ body.is-focused #editor {
 	border-radius: 4px;
 	box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55);
 	pointer-events: none;
-	max-width: min(18em, 90vw);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
+	/* Grow with short tips; wrap longer locales (e.g. fr-CA rebind) instead of ellipsis. */
+	width: max-content;
+	max-width: min(28em, 90vw);
+	white-space: normal;
 }
 
 .cog-hover-tip[hidden] {
@@ -807,7 +807,6 @@ body.is-focused #editor {
 .style-row > .check-row {
 	margin-bottom: 0;
 	align-self: flex-end;
-	padding-bottom: 0.35em;
 	font-size: 0.85em;
 }
 
@@ -987,7 +986,11 @@ button.action:hover,
 .style-row {
 	display: flex;
 	flex-wrap: wrap;
-	align-items: flex-start;
+	/*
+	 * Stretch columns to the line height, then pin controls to the bottom
+	 * (margin-top: auto) so a wrapped title cannot push only its own field down.
+	 */
+	align-items: stretch;
 	gap: 0.5em;
 	margin-top: 0.45em;
 }
@@ -1009,10 +1012,16 @@ button.action:hover,
 	color: rgba(244, 240, 228, 0.92);
 }
 
+.style-row > .color-field > .color-controls,
+.style-row > .color-field > .cog-select,
+.style-row > .icon-field > .icon-swatch,
+.style-row > .icon-field > button.icon-swatch {
+	margin-top: auto;
+}
+
 .style-row > label:not(.pos-field) {
 	flex: 0 0 auto;
-	align-self: flex-start;
-	padding-top: 1.35em;
+	align-self: flex-end;
 	display: flex;
 	align-items: center;
 	gap: 0.35em;
@@ -1020,16 +1029,42 @@ button.action:hover,
 	opacity: 0.9;
 }
 
+/*
+ * Label-above fields: width follows the title (not the ellipsized control).
+ * No shrink — prefer wrapping the row over squeezing titles onto multiple lines.
+ */
 .style-row .pos-field.compact {
-	flex: 0 1 10.5em;
+	flex: 0 0 auto;
 	min-width: 8.5em;
-	max-width: 12em;
+	max-width: 100%;
+	width: max-content;
 }
 
 .style-row .pos-field.compact.wide {
-	flex: 0 1 14em;
+	flex: 0 0 auto;
 	min-width: 12em;
-	max-width: 16.5em;
+	max-width: 100%;
+	width: max-content;
+}
+
+/* Controls fill the label-sized column and sit on a shared baseline. */
+.style-row .pos-field.compact > .cog-select,
+.style-row .pos-field.compact > .field-affix,
+.style-row .pos-field.compact > input:not([type="checkbox"]):not([type="radio"]),
+.style-row .pos-field.compact > select {
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+	box-sizing: border-box;
+	margin-top: auto;
+}
+
+.style-row .pos-field.compact > span:first-child,
+.style-row .pos-field.compact > .field-title-row {
+	width: max-content;
+	max-width: 100%;
+	box-sizing: border-box;
+	flex: 0 0 auto;
 }
 
 .pos-field .field-title-row,
@@ -1037,12 +1072,15 @@ button.action:hover,
 	display: inline-flex;
 	align-items: center;
 	gap: 0.55em;
+	flex-wrap: nowrap;
+	max-width: 100%;
 }
 
 .cog-select {
 	position: relative;
 	z-index: 1;
 	width: 100%;
+	min-width: 0;
 	box-sizing: border-box;
 }
 
@@ -1079,7 +1117,9 @@ button.action:hover,
 }
 
 .cog-select-trigger {
-	width: 100%;
+	/* width:0 + min-width:100% → ellipsis inside the field without inflating max-content. */
+	width: 0;
+	min-width: 100%;
 	box-sizing: border-box;
 	font: inherit;
 	font-variant-numeric: tabular-nums;
@@ -1095,6 +1135,8 @@ button.action:hover,
 	height: var(--cog-field-height, 2.15em);
 	cursor: pointer;
 	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 	background-image: linear-gradient(45deg, transparent 50%, #fff 50%), linear-gradient(135deg, #fff 50%, transparent 50%);
 	background-position: calc(100% - 0.85em) 50%, calc(100% - 0.55em) 50%;
 	background-size: 0.3em 0.3em, 0.3em 0.3em;
@@ -1564,13 +1606,14 @@ button.action:hover,
 	margin-top: 0.55em;
 }
 
-/* Display row: Stack / Fill from Hidden / Max Alpha share one mid width. */
+/* Display row: Stack / Fill from Hidden / Max Alpha — size to label, field floor. */
 .group-acc .style-row > .pos-field.compact.mid:has([data-role="stack"]),
 .group-acc .style-row > .pos-field.compact.mid[data-role="fillFromHiddenRow"],
 .group-acc .style-row > .pos-field.compact.mid:has([data-role="maxAlpha"]) {
-	flex: 0 1 9.5em;
+	flex: 0 0 auto;
 	min-width: 8.25em;
-	max-width: 11em;
+	max-width: 100%;
+	width: max-content;
 }
 
 .gear-edit-picker {
@@ -1686,15 +1729,17 @@ button.action:hover,
 }
 
 .style-row .pos-field.compact.mid {
-	flex: 0 1 10.5em;
+	flex: 0 0 auto;
 	min-width: 9em;
-	max-width: 13em;
+	max-width: 100%;
+	width: max-content;
 }
 
 .style-row .pos-field.compact.mid.border-thickness-field {
-	flex: 0 1 12.5em;
+	flex: 0 0 auto;
 	min-width: 11.5em;
-	max-width: 14em;
+	max-width: 100%;
+	width: max-content;
 }
 
 /* Gauge meter endcap art + overlap on their own row; labels share a baseline. */
@@ -1735,6 +1780,7 @@ button.action:hover,
 	flex: 1 1 0;
 	min-width: 0;
 	max-width: none;
+	width: auto;
 }
 
 .style-row.gauge-overlay-row .pos-field.gauge-count-pct {
@@ -1818,6 +1864,32 @@ button.action:hover,
 
 .gizmos-intro {
 	margin: 0 0 0.85em;
+}
+
+/* Pin description; gallery + instances fill remaining height and scroll separately. */
+#tab-body.is-gizmos {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	overflow: hidden;
+}
+
+#tab-body.is-gizmos .gizmos-intro {
+	flex: 0 0 auto;
+}
+
+#tab-body.is-gizmos .gizmos-layout {
+	flex: 1 1 auto;
+	min-height: 0;
+	align-items: stretch;
+	overflow: hidden;
+}
+
+#tab-body.is-gizmos .gizmo-gallery-col,
+#tab-body.is-gizmos .gizmo-list-col {
+	min-height: 0;
+	overflow-x: hidden;
+	overflow-y: auto;
 }
 
 .gizmo-gallery-col {
@@ -2021,6 +2093,7 @@ button.action:hover,
 	flex: 1 1 0;
 	min-width: 0;
 	max-width: none;
+	width: auto;
 }
 
 .gizmo-text-settings .style-row.feed-text-main-row > .pos-field.compact.narrow {
@@ -2028,9 +2101,10 @@ button.action:hover,
 }
 
 .gizmo-text-settings .style-row .pos-field.compact.effects-remaining {
-	flex: 0 1 10em;
+	flex: 0 0 auto;
 	min-width: 9.25em;
-	max-width: 12em;
+	max-width: 100%;
+	width: max-content;
 }
 
 .gizmo-text-settings .style-row .pos-field.compact.effects-remaining > span {
@@ -2051,8 +2125,10 @@ button.action:hover,
 }
 
 .gizmo-text-settings .style-row.feed-effects-controls > .pos-field.compact {
+	flex: 0 0 auto;
 	min-width: 7.5em;
-	max-width: 11em;
+	max-width: 100%;
+	width: max-content;
 }
 
 .gizmo-text-settings .style-row.feed-location-row {
@@ -2386,6 +2462,13 @@ button.action:hover,
 #editor-panel .color-ramp-stops .color-ramp-card .color-ramp-pct .field-affix {
 	width: 5.5em;
 	min-width: 5.5em;
+}
+
+/* Count axis skips the % affix — bare inputs otherwise use UA size≈20 and dwarf the hex. */
+#editor-panel .color-ramp-stops .color-ramp-card .color-ramp-pct > input:not([type="checkbox"]):not([type="radio"]) {
+	width: 5.5em;
+	min-width: 5.5em;
+	box-sizing: border-box;
 }
 
 /* Affix chrome uses its own height; keep card fields on the shared em base. */

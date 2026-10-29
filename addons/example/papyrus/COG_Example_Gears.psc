@@ -1,7 +1,7 @@
 ScriptName COG_Example_Gears extends Quest
 {COG Example Gears — count / percent / timer demo matrix.
  COG API demo: Begin/EndRegister, RegisterGear (icon stops, colour stops, hideAt), Update*.
- Example plumbing: wait for Core ESP, ModEvent COG_Example_Tick receiver.}
+ Example plumbing: wait for COG_Example_IconsReady (not merely Core ESP), then ModEvent tick.}
 
 String Property SourceMod = "COG_Example_Gears" AutoReadOnly
 String Property PluginFile = "COG - Example Gears.esp" AutoReadOnly
@@ -14,7 +14,9 @@ Int Property CountReceipt = 0 Auto
 Int Property PercentReceipt = 0 Auto
 Int Property TimerReceipt = 0 Auto
 Bool Property SetupBusy = False Auto
+Bool Property IconsListenerArmed = False Auto
 Bool Property TickArmed = False Auto
+Bool Property BoundToIcons = False Auto
 
 Event OnInit()
 	RegisterForModEvent("COG_Ready", "OnCOGReady")
@@ -37,9 +39,21 @@ Function GameLoad()
 	Setup()
 EndFunction
 
+; === Example plumbing: icons-ready (import finished) ===
+Event OnIconsReady(String eventName, String strArg, Float numArg, Form sender)
+	BindAfterIconsReady()
+EndEvent
+
 ; === Example plumbing: ModEvent receive ===
 Event OnExampleTick(String eventName, String strArg, Float numArg, Form sender)
 	If !COG_API.IsPluginLoaded(PluginFile) || !COG_API.IsPluginLoaded(CorePluginFile)
+		Return
+	EndIf
+	; Tick bootstrap if IconsReady was missed (listener armed after Core's first notify).
+	If !BoundToIcons
+		BindAfterIconsReady()
+	EndIf
+	If !BoundToIcons
 		Return
 	EndIf
 	Int remaining = numArg as Int
@@ -47,28 +61,59 @@ Event OnExampleTick(String eventName, String strArg, Float numArg, Form sender)
 EndEvent
 
 Function Setup()
-	; === Example plumbing: setup guard (Core must be loaded — icons already imported) ===
+	; === Example plumbing: setup guard (own ESP; icons gate is IconsReady) ===
 	If SetupBusy || !COG_API.IsReady()
 		Return
 	EndIf
-	If !COG_API.IsPluginLoaded(PluginFile) || !COG_API.IsPluginLoaded(CorePluginFile)
+	If !COG_API.IsPluginLoaded(PluginFile)
 		ClearReceipts()
+		BoundToIcons = False
+		Return
+	EndIf
+	If !COG_API.IsPluginLoaded(CorePluginFile)
+		ClearReceipts()
+		BoundToIcons = False
 		Return
 	EndIf
 	SetupBusy = True
 
-	RegisterGears()
+	; Allow re-bind after load; wait for IconsReady (or next tick bootstrap).
+	BoundToIcons = False
+	ArmIconsReadyListener()
 	ArmTickListener()
 
 	SetupBusy = False
 EndFunction
 
+Function ArmIconsReadyListener()
+	; === Example plumbing: ModEvent register (icons) ===
+	If !IconsListenerArmed
+		RegisterForModEvent("COG_Example_IconsReady", "OnIconsReady")
+		IconsListenerArmed = True
+	EndIf
+EndFunction
+
 Function ArmTickListener()
-	; === Example plumbing: ModEvent register ===
+	; === Example plumbing: ModEvent register (tick) ===
 	If !TickArmed
 		RegisterForModEvent("COG_Example_Tick", "OnExampleTick")
 		TickArmed = True
 	EndIf
+EndFunction
+
+Function BindAfterIconsReady()
+	If BoundToIcons || SetupBusy
+		Return
+	EndIf
+	If !COG_API.IsPluginLoaded(PluginFile) || !COG_API.IsPluginLoaded(CorePluginFile)
+		ClearReceipts()
+		BoundToIcons = False
+		Return
+	EndIf
+	SetupBusy = True
+	RegisterGears()
+	BoundToIcons = True
+	SetupBusy = False
 EndFunction
 
 Function ClearReceipts()

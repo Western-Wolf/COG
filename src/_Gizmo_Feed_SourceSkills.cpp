@@ -16,32 +16,15 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
-#include <deque>
 #include <filesystem>
 #include <limits>
 #include <mutex>
-#include <sstream>
 #include <string>
 #include <string_view>
 
 namespace
 {
-	constexpr std::size_t kRingCap = 32;
 	constexpr auto kPendingSkillTtl = std::chrono::milliseconds(750);
-
-	struct SkillEntry
-	{
-		std::uint64_t id = 0;
-		std::string text;
-		std::string kind;
-		std::string icon;
-		std::string skillName;
-	};
-
-	std::mutex g_mutex;
-	std::deque<SkillEntry> g_ring;
-	std::uint64_t g_nextId = 1;
-	std::uint64_t g_flushedId = 0;
 
 	std::mutex g_pendingMutex;
 	RE::ActorValue g_pendingAv = RE::ActorValue::kNone;
@@ -54,35 +37,6 @@ namespace
 	std::filesystem::path SkillIconRulesDir()
 	{
 		return CogGizmoStorage::EnsureDir("cog-feed") / "skills";
-	}
-
-	std::string EscapeJson(std::string_view raw)
-	{
-		std::string out;
-		out.reserve(raw.size() + 8);
-		for (char c : raw) {
-			switch (c) {
-			case '\\':
-				out += "\\\\";
-				break;
-			case '"':
-				out += "\\\"";
-				break;
-			case '\n':
-				out += "\\n";
-				break;
-			case '\r':
-				out += "\\r";
-				break;
-			case '\t':
-				out += "\\t";
-				break;
-			default:
-				out += c;
-				break;
-			}
-		}
-		return out;
 	}
 
 	std::string TranslateHudText(std::string text)
@@ -206,7 +160,7 @@ namespace
 
 		auto& reg = CogRegistry::Get();
 		if (kind == "skill") {
-			if (!reg.HasVisibleFeedShowingSkills()) {
+			if (!reg.HasVisibleFeedShowingSkillProgress()) {
 				ClearPendingSkill();
 				return;
 			}
@@ -238,8 +192,8 @@ namespace
 		if (icon.empty()) {
 			icon = reg.FirstVisibleFeedSetting("showSkills", iconKey, iconFallback);
 		}
-		const auto color = reg.FirstVisibleFeedSetting("showSkills", colorKey, "#e8d2a0");
-		const auto id = CogFeed::Notify(std::move(text), color, std::move(icon), CogFeed::kSourceSkills);
+		// Colour is a feed colour-var name; each Feed instance resolves to its own settings hex.
+		const auto id = CogFeed::Notify(std::move(text), colorKey, std::move(icon), CogFeed::kSourceSkills);
 		CogFeedLog::debug("SkillsFeed: Notify id={} kind={} ", id, kind);
 		if (id != 0) {
 			CogUi::RunOnMainThread([]() { CogFeed::FlushNotificationsToUi(); });
@@ -288,18 +242,28 @@ void CogFeed::LoadSkillIconRules()
 	IconRegistry::LoadDir(SkillIconRulesDir(), g_iconStore, "SkillIcons", IconRegistry::SkillsKinds());
 }
 
-void CogFeed::HandleSkillIncreaseHud(std::string text)
+bool CogFeed::HandleSkillIncreaseHud(std::string text)
 {
+	auto& reg = CogRegistry::Get();
+	// Caller already gates on Skills section; always treat as diverted. Checkboxes gate Feed only.
 	RE::ActorValue av = RE::ActorValue::kNone;
 	const bool isSkill = PeekPendingSkill(av);
-	EnqueueSkillInternal(std::move(text), isSkill ? "skill" : "level");
-	// HUD ProcessMessage is UI-thread; player skills + Prisma Interop go on the main task queue.
-	CogUi::RunOnMainThread([]() { PushLevelProgressToUi(); });
-}
+	if (isSkill) {
+		if (reg.HasVisibleFeedShowingSkillProgress()) {
+			EnqueueSkillInternal(std::move(text), "skill");
+		} else {
+			// Consume pending AV so a later level-up banner isn't misclassified as skill.
+			ClearPendingSkill();
+		}
+	} else if (reg.HasVisibleFeedShowingLevelProgress()) {
+		EnqueueSkillInternal(std::move(text), "level");
+	}
 
-std::vector<std::string> CogFeed::DrainSkillEventsJson()
-{
-	return {};
+	if (reg.HasVisibleFeedShowingLevelProgress()) {
+		// HUD ProcessMessage is UI-thread; player skills + Prisma Interop go on the main task queue.
+		CogUi::RunOnMainThread([]() { PushLevelProgressToUi(); });
+	}
+	return true;
 }
 
 void CogFeed::ClearLevelProgressIfHidden()
@@ -334,16 +298,12 @@ void CogFeed::PushLevelProgressToUi()
 		xp == g_levelProgressLastXp && threshold == g_levelProgressLastThreshold) {
 		return;
 	}
-	const auto color = CogRegistry::Get().FirstVisibleFeedSetting(
-		"showSkills",
-		"levelProgressColor",
-		"#e8d2a0");
 	std::string message = "Level ";
 	message += std::to_string(static_cast<unsigned>(level));
 
 	g_levelProgressReceipt = Notify(
 		std::move(message),
-		color,
+		"levelProgressColor",
 		{},
 		kSourceSkills,
 		xp,

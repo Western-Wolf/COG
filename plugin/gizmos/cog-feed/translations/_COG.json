@@ -5,7 +5,7 @@
   },
   "cog-feed-effects-hint": {
     "en-CA": "Timed player effects only. They stay until the timer ends, then fade. Timer min/max are under Progress Bar.",
-    "fr-CA": "Effets temporisés du joueur uniquement. Ils persistent jusqu'à la fin du minuteur, puis disparaissent. Min/max de minuterie sous Barre de progression."
+    "fr-CA": "Effets temporisés du joueur uniquement. Ils restent jusqu'à la fin de la minuterie, puis s'estompent. Min/max de la minuterie : sous Barre de progression."
   },
   "cog-feed-icon-rules": {
     "en-CA": "Rules controlling icons can be found in {folder}.",
@@ -39,16 +39,8 @@
     "en-CA": "When enabled, this section hides {targets}.",
     "fr-CA": "Lorsque cette section est activée, elle masque {targets}."
   },
-  "cog-feed-skills-hide-note-both": {
-    "en-CA": "When enabled, this section diverts skill / level-up banners from hud.questUpdates. Level Up Menu is never blocked.",
-    "fr-CA": "Lorsque cette section est activée, elle détourne les bandeaux de compétences / montée de niveau de hud.questUpdates. Le menu de montée de niveau n'est jamais bloqué."
-  },
-  "cog-feed-skills-hide-note-skill": {
-    "en-CA": "When enabled, this section diverts skill banners from hud.questUpdates. Level Up Menu is never blocked.",
-    "fr-CA": "Lorsque cette section est activée, elle détourne les bandeaux de compétences de hud.questUpdates. Le menu de montée de niveau n'est jamais bloqué."
-  },
-  "cog-feed-skills-hide-note-level": {
-    "en-CA": "When enabled, this section diverts level-up banners from hud.questUpdates. Level Up Menu is never blocked.",
-    "fr-CA": "Lorsque cette section est activée, elle détourne les bandeaux de montée de niveau de hud.questUpdates. Le menu de montée de niveau n'est jamais bloqué."
+  "cog-feed-skills-hide-note": {
+    "en-CA": "When enabled, this section soft-hides hud.questUpdates (skill-up and level-up banners share that clip). Skill Progress and Level Progress only control what appears in this Feed. Level Up Menu is never blocked.",
+    "fr-CA": "Lorsque cette section est activée, elle masque en douceur hud.questUpdates (les bandeaux de montée de compétence et de niveau partagent ce clip). Progression de compétence et Progression de niveau ne contrôlent que ce qui s'affiche dans ce Feed. Le menu de montée de niveau n'est jamais bloqué."
   }
 }

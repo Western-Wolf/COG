@@ -557,11 +557,6 @@ function tagFrameSlotOptions(select) {
 	return tagSelectOptions(select, FRAME_SLOT_OPTION_TAGS);
 }
 
-function normalizeNumberFormatGauge(value) {
-	const raw = String(value || "").trim();
-	return NUMBER_FORMATS.includes(raw) ? raw : "barPercent";
-}
-
 function normalizeGaugeShape(value) {
 	const s = String(value || "").toLowerCase();
 	return s === "arc" ? "arc" : "bar";
@@ -802,7 +797,7 @@ function ensureGauge(gauge) {
 		bag.alwaysVisible = !!bag.alwaysVisible;
 	}
 	bag.barTrough = bag.barTrough === true;
-	bag.numberFormat = normalizeNumberFormatGauge(bag.numberFormat);
+	bag.numberFormat = normalizeNumberFormat(bag.numberFormat, "barPercent");
 	bag.pictureIcon = String(bag.pictureIcon || "").trim() || defaultPictureIconPath();
 	bag.pictureDirection = normalizePictureDirection(bag.pictureDirection);
 	bag.pictureRotation = Number(bag.pictureRotation) || 0;

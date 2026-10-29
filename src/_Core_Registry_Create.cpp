@@ -336,7 +336,12 @@ std::int32_t CogRegistry::Register(
 		}
 	}
 	OfferDefaultGearUnlocked(src.sourceMod, src.varName);
-	SaveConfigUnlocked();
+	// BeginRegister…EndRegister: defer disk write; FlushBatchCommit / EndRegister / PushToUi commit once.
+	if (_modBatchOpen.contains(src.sourceMod)) {
+		_batchCommitPending = true;
+	} else {
+		SaveConfigUnlocked();
+	}
 	return receipt;
 }
 
@@ -584,7 +589,7 @@ void CogRegistry::EnsureBuiltinSources()
 	Register("COG.Builtin", "CarryWeight", "percent", "Carry Weight", "Stat", "Camping/backpack.svg", "#ffffff");
 	Register("COG.Builtin", "Arrows", "count", "Arrows (Equipped)", "Equipment", "Weapons/arrows.svg", "#ffffff", "", "", "<0.01", "hud.ammo", true);
 	Register("COG.Builtin", "Bolts", "count", "Bolts (Equipped)", "Equipment", "Weapons/quiver.svg", "#ffffff", "", "", "<0.01", "hud.ammo", true);
-	Register("COG.Builtin", "Werewolf", "timer", "Transformation", "Werewolf", "Werewolf/wolf.svg", "#ffffff", "", "#EEEEFF");
+	Register("COG.Builtin", "Werewolf", "timer", "Transformation", "Werewolf", "Werewolf/wolf.svg", "#ffffff", "", "#777780");
 	Register("COG.Builtin", "VampiricHunger", "percent", "Vampiric Hunger", "Vampire", "Vampire/fangs.svg", "#ffffff", "", "", "<0.01");
 	Register("COG.Builtin", "Oxygen", "timer", "Oxygen", "Survival", "Survival/oxygen.svg", "#ffffff", "", "#44DDCC", "", "hud.oxygen", true);
 	Register("COG.Builtin", "BowDraw", "percent", "Bow Draw", "Charge", "Weapons/bow.svg", "#ffffff", "", "#AA6633", "<0.01", "hud.casting", true);
@@ -704,63 +709,57 @@ void CogRegistry::OfferDefaultGearUnlocked(const std::string& mod, const std::st
 
 
 
-void CogRegistry::SetViewReady(bool ready)
+void CogRegistry::OnViewReady()
 {
+	int feedCount = 0;
+	int feedVisible = 0;
+	std::string visibleDetail;
 	{
 		std::lock_guard lock(_mutex);
-		_viewReady = ready;
-	}
-	if (ready) {
-		int feedCount = 0;
-		int feedVisible = 0;
-		std::string visibleDetail;
-		{
-			std::lock_guard lock(_mutex);
-			for (const auto& g : _gizmos) {
-				if (NormalizeGizmoType(g.typeId) != "cog-feed") {
-					continue;
-				}
-				++feedCount;
-				if (!GizmoIsPlayActive(g)) {
-					continue;
-				}
-				++feedVisible;
-				if (!visibleDetail.empty()) {
-					visibleDetail += "; ";
-				}
-				std::ostringstream one;
-				one << "id=\"" << g.id << "\" displayName=\"" << CogRegistryJson::GizmoDisplayName(g)
-					<< "\" visibility=" << g.visibility
-					<< " notif=" << (GizmoSettingsBool(g, "showNotifications", false) ? 1 : 0)
-					<< " inv=" << (GizmoSettingsBool(g, "showInventory", false) ? 1 : 0)
-					<< " loc=" << (GizmoSettingsBool(g, "showLocation", false) ? 1 : 0)
-					<< " discovery=" << (GizmoSettingsBool(g, "showLocationDiscovery", true) ? 1 : 0)
-					<< " current=" << (GizmoSettingsBool(g, "showCurrentLocation", true) ? 1 : 0)
-					<< " icons=" << (GizmoSettingsBool(g, "showLocationIcons", true) ? 1 : 0)
-					<< " x=" << std::fixed << std::setprecision(3) << g.display.x << " y=" << g.display.y;
-				visibleDetail += one.str();
+		for (const auto& g : _gizmos) {
+			if (NormalizeGizmoType(g.typeId) != "cog-feed") {
+				continue;
 			}
+			++feedCount;
+			if (!GizmoIsPlayActive(g)) {
+				continue;
+			}
+			++feedVisible;
+			if (!visibleDetail.empty()) {
+				visibleDetail += "; ";
+			}
+			std::ostringstream one;
+			one << "id=\"" << g.id << "\" displayName=\"" << CogRegistryJson::GizmoDisplayName(g)
+				<< "\" visibility=" << g.visibility
+				<< " notif=" << (GizmoSettingsBool(g, "showNotifications", false) ? 1 : 0)
+				<< " inv=" << (GizmoSettingsBool(g, "showInventory", false) ? 1 : 0)
+				<< " loc=" << (GizmoSettingsBool(g, "showLocation", false) ? 1 : 0)
+				<< " discovery=" << (GizmoSettingsBool(g, "showLocationDiscovery", true) ? 1 : 0)
+				<< " current=" << (GizmoSettingsBool(g, "showCurrentLocation", true) ? 1 : 0)
+				<< " icons=" << (GizmoSettingsBool(g, "showLocationIcons", true) ? 1 : 0)
+				<< " x=" << std::fixed << std::setprecision(3) << g.display.x << " y=" << g.display.y;
+			visibleDetail += one.str();
 		}
-		if (visibleDetail.empty()) {
-			logger::info("Feed: view ready — {} feed gizmo(s), {} visible", feedCount, feedVisible);
-		} else {
-			logger::info(
-				"Feed: view ready — {} feed gizmo(s), {} visible [{}]",
-				feedCount,
-				feedVisible,
-				visibleDetail);
-		}
-		logger::info(
-			"Feed: divert armed — notifications={} inventory={} locationDiscovery={} currentLocation={} skillProgress={} levelProgress={}",
-			HasVisibleFeedShowingNotifications(),
-			HasVisibleFeedShowingInventory(),
-			HasVisibleFeedDivertingLocationDiscovery(),
-			HasVisibleFeedDivertingCurrentLocation(),
-			HasVisibleFeedShowingSkills(),
-			HasVisibleFeedShowingLevelProgress());
-		MarkCatalogDirty();
-		CogFeed::PushPendingFeedEventsToUi();
 	}
+	if (visibleDetail.empty()) {
+		logger::info("Feed: view ready — {} feed gizmo(s), {} visible", feedCount, feedVisible);
+	} else {
+		logger::info(
+			"Feed: view ready — {} feed gizmo(s), {} visible [{}]",
+			feedCount,
+			feedVisible,
+			visibleDetail);
+	}
+	logger::info(
+		"Feed: divert armed — notifications={} inventory={} locationDiscovery={} currentLocation={} skillsSection={} skillProgress={} levelProgress={}",
+		HasVisibleFeedShowingNotifications(),
+		HasVisibleFeedShowingInventory(),
+		HasVisibleFeedDivertingLocationDiscovery(),
+		HasVisibleFeedDivertingCurrentLocation(),
+		HasVisibleFeedShowingSkills(),
+		HasVisibleFeedShowingSkillProgress(),
+		HasVisibleFeedShowingLevelProgress());
+	MarkCatalogDirty();
+	CogFeed::PushPendingFeedEventsToUi();
 }
-
 
