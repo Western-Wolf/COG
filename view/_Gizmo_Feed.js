@@ -2054,7 +2054,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 	const gid = gizmo.id;
 	const live = () => gizmoFor(gid) || gizmo;
 	const feedStorage =
-		typeof CogGizmoStorage === "function" ? CogGizmoStorage("cog-feed") : "gizmos/cog-feed";
+		typeof CogGizmoStorage === "function" ? CogGizmoStorage("cog-feed") : "gizmoTypes/cog-feed";
 
 	const intro = document.createElement("p");
 	intro.className = "hint";
@@ -2094,7 +2094,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		<option value="center">Center</option>
 		<option value="right">Right</option>
 	</select>`;
-	tagFieldLabel(alignField, "cog-align", "Align");
+	tagFieldLabel(alignField, "cog-feed-align", "Align", FEED_TYPE_ID);
 	const alignSel = alignField.querySelector("select");
 	tagSelectOptions(alignSel, {
 		left: ["cog-left", "Left"],
@@ -2113,7 +2113,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		<option value="left">Left</option>
 		<option value="right">Right</option>
 	</select>`;
-	tagFieldLabel(iconPlaceField, "cog-icons", "Icons");
+	tagFieldLabel(iconPlaceField, "cog-feed-icons", "Icons", FEED_TYPE_ID);
 	const iconPlaceSel = iconPlaceField.querySelector("select");
 	tagSelectOptions(iconPlaceSel, {
 		left: ["cog-left", "Left"],
@@ -2149,7 +2149,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 	const maxField = document.createElement("label");
 	maxField.className = "pos-field compact narrow";
 	maxField.innerHTML = `<span>Max</span><input type="number" min="1" max="20" step="1" data-role="maxVisible">`;
-	tagFieldLabel(maxField, "cog-max", "Max");
+	tagFieldLabel(maxField, "cog-feed-max", "Max", FEED_TYPE_ID);
 	const maxInput = maxField.querySelector("input");
 	maxInput.value = String(gizmo.settings.maxVisible);
 	bindNumberField(maxInput, {
@@ -2169,7 +2169,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		<option value="bottom">Bottom</option>
 		<option value="top">Top</option>
 	</select>`;
-	tagFieldLabel(stackField, "cog-add-from", "Add from");
+	tagFieldLabel(stackField, "cog-feed-add-from", "Add from", FEED_TYPE_ID);
 	const stackSel = stackField.querySelector("select");
 	tagSelectOptions(stackSel, {
 		bottom: ["cog-bottom", "Bottom"],
@@ -2184,7 +2184,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 	const durField = document.createElement("label");
 	durField.className = "pos-field compact";
 	durField.innerHTML = `<span>Persist</span><input type="text" data-role="durationSec" inputmode="decimal">`;
-	tagFieldLabel(durField, "cog-persist", "Persist");
+	tagFieldLabel(durField, "cog-feed-persist", "Persist", FEED_TYPE_ID);
 	const durInput = durField.querySelector("input");
 	durInput.value = (gizmo.settings.durationMs / 1000).toFixed(3);
 	bindNumberField(durInput, {
@@ -2228,7 +2228,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 	const fadeLede = document.createElement("p");
 	fadeLede.className = "lede";
 	if (typeof setTranslatedText === "function") {
-		setTranslatedText(fadeLede, "cog-backdrop-fade", "Backdrop Fade");
+		setTranslatedText(fadeLede, "cog-feed-backdrop-fade", "Backdrop Fade", FEED_TYPE_ID);
 	} else {
 		fadeLede.textContent = "Backdrop Fade";
 	}
@@ -2238,8 +2238,9 @@ function fillFeedGizmoEditor(panel, gizmo) {
 	if (typeof setTranslatedText === "function") {
 		setTranslatedText(
 			fadeHint,
-			"cog-backdrop-fade-hint",
-			"Soft gradient behind each message. Setting opacity to 0 disables."
+			"cog-feed-backdrop-fade-hint",
+			"Soft gradient behind each message. Setting opacity to 0 disables.",
+			FEED_TYPE_ID
 		);
 	} else {
 	fadeHint.textContent =
@@ -2256,13 +2257,13 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		(hex, live) => patchGizmo(gid, { backdropColor: hex }, false, live)
 	);
 	backdropColor.classList.add("compact");
-	tagFieldLabel(backdropColor, "cog-fade-colour", "Fade colour");
+	tagFieldLabel(backdropColor, "cog-feed-fade-colour", "Fade colour", FEED_TYPE_ID);
 	backdropRow.appendChild(backdropColor);
 
 	const opacityField = document.createElement("label");
 	opacityField.className = "pos-field compact";
 	opacityField.innerHTML = `<span>Opacity</span><input type="number" min="0" max="100" step="0.001" data-role="backdropOpacity">`;
-	tagFieldLabel(opacityField, "cog-opacity", "Opacity");
+	tagFieldLabel(opacityField, "cog-feed-opacity", "Opacity", FEED_TYPE_ID);
 	const opacityInput = opacityField.querySelector("input");
 	opacityInput.value = fmtPct(gizmo.settings.backdropOpacity);
 	bindNumberField(opacityInput, {
@@ -2286,7 +2287,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		<option value="down">Down</option>
 		<option value="center">Center</option>
 	</select>`;
-	tagFieldLabel(dirField, "cog-direction", "Direction");
+	tagFieldLabel(dirField, "cog-feed-direction", "Direction", FEED_TYPE_ID);
 	const dirSel = dirField.querySelector("select");
 	tagSelectOptions(dirSel, {
 		up: ["cog-up", "Up"],
@@ -2307,7 +2308,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 	const progressLede = document.createElement("p");
 	progressLede.className = "lede";
 	if (typeof setTranslatedText === "function") {
-		setTranslatedText(progressLede, "cog-progress-bar", "Progress Bar");
+		setTranslatedText(progressLede, "cog-feed-progress-bar", "Progress Bar", FEED_TYPE_ID);
 	} else {
 		progressLede.textContent = "Progress Bar";
 	}
@@ -2317,8 +2318,9 @@ function fillFeedGizmoEditor(panel, gizmo) {
 	if (typeof setTranslatedText === "function") {
 		setTranslatedText(
 			progressHint,
-			"cog-progress-bar-hint",
-			"Shared bar colour, width, number format, and timer window for Active Effects and Skills Level Progress."
+			"cog-feed-progress-bar-hint",
+			"Shared bar colour, width, number format, and timer window for Active Effects and Skills Level Progress.",
+			FEED_TYPE_ID
 		);
 	} else {
 		progressHint.textContent =
@@ -2334,12 +2336,12 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		(hex, live) => patchGizmo(gid, { barColor: hex }, false, live)
 	);
 	barColorField.classList.add("compact");
-	tagFieldLabel(barColorField, "cog-bar-colour", "Bar Colour");
+	tagFieldLabel(barColorField, "cog-feed-bar-colour", "Bar Colour", FEED_TYPE_ID);
 	progressRow.appendChild(barColorField);
 	const barWidthField = document.createElement("label");
 	barWidthField.className = "pos-field compact";
 	barWidthField.innerHTML = `<span>Bar Width</span><input type="number" min="5" max="100" step="0.001" data-role="progressBarWidth">`;
-	tagFieldLabel(barWidthField, "cog-bar-width", "Bar Width");
+	tagFieldLabel(barWidthField, "cog-feed-bar-width", "Bar Width", FEED_TYPE_ID);
 	const barWidthInput = barWidthField.querySelector("input");
 	barWidthInput.value = fmtPct(gizmo.settings.progressBarWidth);
 	bindNumberField(barWidthInput, {
@@ -2363,13 +2365,17 @@ function fillFeedGizmoEditor(panel, gizmo) {
 	</select>`;
 	tagFieldLabel(numberFormatField, "cog-number-format", "Number Format");
 	const numberFormatSel = numberFormatField.querySelector("select");
-	tagSelectOptions(numberFormatSel, {
-		bar: ["cog-number-format-bar", "Show bar"],
-		barPercent: ["cog-number-format-bar-percent", "Show bar and percentage"],
-		barTotal: ["cog-number-format-bar-total", "Show bar and value"],
-		percent: ["cog-number-format-percent", "Show percentage"],
-		total: ["cog-number-format-total", "Show value"]
-	});
+	tagSelectOptions(
+		numberFormatSel,
+		{
+			bar: ["cog-number-format-bar", "Show bar"],
+			barPercent: ["cog-number-format-bar-percent", "Show bar and percentage"],
+			barTotal: ["cog-feed-number-format-bar-total", "Show bar and value"],
+			percent: ["cog-number-format-percent", "Show percentage"],
+			total: ["cog-feed-number-format-total", "Show value"]
+		},
+		FEED_TYPE_ID
+	);
 	numberFormatSel.value = normalizeNumberFormat(gizmo.settings.numberFormat, DEFAULT_FEED_NUMBER_FORMAT);
 	numberFormatSel.addEventListener("change", () => {
 		patchGizmo(gid, { numberFormat: normalizeNumberFormat(numberFormatSel.value, DEFAULT_FEED_NUMBER_FORMAT) });
@@ -2381,7 +2387,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 	const timerMinField = document.createElement("label");
 	timerMinField.className = "pos-field compact effects-remaining";
 	timerMinField.innerHTML = `<span>Min remaining</span><input type="number" min="0" max="600" step="1" data-role="timerMinSec">`;
-	tagFieldLabel(timerMinField, "cog-min-remaining", "Min remaining");
+	tagFieldLabel(timerMinField, "cog-feed-min-remaining", "Min remaining", FEED_TYPE_ID);
 	const timerMinInput = timerMinField.querySelector("input");
 	timerMinInput.value = fmtDec(gizmo.settings.timerMinSec, 0);
 	bindNumberField(timerMinInput, {
@@ -2394,7 +2400,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 	const timerMaxField = document.createElement("label");
 	timerMaxField.className = "pos-field compact effects-remaining";
 	timerMaxField.innerHTML = `<span>Max remaining</span><input type="number" min="0" max="3600" step="10" data-role="timerMaxSec">`;
-	tagFieldLabel(timerMaxField, "cog-max-remaining", "Max remaining");
+	tagFieldLabel(timerMaxField, "cog-feed-max-remaining", "Max remaining", FEED_TYPE_ID);
 	const timerMaxInput = timerMaxField.querySelector("input");
 	timerMaxInput.value = fmtDec(gizmo.settings.timerMaxSec, 0);
 	bindNumberField(timerMaxInput, {
@@ -2415,7 +2421,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 	const sourcesLede = document.createElement("p");
 	sourcesLede.className = "lede";
 	if (typeof setTranslatedText === "function") {
-		setTranslatedText(sourcesLede, "cog-sources", "Sources");
+		setTranslatedText(sourcesLede, "cog-feed-sources", "Sources", FEED_TYPE_ID);
 	} else {
 		sourcesLede.textContent = "Sources";
 	}
@@ -2432,7 +2438,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		field.appendChild(document.createTextNode(" "));
 		const span = document.createElement("span");
 		if (typeof setTranslatedText === "function") {
-			setTranslatedText(span, tag, fallback);
+			setTranslatedText(span, tag, fallback, undefined, FEED_TYPE_ID);
 		} else {
 			span.textContent = fallback;
 		}
@@ -2443,31 +2449,31 @@ function fillFeedGizmoEditor(panel, gizmo) {
 	sourcesRow.className = "style-row";
 	const { field: notifField, input: notifInput } = appendSourceCheck(
 		"showNotifications",
-		"cog-notifications",
+		"cog-feed-notifications",
 		"Notifications",
 		gizmo.settings.showNotifications === true
 	);
 	const { field: invField, input: invInput } = appendSourceCheck(
 		"showInventory",
-		"cog-inventory",
+		"cog-feed-inventory",
 		"Inventory",
 		gizmo.settings.showInventory === true
 	);
 	const { field: locField, input: locInput } = appendSourceCheck(
 		"showLocation",
-		"cog-location",
+		"cog-feed-location",
 		"Location",
 		gizmo.settings.showLocation === true
 	);
 	const { field: fxField, input: fxInput } = appendSourceCheck(
 		"showActiveEffects",
-		"cog-active-effects",
+		"cog-feed-active-effects",
 		"Active Effects",
 		gizmo.settings.showActiveEffects === true
 	);
 	const { field: skillsField, input: skillsInput } = appendSourceCheck(
 		"showSkills",
-		"cog-skills",
+		"cog-feed-skills",
 		"Skills",
 		gizmo.settings.showSkills === true
 	);
@@ -2523,7 +2529,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		const fxLede = document.createElement("p");
 		fxLede.className = "lede";
 		if (typeof setTranslatedText === "function") {
-			setTranslatedText(fxLede, "cog-active-effects", "Active Effects");
+			setTranslatedText(fxLede, "cog-feed-active-effects", "Active Effects", FEED_TYPE_ID);
 		} else {
 			fxLede.textContent = "Active Effects";
 		}
@@ -2554,7 +2560,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 			field.appendChild(document.createTextNode(" "));
 			const span = document.createElement("span");
 			if (typeof setTranslatedText === "function") {
-				setTranslatedText(span, tag, fallback);
+				setTranslatedText(span, tag, fallback, undefined, FEED_TYPE_ID);
 			} else {
 				span.textContent = fallback;
 			}
@@ -2580,7 +2586,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		fxRow.appendChild(
 			makeFxCheck(
 				"showEffectText",
-				"cog-show-text",
+				"cog-feed-show-text",
 				"Show text",
 				gizmo.settings.showEffectText !== false,
 				"showEffectText"
@@ -2589,7 +2595,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		fxRow.appendChild(
 			makeFxCheck(
 				"showEffectTimer",
-				"cog-show-timer",
+				"cog-feed-show-timer",
 				"Show timer",
 				gizmo.settings.showEffectTimer !== false,
 				"showEffectTimer"
@@ -2598,7 +2604,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		fxRow.appendChild(
 			makeFxCheck(
 				"showEffectIcons",
-				"cog-show-icons",
+				"cog-feed-show-icons",
 				"Show Icons",
 				gizmo.settings.showEffectIcons === true,
 				"showEffectIcons"
@@ -2611,7 +2617,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		transformRow.appendChild(
 			makeFxCheck(
 				"suppressTransformEffects",
-				"cog-suppress-transform-effects",
+				"cog-feed-suppress-transform-effects",
 				"Suppress Werewolf/Vampire transformation effects",
 				gizmo.settings.suppressTransformEffects !== false,
 				"suppressTransformEffects"
@@ -2625,14 +2631,14 @@ function fillFeedGizmoEditor(panel, gizmo) {
 			label: "Default Icon",
 			value: gizmo.settings.effectIcon || DEFAULT_FEED_EFFECT_ICON,
 			showName: true,
-			clearLabel: typeof t === "function" ? t("cog-use-default", "Use default") : "Use default",
+			clearLabel: typeof t === "function" ? t("cog-feed-use-default", "Use default", FEED_TYPE_ID) : "Use default",
 			onCommit: (icon) => {
 				patchGizmo(gid, {
 					effectIcon: normalizeFeedEffectIcon(icon || DEFAULT_FEED_EFFECT_ICON)
 				});
 			}
 		});
-		tagFieldLabel(fxIconCtrl, "cog-default-icon", "Default Icon");
+		tagFieldLabel(fxIconCtrl, "cog-feed-default-icon", "Default Icon", FEED_TYPE_ID);
 		iconRow.appendChild(fxIconCtrl);
 		fxSection.appendChild(iconRow);
 
@@ -2648,7 +2654,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		const invDefaultsLede = document.createElement("p");
 		invDefaultsLede.className = "lede";
 		if (typeof setTranslatedText === "function") {
-			setTranslatedText(invDefaultsLede, "cog-inventory", "Inventory");
+			setTranslatedText(invDefaultsLede, "cog-feed-inventory", "Inventory", FEED_TYPE_ID);
 		} else {
 			invDefaultsLede.textContent = "Inventory";
 		}
@@ -2681,7 +2687,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 			(hex, live) => patchGizmo(gid, { stolenColor: hex }, false, live)
 		);
 		stolenColor.classList.add("compact");
-		tagFieldLabel(stolenColor, "cog-stolen", "Stolen");
+		tagFieldLabel(stolenColor, "cog-feed-stolen", "Stolen", FEED_TYPE_ID);
 		colorRow.appendChild(stolenColor);
 		invDefaults.appendChild(colorRow);
 
@@ -2691,12 +2697,12 @@ function fillFeedGizmoEditor(panel, gizmo) {
 			label: "Default Icon",
 			value: gizmo.settings.icon || DEFAULT_FEED_INVENTORY_ICON,
 			showName: true,
-			clearLabel: typeof t === "function" ? t("cog-use-default", "Use default") : "Use default",
+			clearLabel: typeof t === "function" ? t("cog-feed-use-default", "Use default", FEED_TYPE_ID) : "Use default",
 			onCommit: (icon) => {
 				patchGizmo(gid, { icon: normalizeFeedInventoryIcon(icon || DEFAULT_FEED_INVENTORY_ICON) });
 			}
 		});
-		tagFieldLabel(invIcon, "cog-default-icon", "Default Icon");
+		tagFieldLabel(invIcon, "cog-feed-default-icon", "Default Icon", FEED_TYPE_ID);
 		iconRow.appendChild(invIcon);
 		const invIconsField = document.createElement("label");
 		invIconsField.className = "check-row compact";
@@ -2708,7 +2714,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		invIconsField.appendChild(document.createTextNode(" "));
 		const invIconsSpan = document.createElement("span");
 		if (typeof setTranslatedText === "function") {
-			setTranslatedText(invIconsSpan, "cog-show-icons", "Show Icons");
+			setTranslatedText(invIconsSpan, "cog-feed-show-icons", "Show Icons", FEED_TYPE_ID);
 		} else {
 			invIconsSpan.textContent = "Show Icons";
 		}
@@ -2732,13 +2738,13 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		const locLede = document.createElement("p");
 		locLede.className = "lede";
 		if (typeof setTranslatedText === "function") {
-			setTranslatedText(locLede, "cog-location", "Location");
+			setTranslatedText(locLede, "cog-feed-location", "Location", FEED_TYPE_ID);
 		} else {
 			locLede.textContent = "Location";
 		}
 		locDefaults.appendChild(locLede);
 
-		const useDefaultLabel = typeof t === "function" ? t("cog-use-default", "Use default") : "Use default";
+		const useDefaultLabel = typeof t === "function" ? t("cog-feed-use-default", "Use default", FEED_TYPE_ID) : "Use default";
 		const makeLocationIconRow = (colorValue, colorFallback, iconValue, normalizeIcon, patchColor, patchIcon) => {
 			const row = document.createElement("div");
 			row.className = "style-row feed-location-row is-nested";
@@ -2790,7 +2796,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 			field.appendChild(document.createTextNode(" "));
 			const span = document.createElement("span");
 			if (typeof setTranslatedText === "function") {
-				setTranslatedText(span, tag, fallback);
+				setTranslatedText(span, tag, fallback, undefined, FEED_TYPE_ID);
 			} else {
 				span.textContent = fallback;
 			}
@@ -2819,7 +2825,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 			optionalHex(gizmo.settings.textColor) || DEFAULT_GIZMO_GOLD;
 		appendLocationType(
 			"showLocationDiscovery",
-			"cog-location-discovery",
+			"cog-feed-location-discovery",
 			"Location Discovery",
 			gizmo.settings.showLocationDiscovery !== false,
 			"showLocationDiscovery",
@@ -2832,7 +2838,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		);
 		appendLocationType(
 			"showCurrentLocation",
-			"cog-current-location",
+			"cog-feed-current-location",
 			"Current Location",
 			gizmo.settings.showCurrentLocation !== false,
 			"showCurrentLocation",
@@ -2854,7 +2860,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		locIconsField.appendChild(document.createTextNode(" "));
 		const locIconsSpan = document.createElement("span");
 		if (typeof setTranslatedText === "function") {
-			setTranslatedText(locIconsSpan, "cog-show-icons", "Show Icons");
+			setTranslatedText(locIconsSpan, "cog-feed-show-icons", "Show Icons", FEED_TYPE_ID);
 		} else {
 			locIconsSpan.textContent = "Show Icons";
 		}
@@ -2887,7 +2893,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		const notifLede = document.createElement("p");
 		notifLede.className = "lede";
 		if (typeof setTranslatedText === "function") {
-			setTranslatedText(notifLede, "cog-notifications", "Notifications");
+			setTranslatedText(notifLede, "cog-feed-notifications", "Notifications", FEED_TYPE_ID);
 		} else {
 			notifLede.textContent = "Notifications";
 		}
@@ -2909,7 +2915,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 			label: "Icon",
 			value: gizmo.settings.notificationIcon || DEFAULT_FEED_NOTIFICATION_ICON,
 			showName: true,
-			clearLabel: typeof t === "function" ? t("cog-use-default", "Use default") : "Use default",
+			clearLabel: typeof t === "function" ? t("cog-feed-use-default", "Use default", FEED_TYPE_ID) : "Use default",
 			onCommit: (icon) => {
 				patchGizmo(gid, {
 					notificationIcon: normalizeFeedNotificationIcon(icon || DEFAULT_FEED_NOTIFICATION_ICON)
@@ -2929,7 +2935,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		iconsField.appendChild(document.createTextNode(" "));
 		const iconsSpan = document.createElement("span");
 		if (typeof setTranslatedText === "function") {
-			setTranslatedText(iconsSpan, "cog-show-icons", "Show Icons");
+			setTranslatedText(iconsSpan, "cog-feed-show-icons", "Show Icons", FEED_TYPE_ID);
 		} else {
 			iconsSpan.textContent = "Show Icons";
 		}
@@ -2953,15 +2959,12 @@ function fillFeedGizmoEditor(panel, gizmo) {
 			suppressTitle.className = "field-title-row";
 			const suppressLabel = document.createElement("span");
 			if (typeof setTranslatedText === "function") {
-				setTranslatedText(suppressLabel, "cog-suppress-inventory", "Suppress inventory");
+				setTranslatedText(suppressLabel, "cog-feed-suppress-inventory", "Suppress inventory", FEED_TYPE_ID);
 			} else {
 				suppressLabel.textContent = "Suppress inventory";
 			}
 			suppressTitle.appendChild(suppressLabel);
-			const suppressTip = makeInfoTip(
-				"When on, inventory-style notification toasts are suppressed (not shown on the vanilla HUD or in this Notifications feed) while Notifications are active. Many activators and containers fire those even when you are not looting — leave this on unless you want them on the vanilla HUD. The Inventory section tracks real item changes separately.",
-				"cog-suppress-inventory-tip"
-			);
+			const suppressTip = makeInfoTip("When on, inventory-style notification toasts are suppressed (not shown on the vanilla HUD or in this Notifications feed) while Notifications are active. Many activators and containers fire those even when you are not looting — leave this on unless you want them on the vanilla HUD. The Inventory section tracks real item changes separately.", "cog-feed-suppress-inventory-tip", FEED_TYPE_ID);
 			suppressTitle.appendChild(suppressTip);
 			suppressField.appendChild(suppressInput);
 			suppressField.appendChild(suppressTitle);
@@ -2985,12 +2988,12 @@ function fillFeedGizmoEditor(panel, gizmo) {
 			title.className = "field-title-row";
 			const labelSpan = document.createElement("span");
 			if (typeof setTranslatedText === "function") {
-				setTranslatedText(labelSpan, tag, fallback);
+				setTranslatedText(labelSpan, tag, fallback, undefined, FEED_TYPE_ID);
 			} else {
 				labelSpan.textContent = fallback;
 			}
 			title.appendChild(labelSpan);
-			const tip = makeInfoTip(tipFallback, tipTag);
+			const tip = makeInfoTip(tipFallback, tipTag, FEED_TYPE_ID);
 			title.appendChild(tip);
 			field.appendChild(input);
 			field.appendChild(title);
@@ -3004,10 +3007,10 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		notifSection.appendChild(
 			makeOverrideCheck(
 				"allowModNotificationIcon",
-				"cog-allow-mods-choose-icon",
+				"cog-feed-allow-mods-choose-icon",
 				"Allow Mods to Choose Icon",
 				gizmo.settings.allowModNotificationIcon !== false,
-				"cog-allow-mods-choose-icon-tip",
+				"cog-feed-allow-mods-choose-icon-tip",
 				"When on, mods can use COG_Feed_API.Notify (or legacy COG_API.Notify) to supply a per-message icon path under assets/icons/. When off, every message uses the Notifications icon (if Show icons is on).",
 				"allowModNotificationIcon"
 			)
@@ -3015,10 +3018,10 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		notifSection.appendChild(
 			makeOverrideCheck(
 				"allowModNotificationColor",
-				"cog-allow-mods-choose-colour",
+				"cog-feed-allow-mods-choose-colour",
 				"Allow Mods to Choose Colour",
 				gizmo.settings.allowModNotificationColor !== false,
-				"cog-allow-mods-choose-colour-tip",
+				"cog-feed-allow-mods-choose-colour-tip",
 				"When on, message colour can come from SkyUILib (for compatibility) or COG_Feed_API.Notify / COG_API.Notify. When off, every message uses the Notifications colour.",
 				"allowModNotificationColor"
 			)
@@ -3036,13 +3039,13 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		const skillsLede = document.createElement("p");
 		skillsLede.className = "lede";
 		if (typeof setTranslatedText === "function") {
-			setTranslatedText(skillsLede, "cog-skills", "Skills");
+			setTranslatedText(skillsLede, "cog-feed-skills", "Skills", FEED_TYPE_ID);
 		} else {
 			skillsLede.textContent = "Skills";
 		}
 		skillsSection.appendChild(skillsLede);
 
-		const useDefaultLabel = typeof t === "function" ? t("cog-use-default", "Use default") : "Use default";
+		const useDefaultLabel = typeof t === "function" ? t("cog-feed-use-default", "Use default", FEED_TYPE_ID) : "Use default";
 		const makeSkillIconRow = (colorValue, colorFallback, iconValue, normalizeIcon, patchColor, patchIcon) => {
 			const row = document.createElement("div");
 			row.className = "style-row feed-location-row is-nested";
@@ -3094,7 +3097,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 			field.appendChild(document.createTextNode(" "));
 			const span = document.createElement("span");
 			if (typeof setTranslatedText === "function") {
-				setTranslatedText(span, tag, fallback);
+				setTranslatedText(span, tag, fallback, undefined, FEED_TYPE_ID);
 			} else {
 				span.textContent = fallback;
 			}
@@ -3123,7 +3126,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 			optionalHex(gizmo.settings.textColor) || DEFAULT_GIZMO_GOLD;
 		appendSkillType(
 			"showSkillProgress",
-			"cog-skill-progress",
+			"cog-feed-skill-progress",
 			"Skill Progress",
 			gizmo.settings.showSkillProgress !== false,
 			"showSkillProgress",
@@ -3136,7 +3139,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		);
 		appendSkillType(
 			"showLevelProgress",
-			"cog-level-progress",
+			"cog-feed-level-progress",
 			"Level Progress",
 			gizmo.settings.showLevelProgress !== false,
 			"showLevelProgress",
@@ -3158,7 +3161,7 @@ function fillFeedGizmoEditor(panel, gizmo) {
 		skillIconsField.appendChild(document.createTextNode(" "));
 		const skillIconsSpan = document.createElement("span");
 		if (typeof setTranslatedText === "function") {
-			setTranslatedText(skillIconsSpan, "cog-show-icons", "Show Icons");
+			setTranslatedText(skillIconsSpan, "cog-feed-show-icons", "Show Icons", FEED_TYPE_ID);
 		} else {
 			skillIconsSpan.textContent = "Show Icons";
 		}

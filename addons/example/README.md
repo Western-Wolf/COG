@@ -58,7 +58,7 @@ SendModEvent("COG_Example_Tick", IconFillPath, Remaining as Float)
 | `xmp-gearupdated` | `sourceFor("COG_Example_Gears","count")`, fill icon, `defaultVisibility` **hud**, soft-gated on Gears ESP |
 | `xmp-pushupdated` | `UpdateGizmo` payload, hollow icon, `defaultVisibility` **ui** |
 
-Both: schema colours + **Show Count** (digit beside icon, same size/colour). Schema `labelTag`s (`cog-zero-colour`, `cog-ten-colour`, `cog-show-count`) resolve from each type’s `SKSE/Plugins/COG/gizmos/<typeId>/translations/_COG.json` (not the global COG catalog). Editor also exposes Visibility (same control as builtin gizmos).
+Both: schema colours + **Show Count** (digit beside icon, same size/colour). Schema `labelTag`s (`cog-zero-colour`, `cog-ten-colour`, `cog-show-count`) resolve from each type’s `SKSE/Plugins/COG/gizmoTypes/<typeId>/translations/_COG.json` (not the global COG catalog). Editor also exposes Visibility (same control as builtin gizmos).
 
 ## Smoke
 

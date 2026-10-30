@@ -1041,8 +1041,8 @@ function fillGaugeEditor(panel, gauge) {
 			if (!optionalHex(cs.pictureFade)) {
 				patch.pictureFade = frameDefaultPictureFade();
 			}
-			// Frames default to always-visible; meter gauges seed false in defaultGauge.
-			patch.alwaysVisible = true;
+			// Frames default to never-hide; meter gauges seed false in defaultGauge.
+			patch.neverHide = true;
 			// Gear-mode chrome: Title / Icon / Number on (group-like bar format + trough).
 			patch.showLabel = "top";
 			patch.showIcon = "middle";
@@ -1101,16 +1101,16 @@ function fillGaugeEditor(panel, gauge) {
 	}
 	topRow.appendChild(maxAlphaField);
 
-	const alwaysVis = document.createElement("label");
-	alwaysVis.className = "pos-field compact mid";
-	alwaysVis.innerHTML = `<span>Always Visible</span><input type="checkbox" data-role="alwaysVisible">`;
-	tagFieldLabel(alwaysVis, "cog-always-visible", "Always Visible");
-	const alwaysBox = alwaysVis.querySelector("input");
-	alwaysBox.checked = !!gaugeSettings(gauge).alwaysVisible;
-	alwaysBox.addEventListener("change", () => {
-		patchGauge(gid, { alwaysVisible: alwaysBox.checked });
+	const neverHideField = document.createElement("label");
+	neverHideField.className = "pos-field compact mid";
+	neverHideField.innerHTML = `<span>Never Hide</span><input type="checkbox" data-role="neverHide">`;
+	tagFieldLabel(neverHideField, "cog-never-hide", "Never Hide");
+	const neverHideBox = neverHideField.querySelector("input");
+	neverHideBox.checked = !!gaugeSettings(gauge).neverHide;
+	neverHideBox.addEventListener("change", () => {
+		patchGauge(gid, { neverHide: neverHideBox.checked });
 	});
-	topRow.appendChild(alwaysVis);
+	topRow.appendChild(neverHideField);
 	panel.appendChild(topRow);
 
 	const displayLede = document.createElement("p");

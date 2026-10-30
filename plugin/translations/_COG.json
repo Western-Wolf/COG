@@ -7,10 +7,6 @@
     "en-CA": "Above icon",
     "fr-CA": "Au-dessus de l'icône"
   },
-  "cog-active-effects": {
-    "en-CA": "Active Effects",
-    "fr-CA": "Effets actifs"
-  },
   "cog-active-suppressions": {
     "en-CA": "Active Suppressions",
     "fr-CA": "Suppressions actives"
@@ -26,10 +22,6 @@
   "cog-add-colour-stop": {
     "en-CA": "Add colour stop",
     "fr-CA": "Ajouter un arrêt de couleur"
-  },
-  "cog-add-from": {
-    "en-CA": "Add from",
-    "fr-CA": "Ajouter depuis"
   },
   "cog-add-gauge": {
     "en-CA": "Add Gauge",
@@ -71,10 +63,6 @@
     "en-CA": "Known short names you can use in the Suppressor or HUD-linked Gears, with the CanonicalKey each alias resolves to.",
     "fr-CA": "Noms courts connus que vous pouvez utiliser dans le Suppresseur ou les Engrenages liés au HUD, avec la CanonicalKey à laquelle correspond chaque alias."
   },
-  "cog-align": {
-    "en-CA": "Align",
-    "fr-CA": "Aligner"
-  },
   "cog-align-center": {
     "en-CA": "Center",
     "fr-CA": "Centre"
@@ -103,22 +91,6 @@
     "en-CA": "All types",
     "fr-CA": "Tous les types"
   },
-  "cog-allow-mods-choose-colour": {
-    "en-CA": "Allow Mods to Choose Colour",
-    "fr-CA": "Autoriser les mods à choisir la couleur"
-  },
-  "cog-allow-mods-choose-colour-tip": {
-    "en-CA": "When on, message colour can come from SkyUILib (for compatibility) or COG_Feed_API.Notify / COG_API.Notify. When off, every message uses the Notifications colour.",
-    "fr-CA": "Lorsque c'est activé, la couleur du message peut provenir de SkyUILib (pour la compatibilité) ou de COG_Feed_API.Notify / COG_API.Notify. Lorsque c'est désactivé, chaque message utilise la couleur des Notifications."
-  },
-  "cog-allow-mods-choose-icon": {
-    "en-CA": "Allow Mods to Choose Icon",
-    "fr-CA": "Autoriser les mods à choisir l'icône"
-  },
-  "cog-allow-mods-choose-icon-tip": {
-    "en-CA": "When on, mods can use COG_Feed_API.Notify (or legacy COG_API.Notify) to supply a per-message icon path under assets/icons/. When off, every message uses the Notifications icon (if Show icons is on).",
-    "fr-CA": "Lorsque c'est activé, les mods peuvent utiliser COG_Feed_API.Notify (ou l'ancien COG_API.Notify) pour fournir un chemin d'icône par message sous assets/icons/. Lorsque c'est désactivé, chaque message utilise l'icône des Notifications (si Afficher les icônes est activé)."
-  },
   "cog-alpha": {
     "en-CA": "Alpha",
     "fr-CA": "Alpha"
@@ -143,10 +115,6 @@
     "en-CA": "Hide these HUD targets whenever this Suppressor exists (even if no matching Gear is on screen).",
     "fr-CA": "Masquer ces cibles HUD dès que ce Suppresseur existe (même si aucun Engrenage correspondant n'est à l'écran)."
   },
-  "cog-always-visible": {
-    "en-CA": "Always Visible",
-    "fr-CA": "Toujours visible"
-  },
   "cog-arc": {
     "en-CA": "Arc",
     "fr-CA": "Arc"
@@ -162,14 +130,6 @@
   "cog-auto": {
     "en-CA": "auto",
     "fr-CA": "auto"
-  },
-  "cog-backdrop-fade": {
-    "en-CA": "Backdrop Fade",
-    "fr-CA": "Fondu d'arrière-plan"
-  },
-  "cog-backdrop-fade-hint": {
-    "en-CA": "Soft gradient behind each message. Setting opacity to 0 disables.",
-    "fr-CA": "Dégradé doux derrière chaque message. Une opacité à 0 le désactive."
   },
   "cog-backup-bar": {
     "en-CA": "Bar Fill",
@@ -203,10 +163,6 @@
     "en-CA": "Bar and total",
     "fr-CA": "Barre et total"
   },
-  "cog-bar-colour": {
-    "en-CA": "Bar Colour",
-    "fr-CA": "Couleur de la barre"
-  },
   "cog-bar-colours": {
     "en-CA": "Bar colours",
     "fr-CA": "Couleurs de la barre"
@@ -218,10 +174,6 @@
   "cog-bar-trough": {
     "en-CA": "Bar trough",
     "fr-CA": "Fond de la barre"
-  },
-  "cog-bar-width": {
-    "en-CA": "Bar Width",
-    "fr-CA": "Largeur de la barre"
   },
   "cog-below": {
     "en-CA": "Below",
@@ -311,10 +263,6 @@
     "en-CA": "Click to clear this hotkey",
     "fr-CA": "Cliquez pour effacer ce raccourci"
   },
-  "cog-clock-face": {
-    "en-CA": "Clock face",
-    "fr-CA": "Cadran"
-  },
   "cog-color-ramp-at-cap": {
     "en-CA": "Already has a 100% stop — lower one first to add another.",
     "fr-CA": "Un arrêt à 100 % existe déjà — abaissez-en un d'abord pour en ajouter un autre."
@@ -343,14 +291,6 @@
     "en-CA": "Count",
     "fr-CA": "Compte"
   },
-  "cog-current-location": {
-    "en-CA": "Current Location",
-    "fr-CA": "Lieu actuel"
-  },
-  "cog-default-icon": {
-    "en-CA": "Default Icon",
-    "fr-CA": "Icône par défaut"
-  },
   "cog-default-level-icon": {
     "en-CA": "Default Level Icon",
     "fr-CA": "Icône de niveau par défaut"
@@ -362,10 +302,6 @@
   "cog-delete": {
     "en-CA": "Delete",
     "fr-CA": "Supprimer"
-  },
-  "cog-direction": {
-    "en-CA": "Direction",
-    "fr-CA": "Direction"
   },
   "cog-display": {
     "en-CA": "Display",
@@ -450,10 +386,6 @@
   "cog-fade": {
     "en-CA": "Fade",
     "fr-CA": "Fondu"
-  },
-  "cog-fade-colour": {
-    "en-CA": "Fade colour",
-    "fr-CA": "Couleur du fondu"
   },
   "cog-fade-starts-from": {
     "en-CA": "Fade starts from",
@@ -548,12 +480,12 @@
     "fr-CA": "Masquer cet engrenage lorsque son compte est sous ou au-dessus du seuil (n'importe quel nombre). Exemple: Sous 1 masque quand vide."
   },
   "cog-gear-hide-tip-percent": {
-    "en-CA": "Hide this gear when its meter is below or above the threshold (0–100%). Group Fill from Hidden can soften the reveal.",
-    "fr-CA": "Masquer cet engrenage lorsque sa valeur est inférieure ou supérieure au seuil (0–100 %). Remplir depuis le masqué du groupe peut adoucir l'apparition."
+    "en-CA": "Hide this gear when its meter is below or above the threshold (0–100%). Group Fill from Hidden can soften how it looks while shown; it does not override Hide when.",
+    "fr-CA": "Masquer cet engrenage lorsque son compteur est sous ou au-dessus du seuil (0–100 %). Remplir depuis masqué du groupe peut adoucir l'apparence pendant l'affichage; cela n'outrepasse pas Masquer quand."
   },
   "cog-gear-hide-tip-timer": {
-    "en-CA": "Hide this gear when remaining time (seconds) is below or above the threshold. Group Fill from Hidden can soften the reveal.",
-    "fr-CA": "Masquer cet engrenage lorsque le temps restant (secondes) est sous ou au-dessus du seuil. Remplir depuis le masqué du groupe peut adoucir l'apparition."
+    "en-CA": "Hide this gear when remaining time (seconds) is below or above the threshold. Group Fill from Hidden can soften how it looks while shown; it does not override Hide when.",
+    "fr-CA": "Masquer cet engrenage lorsque le temps restant (secondes) est sous ou au-dessus du seuil. Remplir depuis masqué du groupe peut adoucir l'apparence pendant l'affichage; cela n'outrepasse pas Masquer quand."
   },
   "cog-gear-hud-suppress-tip": {
     "en-CA": "While this gear is exposed (shown on a visible group or bound to a visible gauge), soft-hide the HUD target. Use an alias (e.g. hud.casting) or a raw menu/path (e.g. HUD Menu|HUDMovieBaseInstance.Health).",
@@ -611,13 +543,21 @@
     "en-CA": "Mod-added Gizmos",
     "fr-CA": "Gizmos ajoutés par des mods"
   },
+  "cog-group-bar-colour-ramp-tip": {
+    "en-CA": "Bar stops are always percentages (0–100). Percent and timer gears sample by fill; counts do not show a bar. Empty inherits the General backup.",
+    "fr-CA": "Les arrêts de barre sont toujours des pourcentages (0–100). Les engrenages de pourcentage et de minuterie échantillonnent selon le remplissage; les comptes n'affichent pas de barre. Un champ vide reprend la couleur de secours de Général."
+  },
   "cog-group-colour-ramp-tip": {
-    "en-CA": "Stop values are shared by every gear on this line. Percent and timer gears only use stops up to 100 (at 100% they take the last stop at or below 100). Count gears use the same map past 100. Empty inherits the General backup.",
-    "fr-CA": "Les valeurs d'arrêt sont partagées par tous les engrenages de cette ligne. Les engrenages de pourcentage et de minuterie n'utilisent que les arrêts jusqu'à 100 (à 100 %, ils prennent le dernier arrêt inférieur ou égal à 100). Les engrenages de compte utilisent la même échelle au-delà de 100. Un champ vide reprend la couleur de secours de Général."
+    "en-CA": "Icon stop values are shared by every gear on this line. Percent and timer gears only use stops up to 100 (at 100% they take the last stop at or below 100). Count gears use the same map past 100. Empty inherits the General backup.",
+    "fr-CA": "Les valeurs d'arrêt d'icône sont partagées par tous les engrenages de cette ligne. Les engrenages de pourcentage et de minuterie n'utilisent que les arrêts jusqu'à 100 (à 100 %, ils prennent le dernier arrêt inférieur ou égal à 100). Les engrenages de compte utilisent la même échelle au-delà de 100. Un champ vide reprend la couleur de secours de Général."
   },
   "cog-group-fill-from-hidden-tip": {
-    "en-CA": "How percent/timer gears with Hide when reveal. Off = hard hide. Alpha fades opacity. Up/Down keep a greyscale icon and fill with colour from the bottom or top (soft seam). Alpha & Up/Down also fade the unfilled area to bar-trough opacity. GIF/WebP fill uses native colours when icon ends are blank. Counts still hard-hide.",
-    "fr-CA": "Façon dont les engrenages à pourcentage ou à minuterie apparaissent lorsqu'ils utilisent Masquer quand. Désactivé = masquage franc. Alpha réduit progressivement l'opacité. Haut/Bas conservent une icône en niveaux de gris et la remplissent de couleur depuis le bas ou le haut (avec une transition douce). Alpha et Haut/Bas réduisent aussi l'opacité de la zone non remplie jusqu'à celle du fond de la barre. Le remplissage GIF/WebP utilise les couleurs d'origine lorsque les extrémités d'icône sont vides. Les comptes restent masqués sans transition."
+    "en-CA": "How percent/timer gears look while shown under Hide when. Hide when still removes the gear when its condition is met. Off = hard hide only. Alpha fades opacity toward the threshold. Up/Down fill a greyscale icon from the bottom or top (soft seam). Alpha & Up/Down also fade the unfilled area to bar-trough opacity. GIF/WebP fill uses native colours when icon ends are blank. Counts still hard-hide.",
+    "fr-CA": "Apparence des engrenages pourcentage/minuteur pendant qu'ils sont affichés sous Masquer quand. Masquer quand retire toujours l'engrenage lorsque sa condition est remplie. Désactivé = masquage franc seulement. Alpha fait fondre l'opacité vers le seuil. Haut/Bas remplissent une icône en niveaux de gris depuis le bas ou le haut (jointure douce). Alpha et Haut/Bas font aussi fondre la zone non remplie vers l'opacité de l'auge. Le remplissage GIF/WebP utilise les couleurs natives quand les extrémités d'icône sont vides. Les compteurs restent en masquage franc."
+  },
+  "cog-group-icon-colour-ramp-tip": {
+    "en-CA": "Icon stop values are shared by every gear on this line. Percent and timer gears only use stops up to 100 (at 100% they take the last stop at or below 100). Count gears use the same map past 100. Empty inherits the General backup.",
+    "fr-CA": "Les valeurs d'arrêt d'icône sont partagées par tous les engrenages de cette ligne. Les engrenages de pourcentage et de minuterie n'utilisent que les arrêts jusqu'à 100 (à 100 %, ils prennent le dernier arrêt inférieur ou égal à 100). Les engrenages de compte utilisent la même échelle au-delà de 100. Un champ vide reprend la couleur de secours de Général."
   },
   "cog-group-number-format-bar-total": {
     "en-CA": "Show bar and total",
@@ -664,8 +604,8 @@
     "fr-CA": "Comment fonctionnent les arrêts de couleur des comptes?"
   },
   "cog-help-count-colour-stops-body": {
-    "en-CA": "Count gears use the same multi-stop icon and bar colour editors as percent gears, but the stop fields are plain numbers that may go past 100. The live count picks the colour along that map. Percent and timer gears on a shared group colour map only use stops up to 100 (at 100% they take the last stop at or below 100). Leave the ramp empty to inherit the General backup icon or bar colour (GIF/WebP stay native when icon colour is empty).",
-    "fr-CA": "Les engrenages de compte utilisent les mêmes éditeurs de couleurs d'icône et de barre à plusieurs arrêts que les engrenages de pourcentage, mais les champs d'arrêt sont de simples nombres qui peuvent dépasser 100. Le compte en direct détermine la couleur sur cette échelle. Dans une échelle de couleurs de groupe partagée, les engrenages de pourcentage et de minuterie n'utilisent que les arrêts jusqu'à 100 (à 100 %, ils prennent le dernier arrêt inférieur ou égal à 100). Laissez le dégradé vide pour hériter de la couleur d'icône ou de barre de secours de Général (les GIF/WebP gardent leurs couleurs natives tant que la couleur d'icône est vide)."
+    "en-CA": "Count gears use the same multi-stop **icon** colour editor as percent gears, but icon stop fields are plain numbers that may go past 100. The live count picks the icon colour along that map. **Bar** colours are always percentages (0–100) — counts do not show a bar fill. On a shared group map, percent and timer gears only use icon stops up to 100 (at 100% they take the last stop at or below 100). Leave a ramp empty to inherit the General backup icon or bar colour (GIF/WebP stay native when icon colour is empty).",
+    "fr-CA": "Les engrenages de compte utilisent le même éditeur de couleurs d'icône à plusieurs arrêts que les engrenages de pourcentage, mais les champs d'arrêt d'icône sont de simples nombres qui peuvent dépasser 100. Le compte en direct détermine la couleur d'icône sur cette échelle. Les couleurs de barre sont toujours des pourcentages (0–100) — les comptes n'affichent pas de remplissage de barre. Dans une échelle de groupe partagée, les engrenages de pourcentage et de minuterie n'utilisent que les arrêts d'icône jusqu'à 100 (à 100 %, ils prennent le dernier arrêt inférieur ou égal à 100). Laissez un dégradé vide pour hériter de la couleur d'icône ou de barre de secours de Général (les GIF/WebP gardent leurs couleurs natives tant que la couleur d'icône est vide)."
   },
   "cog-help-def-gadget": {
     "en-CA": "Gadget",
@@ -716,24 +656,24 @@
     "fr-CA": "Que font les icônes dans le Gizmo Flux?"
   },
   "cog-help-feed-icons-body": {
-    "en-CA": "Icons are on by default for each feed section, but can be turned off for any or all of them.\n* Notifications have a default icon, and mod authors can send their own via the Notify API (if you allow mod icons). Disk rules under `gizmos/cog-feed/notifications/` only apply when no API icon was set.\n* Inventory, Location, Active Effects, and Skills share the same icon-rule system (see \"For Mod Authors\"). You'll only see each section's gizmo default icon when no rule matches.",
-    "fr-CA": "Les icônes sont activées par défaut pour chaque section du flux, mais peuvent être désactivées pour une section ou pour toutes.\n* Les notifications ont une icône par défaut, et les auteurs de mods peuvent fournir la leur par l'API Notify (si vous autorisez les icônes de mods). Les règles enregistrées sous `gizmos/cog-feed/notifications/` s'appliquent seulement lorsqu'aucune icône n'a été définie par l'API.\n* Inventaire, Lieu, Effets actifs et Compétences utilisent le même système de règles d'icônes (voir « Pour les auteurs de mods »). L'icône par défaut du gizmo de chaque section s'affiche seulement lorsqu'aucune règle ne correspond."
+    "en-CA": "Icons are on by default for each feed section, but can be turned off for any or all of them.\n* Notifications have a default icon, and mod authors can send their own via the Notify API (if you allow mod icons). Disk rules under `gizmoTypes/cog-feed/notifications/` only apply when no API icon was set.\n* Inventory, Location, Active Effects, and Skills share the same icon-rule system (see \"For Mod Authors\"). You'll only see each section's gizmo default icon when no rule matches.",
+    "fr-CA": "Les icônes sont activées par défaut pour chaque section du flux, mais peuvent être désactivées pour une section ou pour toutes.\n* Les notifications ont une icône par défaut, et les auteurs de mods peuvent fournir la leur par l'API Notify (si vous autorisez les icônes de mods). Les règles enregistrées sous `gizmoTypes/cog-feed/notifications/` s'appliquent seulement lorsqu'aucune icône n'a été définie par l'API.\n* Inventaire, Lieu, Effets actifs et Compétences utilisent le même système de règles d'icônes (voir « Pour les auteurs de mods »). L'icône par défaut du gizmo de chaque section s'affiche seulement lorsqu'aucune règle ne correspond."
   },
   "cog-help-fill-from-hidden": {
     "en-CA": "What does Fill from Hidden do?",
     "fr-CA": "Que fait Remplir depuis le masqué?"
   },
   "cog-help-fill-from-hidden-body": {
-    "en-CA": "On a group, Fill from Hidden changes how percent/timer gears with a Hide when rule appear instead of vanishing hard.\n\nOff keeps hard hide. Alpha fades the whole gear’s opacity. Up / Down keep a greyscale icon in the layout and fill it with the current icon colour from the bottom or top (soft seam at the frontier). Alpha & Up / Alpha & Down do the same with a more transparent greyscale trough. Counts still hard-hide; inactive timers still hard-hide.\n\nHide when itself is set per gear on the Gears tab: Off, Below, or Above, plus a threshold from 0 to 100% (up to three decimal places).",
-    "fr-CA": "Sur un groupe, Remplir depuis le masqué change l'apparence des engrenages en pourcentage/minuterie qui ont une règle Masquer quand, au lieu de les faire disparaître d'un coup.\n\nDésactivé conserve le masquage franc. Alpha fait un fondu de l'opacité de tout l'engrenage. Haut / Bas gardent une icône en niveaux de gris dans la disposition et la remplissent de la couleur d'icône actuelle depuis le bas ou le haut (jointure douce à la frontière). Alpha et Haut / Alpha et Bas font de même avec un fond en niveaux de gris plus transparent. Les comptes restent masqués franchement; les minuteries inactives aussi.\n\nMasquer quand se règle par engrenage dans l'onglet Engrenages : Désactivé, Sous ou Au-dessus, plus un seuil de 0 à 100 % (jusqu'à trois décimales)."
+    "en-CA": "On a group, Fill from Hidden changes how percent/timer gears with a Hide when rule look while they are shown. Hide when still removes the gear when its condition is met, regardless of fill mode.\n\nOff is hard hide only (no soft reveal). Alpha fades opacity as the value approaches the threshold. Up / Down fill a greyscale icon with colour from the bottom or top while shown (soft seam at the frontier). Alpha & Up / Alpha & Down do the same with a more transparent greyscale trough. Counts still hard-hide; inactive timers still hard-hide.\n\nHide when itself is set per gear on the Gears tab: Off, Below, or Above, plus a threshold from 0 to 100% (up to three decimal places).",
+    "fr-CA": "Sur un groupe, Remplir depuis masqué change l'apparence des engrenages pourcentage/minuteur avec une règle Masquer quand pendant qu'ils sont affichés. Masquer quand retire toujours l'engrenage lorsque sa condition est remplie, peu importe le mode de remplissage.\n\nDésactivé = masquage franc seulement (pas de révélation douce). Alpha fait fondre l'opacité à mesure que la valeur approche le seuil. Haut / Bas remplissent une icône en niveaux de gris avec de la couleur depuis le bas ou le haut pendant l'affichage (jointure douce à la frontière). Alpha et Haut / Alpha et Bas font de même avec une auge en niveaux de gris plus transparente. Les compteurs restent en masquage franc; les minuteurs inactifs aussi.\n\nMasquer quand se règle par engrenage dans l'onglet Engrenages : Désactivé, Sous, ou Au-dessus, plus un seuil de 0 à 100 % (jusqu'à trois décimales)."
   },
   "cog-help-gauge-types": {
     "en-CA": "Gauge Types",
     "fr-CA": "Types de jauges"
   },
   "cog-help-gauge-types-body": {
-    "en-CA": "Add Gauge creates a free-floating indicator for one gear (independent of groups). Open a gauge accordion to raise it above the editor for drag, rotate, and resize. Type is Meter (Bar or Arc) or Frame.\n\nMeter: Show Icon and Show Label each offer none / left / right / centered / up / down. When both use the same placement, the label sits farther from the gauge than the icon (on arcs, left/right share the hollow: icon on the chosen side, label fills the remaining width). Icon, Title, and Number colour modes pick a real source — Bar, Border, or Icon — and default to Border. On bars, left/right label text is aligned away from the bar; arc labels wrap and scale to fit the hollow. On arcs, up is above the peak and down is below the baseline. Shape is Bar (default) or Arc. Bar and Arc share border, trough, endcaps, and fill direction — Arc is a semicircle band.\n\nFrame: pick a Frames silhouette, fill/border colours, and Display mode Gear or Picture. Frame rotation turns the bezel only. Gear mode shows the bound gear’s icon/bar/value/title inside the plate. Picture mode shows chosen Pictures artwork only (progress from the bound gear); direction is relative to the frame, not the picture’s own rotation. Always Visible (on by default) keeps the frame shown even when the vanilla HUD is hidden or the gear’s Hide when rule would soft-hide it.",
-    "fr-CA": "Ajouter une jauge crée un indicateur flottant pour un engrenage (indépendant des groupes). Ouvrez un accordéon de jauge pour la remonter au-dessus de l'éditeur afin de la glisser, la faire pivoter et la redimensionner. Le type est Compteur (Barre ou Arc) ou Cadre.\n\nCompteur : Afficher l'icône et Afficher l'étiquette offrent chacune aucun / gauche / droite / centré / haut / bas. Quand les deux utilisent le même emplacement, l'étiquette se place plus loin de la jauge que l'icône (sur les arcs, gauche/droite partagent le creux : icône du côté choisi, l'étiquette remplit la largeur restante). Les modes Couleur de l'icône, Couleur du titre et Couleur du nombre choisissent une vraie source — Barre, Bordure ou Icône — et utilisent Bordure par défaut. Sur les barres, le texte d'étiquette gauche/droite s'aligne à l'opposé de la barre; sur les arcs, les étiquettes passent à la ligne et s'ajustent pour tenir dans le creux. Sur les arcs, haut est au-dessus du sommet et bas sous la ligne de base. La forme est Barre (par défaut) ou Arc. Barre et Arc partagent bordure, fond, embouts et direction de remplissage — l'Arc est une bande en demi-cercle.\n\nCadre : choisissez une silhouette Frames, les couleurs de remplissage/bordure, et le mode d'affichage Engrenage ou Image. La rotation du cadre ne tourne que le cadre. Le mode Engrenage montre l'icône/barre/valeur/titre de l'engrenage lié dans la plaque. Le mode Image montre uniquement l'illustration Pictures choisie (progression selon l'engrenage lié); la direction est relative au cadre, pas à la rotation propre de l'image. Toujours visible (activé par défaut) garde le cadre affiché même quand le HUD vanilla est masqué ou que la règle Masquer quand de l'engrenage le masquerait en douceur."
+    "en-CA": "Add Gauge creates a free-floating indicator for one gear (independent of groups). Open a gauge accordion to raise it above the editor for drag, rotate, and resize. Type is Meter (Bar or Arc) or Frame.\n\nMeter: Show Icon and Show Label each offer none / left / right / centered / up / down. When both use the same placement, the label sits farther from the gauge than the icon (on arcs, left/right share the hollow: icon on the chosen side, label fills the remaining width). Icon, Title, and Number colour modes pick a real source — Bar, Border, or Icon — and default to Border. On bars, left/right label text is aligned away from the bar; arc labels wrap and scale to fit the hollow. On arcs, up is above the peak and down is below the baseline. Shape is Bar (default) or Arc. Bar and Arc share border, trough, endcaps, and fill direction — Arc is a semicircle band.\n\nFrame: pick a Frames silhouette, fill/border colours, and Display mode Gear or Picture. Frame rotation turns the bezel only. Gear mode shows the bound gear’s icon/bar/value/title inside the plate. Picture mode shows chosen Pictures artwork only (progress from the bound gear); direction is relative to the frame, not the picture’s own rotation. Never Hide (on by default) keeps the frame shown when the gear would soft-hide — Hide when rules or inactive timers (for example a werewolf picture while not transformed). It does not override Gauge Visibility (HUD gauges still hide with the vanilla HUD).",
+    "fr-CA": "Ajouter une jauge crée un indicateur flottant pour un engrenage (indépendant des groupes). Ouvrez un accordéon de jauge pour la remonter au-dessus de l'éditeur afin de la glisser, la faire pivoter et la redimensionner. Le type est Compteur (Barre ou Arc) ou Cadre.\n\nCompteur : Afficher l'icône et Afficher l'étiquette offrent chacune aucun / gauche / droite / centré / haut / bas. Quand les deux utilisent le même emplacement, l'étiquette se place plus loin de la jauge que l'icône (sur les arcs, gauche/droite partagent le creux : icône du côté choisi, l'étiquette remplit la largeur restante). Les modes Couleur de l'icône, Couleur du titre et Couleur du nombre choisissent une vraie source — Barre, Bordure ou Icône — et utilisent Bordure par défaut. Sur les barres, le texte d'étiquette gauche/droite s'aligne à l'opposé de la barre; sur les arcs, les étiquettes passent à la ligne et s'ajustent pour tenir dans le creux. Sur les arcs, haut est au-dessus du sommet et bas sous la ligne de base. La forme est Barre (par défaut) ou Arc. Barre et Arc partagent bordure, fond, embouts et direction de remplissage — l'Arc est une bande en demi-cercle.\n\nCadre : choisissez une silhouette Frames, les couleurs de remplissage/bordure, et le mode d'affichage Engrenage ou Image. La rotation du cadre ne tourne que le cadre. Le mode Engrenage montre l'icône/barre/valeur/titre de l'engrenage lié dans la plaque. Le mode Image montre uniquement l'illustration Pictures choisie (progression selon l'engrenage lié); la direction est relative au cadre, pas à la rotation propre de l'image. Ne jamais masquer (activé par défaut) garde le cadre affiché lorsque l'engrenage serait masqué en douceur — règles Masquer quand ou minuteurs inactifs (par exemple une image de loup-garou hors transformation). Cela n'outrepasse pas la Visibilité de la jauge (les jauges HUD se masquent toujours avec le HUD vanilla)."
   },
   "cog-help-gears-tab": {
     "en-CA": "The Gears tab",
@@ -748,7 +688,7 @@
     "fr-CA": "Onglet Général"
   },
   "cog-help-general-tab-body": {
-    "en-CA": "Show Default Group toggles the built-in line for unassigned gears.\n\nBackup colours (Bar Fill, Border & Text, Icon) apply when a gear or group does not override them. Border & Text also tints group titles and numbers. Most icons use the backup icon tint when their own colour ramp is blank; GIF and WebP icons keep their native colours instead until you set an icon colour.",
+    "en-CA": "Show Default Group toggles the built-in line for unassigned gears. \n\nBackup colours (Bar Fill, Border & Text, Icon) apply when a gear or group does not override them. Border & Text also tints group titles and numbers. Most icons use the backup icon tint when their own colour ramp is blank; GIF and WebP icons keep their native colours instead until you set an icon colour.",
     "fr-CA": "Afficher le groupe par défaut active ou désactive la ligne intégrée pour les engrenages non assignés.\n\nLes couleurs de secours (barre, bordure, icône) s'appliquent lorsqu'un engrenage ou un groupe ne les remplace pas. La plupart des icônes utilisent la teinte d'icône de secours lorsque leur propre dégradé de couleur est vide; les icônes GIF et WebP gardent leurs couleurs natives jusqu'à ce que vous définissiez une couleur d'icône."
   },
   "cog-help-groups-tab": {
@@ -832,8 +772,8 @@
     "fr-CA": "Où sont enregistrés les paramètres?"
   },
   "cog-help-settings-stored-body": {
-    "en-CA": "On disk under `Data/SKSE/Plugins/COG/`: `general.json`, `groups/`, `gears/`, `gauges/`, and `gizmos/`. The editor writes these while you play. \n\nIndividual Gizmos may have their own folders with settings files, like the Feed Gizmo. See our docs on Nexus Mods for how you can use and customize those.",
-    "fr-CA": "Sur le disque sous `Data/SKSE/Plugins/COG/`: `general.json`, `groups/`, `gears/`, `gauges/` et `gizmos/`. L'éditeur écrit ces fichiers pendant que vous jouez. \n\nCertains Gizmos peuvent avoir leurs propres dossiers avec des fichiers de paramètres, comme le Gizmo Flux. Consultez notre documentation sur Nexus Mods pour savoir comment les utiliser et les personnaliser."
+    "en-CA": "On disk under `Data/SKSE/Plugins/COG/`: `general.json`, `groups/`, `gears/`, `gauges/`, `gizmos/` (placed instances), and `gizmoTypes/` (type catalog JSON plus type-owned storage). The editor writes these while you play.\n\nIndividual Gizmo types may have their own folders under `gizmoTypes/<typeId>/` with settings files, like the Feed Gizmo. See our docs on Nexus Mods for how you can use and customize those.",
+    "fr-CA": "Sur le disque sous `Data/SKSE/Plugins/COG/`: `general.json`, `groups/`, `gears/`, `gauges/`, `gizmos/` (instances placées) et `gizmoTypes/` (catalogue de types plus stockage par type). L'éditeur écrit ces fichiers pendant que vous jouez.\n\nCertains types de Gizmos peuvent avoir leurs propres dossiers sous `gizmoTypes/<typeId>/` avec des fichiers de paramètres, comme le Gizmo Flux. Consultez notre documentation sur Nexus Mods pour savoir comment les utiliser et les personnaliser."
   },
   "cog-help-what-is-suppression": {
     "en-CA": "What is Suppression, and how does it work?",
@@ -999,10 +939,6 @@
     "en-CA": "Each stop switches the icon at that value. Icons do not fade between stops. Counts may go past 100.",
     "fr-CA": "Chaque arrêt change l'icône à cette valeur. Les icônes ne passent pas en fondu d'un arrêt à l'autre. Les comptes peuvent dépasser 100."
   },
-  "cog-icons": {
-    "en-CA": "Icons",
-    "fr-CA": "Icônes"
-  },
   "cog-in": {
     "en-CA": "In",
     "fr-CA": "Entrée"
@@ -1014,10 +950,6 @@
   "cog-inside-size": {
     "en-CA": "Inside Size",
     "fr-CA": "Taille intérieure"
-  },
-  "cog-inventory": {
-    "en-CA": "Inventory",
-    "fr-CA": "Inventaire"
   },
   "cog-inventory-gear": {
     "en-CA": "Inventory gear",
@@ -1059,10 +991,6 @@
     "en-CA": "Left of icon",
     "fr-CA": "À gauche de l'icône"
   },
-  "cog-level-progress": {
-    "en-CA": "Level Progress",
-    "fr-CA": "Progression de niveau"
-  },
   "cog-level-up-menu-never-blocked": {
     "en-CA": "Level Up Menu is never blocked.",
     "fr-CA": "Le menu de montée de niveau n'est jamais bloqué."
@@ -1075,25 +1003,9 @@
     "en-CA": "Loading…",
     "fr-CA": "Chargement…"
   },
-  "cog-location": {
-    "en-CA": "Location",
-    "fr-CA": "Lieu"
-  },
-  "cog-location-discovery": {
-    "en-CA": "Location Discovery",
-    "fr-CA": "Découverte de lieu"
-  },
-  "cog-max": {
-    "en-CA": "Max",
-    "fr-CA": "Max"
-  },
   "cog-max-alpha": {
     "en-CA": "Max Alpha",
     "fr-CA": "Alpha max"
-  },
-  "cog-max-remaining": {
-    "en-CA": "Max remaining",
-    "fr-CA": "Max restant"
   },
   "cog-meter": {
     "en-CA": "Meter",
@@ -1106,10 +1018,6 @@
   "cog-middle": {
     "en-CA": "Middle",
     "fr-CA": "Milieu"
-  },
-  "cog-min-remaining": {
-    "en-CA": "Min remaining",
-    "fr-CA": "Min restant"
   },
   "cog-missing-translation-title": {
     "en-CA": "Missing {missing} — showing {fallback} fallback",
@@ -1203,10 +1111,6 @@
     "en-CA": "None — click to set",
     "fr-CA": "Aucun — cliquez pour définir"
   },
-  "cog-notifications": {
-    "en-CA": "Notifications",
-    "fr-CA": "Notifications"
-  },
   "cog-number-colour": {
     "en-CA": "Number Colour",
     "fr-CA": "Couleur du nombre"
@@ -1223,17 +1127,9 @@
     "en-CA": "Show bar and percentage",
     "fr-CA": "Afficher la barre et le pourcentage"
   },
-  "cog-number-format-bar-total": {
-    "en-CA": "Show bar and value",
-    "fr-CA": "Afficher la barre et la valeur"
-  },
   "cog-number-format-percent": {
     "en-CA": "Show percentage",
     "fr-CA": "Afficher le pourcentage"
-  },
-  "cog-number-format-total": {
-    "en-CA": "Show value",
-    "fr-CA": "Afficher la valeur"
   },
   "cog-off": {
     "en-CA": "Off",
@@ -1242,10 +1138,6 @@
   "cog-on": {
     "en-CA": "On",
     "fr-CA": "Activé"
-  },
-  "cog-opacity": {
-    "en-CA": "Opacity",
-    "fr-CA": "Opacité"
   },
   "cog-out": {
     "en-CA": "Out",
@@ -1262,10 +1154,6 @@
   "cog-percentage": {
     "en-CA": "Percentage",
     "fr-CA": "Pourcentage"
-  },
-  "cog-persist": {
-    "en-CA": "Persist",
-    "fr-CA": "Persister"
   },
   "cog-picture": {
     "en-CA": "Picture",
@@ -1290,14 +1178,6 @@
   "cog-primary": {
     "en-CA": "Primary",
     "fr-CA": "Principal"
-  },
-  "cog-progress-bar": {
-    "en-CA": "Progress Bar",
-    "fr-CA": "Barre de progression"
-  },
-  "cog-progress-bar-hint": {
-    "en-CA": "Shared bar colour, width, number format, and timer window for Active Effects and Skills Level Progress.",
-    "fr-CA": "Couleur, largeur, format numérique et fenêtre de minuterie partagés pour les effets actifs et la progression de niveau des compétences."
   },
   "cog-push-stock-titles": {
     "en-CA": "Update stock titles on translation",
@@ -1383,10 +1263,6 @@
     "en-CA": "Shape",
     "fr-CA": "Forme"
   },
-  "cog-shout-meter-intro": {
-    "en-CA": "Shows your equipped shout in Dragon script. Words fill as you speak them; cooldown fades from the chosen edge with a gradient trail. The whole label rotates with the gizmo.",
-    "fr-CA": "Affiche votre cri équipé en écriture draconique. Les mots se remplissent à mesure que vous les prononcez; le temps de recharge s'estompe depuis le bord choisi avec une traînée en dégradé. Toute l'étiquette pivote avec le gizmo."
-  },
   "cog-show-celestial-objects": {
     "en-CA": "Show celestial objects",
     "fr-CA": "Afficher les objets célestes"
@@ -1403,10 +1279,6 @@
     "en-CA": "Show Icon",
     "fr-CA": "Afficher l'icône"
   },
-  "cog-show-icons": {
-    "en-CA": "Show Icons",
-    "fr-CA": "Afficher les icônes"
-  },
   "cog-show-number": {
     "en-CA": "Show Number",
     "fr-CA": "Afficher le nombre"
@@ -1414,14 +1286,6 @@
   "cog-show-number-as-percentage": {
     "en-CA": "Show Number as Percentage",
     "fr-CA": "Afficher le nombre en pourcentage"
-  },
-  "cog-show-text": {
-    "en-CA": "Show text",
-    "fr-CA": "Afficher le texte"
-  },
-  "cog-show-timer": {
-    "en-CA": "Show timer",
-    "fr-CA": "Afficher la minuterie"
   },
   "cog-show-title": {
     "en-CA": "Show Title",
@@ -1431,21 +1295,9 @@
     "en-CA": "Size",
     "fr-CA": "Taille"
   },
-  "cog-skill-progress": {
-    "en-CA": "Skill Progress",
-    "fr-CA": "Progression de compétence"
-  },
-  "cog-skills": {
-    "en-CA": "Skills",
-    "fr-CA": "Compétences"
-  },
   "cog-smoke-probe": {
     "en-CA": "Smoke probe",
     "fr-CA": "Sonde de fumée"
-  },
-  "cog-sources": {
-    "en-CA": "Sources",
-    "fr-CA": "Sources"
   },
   "cog-spacing": {
     "en-CA": "Spacing",
@@ -1454,22 +1306,6 @@
   "cog-stack": {
     "en-CA": "Stack",
     "fr-CA": "Empilement"
-  },
-  "cog-stolen": {
-    "en-CA": "Stolen",
-    "fr-CA": "Volé"
-  },
-  "cog-suppress-inventory": {
-    "en-CA": "Suppress inventory",
-    "fr-CA": "Masquer l'inventaire"
-  },
-  "cog-suppress-inventory-tip": {
-    "en-CA": "When on, inventory-style notification toasts are suppressed (not shown on the vanilla HUD or in this Notifications feed) while Notifications are active. Many activators and containers fire those even when you are not looting — leave this on unless you want them on the vanilla HUD. The Inventory section tracks real item changes separately.",
-    "fr-CA": "Lorsque c'est activé, les toasts de notification de style inventaire sont masqués (non affichés sur le HUD vanilla ni dans ce flux Notifications) tant que les Notifications sont actives. De nombreux activateurs et contenants les déclenchent même lorsque vous ne fouillez pas — laissez ceci activé sauf si vous les voulez sur le HUD vanilla. La section Inventaire suit les vrais changements d'objets séparément."
-  },
-  "cog-suppress-transform-effects": {
-    "en-CA": "Suppress Werewolf/Vampire transformation effects",
-    "fr-CA": "Masquer les effets de transformation de loup-garou/vampire"
   },
   "cog-suppressions-lede": {
     "en-CA": "Gears can be registered to suppress default HUD elements while they are displayed, so the same information is not shown twice. Certain Gizmos — especially Feed — also suppress the vanilla notices they replace. The Suppressor gizmo can Always Hide extra targets or Never Hide ones that would otherwise be soft-hidden. Never Hide always wins over hide sources; (winning) marks the primary controller among those that support the current outcome (Suppressor > other Gizmos > Gauges > Groups).",
@@ -1482,10 +1318,6 @@
   "cog-suppressions-script-missing": {
     "en-CA": "Suppressions UI script is missing from the deployed view. Redeploy COG (xmake -y) so _Help_Suppressions.js is copied.",
     "fr-CA": "Le script d'IU des Suppressions est absent de la vue déployée. Redéployez COG (xmake -y) pour que _Help_Suppressions.js soit copié."
-  },
-  "cog-suppressor-lede": {
-    "en-CA": "Editor marker only (always hidden in-game). Always Hide forces soft-hide; Never Hide exempts a target from COG gear soft-hide and from Always Hide.",
-    "fr-CA": "Marqueur d'éditeur seulement (toujours masqué en jeu). Toujours masquer force le masquage en douceur; Ne jamais masquer exempte une cible du masquage en douceur des engrenages COG et de Toujours masquer."
   },
   "cog-tab-about": {
     "en-CA": "About",
@@ -1614,10 +1446,6 @@
   "cog-use-border-colour": {
     "en-CA": "Use Border Colour",
     "fr-CA": "Utiliser la couleur de la bordure"
-  },
-  "cog-use-default": {
-    "en-CA": "Use default",
-    "fr-CA": "Utiliser la valeur par défaut"
   },
   "cog-use-endcap": {
     "en-CA": "Use Endcap",
@@ -1751,10 +1579,6 @@
     "en-CA": "Howl Cooldown",
     "fr-CA": "Recharge de hurlement"
   },
-  "name:iWant Integration": {
-    "en-CA": "iWant Integration",
-    "fr-CA": "Intégration iWant"
-  },
   "name:Magic Resistance": {
     "en-CA": "Magic Resistance",
     "fr-CA": "Résistance à la magie"
@@ -1854,5 +1678,9 @@
   "name:Werewolf": {
     "en-CA": "Werewolf",
     "fr-CA": "Loup-garou"
+  },
+  "name:iWant Integration": {
+    "en-CA": "iWant Integration",
+    "fr-CA": "Intégration iWant"
   }
 }

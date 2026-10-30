@@ -371,7 +371,7 @@ function repositionOpenEditorPopups() {
 }
 
 /** Info (i) control. Optional `tag` marks the panel for editor translations. */
-function makeInfoTip(text, tag) {
+function makeInfoTip(text, tag, typeId) {
 	const wrap = document.createElement("span");
 	wrap.className = "info-tip";
 	const btn = document.createElement("button");
@@ -388,7 +388,7 @@ function makeInfoTip(text, tag) {
 	panel.hidden = true;
 	const fallback = text == null ? "" : String(text);
 	if (tag && typeof setTranslatedText === "function") {
-		setTranslatedText(panel, tag, fallback);
+		setTranslatedText(panel, tag, fallback, undefined, typeId);
 	} else {
 		panel.textContent = fallback;
 	}

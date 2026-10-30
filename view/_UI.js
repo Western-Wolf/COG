@@ -487,7 +487,7 @@ function renderEditor(force) {
 	// Tear down portaled selects/info before wiping wraps (same funnel as setFocused(false)).
 	closeAllEditorPopups();
 	body.innerHTML = "";
-	// Gizmos: pin intro; gallery + instances scroll independently (see #tab-body.is-gizmos).
+	// Gizmos: nested column scroll; syncGizmoPaneHeights locks pane to panel bottom.
 	body.classList.toggle("is-gizmos", !helpMode && activeTab === "gizmos");
 	if (helpMode) {
 		renderHelpTab(body);
@@ -511,6 +511,9 @@ function renderEditor(force) {
 	enhanceSelects(body);
 	if (typeof applyTranslations === "function") {
 		applyTranslations(body);
+	}
+	if (activeTab === "gizmos" && typeof scheduleGizmoPaneHeights === "function") {
+		scheduleGizmoPaneHeights();
 	}
 }
 

@@ -240,7 +240,7 @@ namespace CogRegistryJson
 				"endCapOverlap", "showIcon", "showLabel", "showNumber", "fillDirection", "iconColorMode",
 				"labelColorMode", "numberColorMode", "numberAsPercent", "fontSize", "frameShape",
 				"frameFillColor", "frameBorderColor", "frameBorderThickness", "insideSize", "displayMode",
-				"alwaysVisible", "barTrough", "numberFormat", "pictureIcon", "pictureDirection",
+				"neverHide", "alwaysVisible", "barTrough", "numberFormat", "pictureIcon", "pictureDirection",
 				"pictureRotation", "pictureEmpty", "pictureFull", "pictureFade"
 			};
 			bool anyFlatChrome = false;
@@ -372,12 +372,17 @@ namespace CogRegistryJson
 		}
 		s.displayMode = NormalizeGaugeDisplayMode(settingString("displayMode"));
 		// Frames default on; meters default off. Missing key uses type-based default.
+		// Migration Code for Transition from v1.01 or earlier to v1.1:
+		// alwaysVisible → neverHide (blocks soft-hide from Hide when / inactive timers; does not override Gauge Visibility HUD).
 		{
 			const bool frameDefault = s.type == "frame";
-			if (hasSetting("alwaysVisible")) {
-				s.alwaysVisible = settingBool("alwaysVisible", frameDefault);
+			if (hasSetting("neverHide")) {
+				s.neverHide = settingBool("neverHide", frameDefault);
+			} else if (hasSetting("alwaysVisible")) {
+				s.neverHide = settingBool("alwaysVisible", frameDefault);
+				NoteMigration(ctx, "alwaysVisible → neverHide");
 			} else {
-				s.alwaysVisible = frameDefault;
+				s.neverHide = frameDefault;
 			}
 		}
 		s.barTrough = settingBool("barTrough", false);
@@ -409,9 +414,9 @@ namespace CogRegistryJson
 				  "endCap", "endCapOverlap", "showIcon", "showLabel", "showNumber", "fillDirection",
 				  "iconColorMode", "labelColorMode", "numberColorMode", "numberAsPercent", "fontSize",
 				  "frameShape", "frameFillColor", "frameBorderColor", "frameBorderThickness", "insideSize",
-				  "displayMode", "alwaysVisible", "barTrough", "numberFormat", "pictureIcon", "pictureDirection",
+				  "displayMode", "neverHide", "barTrough", "numberFormat", "pictureIcon", "pictureDirection",
 				  "pictureRotation", "pictureEmpty", "pictureFull", "pictureFade" },
-				{},
+				{ "alwaysVisible" },
 				"gauge.settings");
 		}
 		WarnUnknownKeys(
@@ -422,9 +427,9 @@ namespace CogRegistryJson
 			  "borderThickness", "troughOpacity", "endCapMode", "endCap", "endCapOverlap", "showIcon",
 			  "showLabel", "showNumber", "fillDirection", "iconColorMode", "labelColorMode", "numberColorMode",
 			  "numberAsPercent", "fontSize", "frameShape", "frameFillColor", "frameBorderColor",
-			  "frameBorderThickness", "insideSize", "displayMode", "alwaysVisible", "barTrough", "numberFormat",
-			  "pictureIcon", "pictureDirection", "pictureRotation", "pictureEmpty", "pictureFull", "pictureFade",
-			  "x", "y", "rotation", "width", "height", "posAnchor" },
+			  "frameBorderThickness", "insideSize", "displayMode", "neverHide", "alwaysVisible", "barTrough",
+			  "numberFormat", "pictureIcon", "pictureDirection", "pictureRotation", "pictureEmpty",
+			  "pictureFull", "pictureFade", "x", "y", "rotation", "width", "height", "posAnchor" },
 			"gauge");
 		return g;
 	}
@@ -465,7 +470,7 @@ namespace CogRegistryJson
 		w.KeyNumber("frameBorderThickness", s.frameBorderThickness);
 		w.KeyNumber("insideSize", s.insideSize);
 		w.KeyString("displayMode", s.displayMode);
-		w.KeyBool("alwaysVisible", s.alwaysVisible);
+		w.KeyBool("neverHide", s.neverHide);
 		w.KeyBool("barTrough", s.barTrough);
 		w.KeyString("numberFormat", s.numberFormat);
 		w.KeyString("pictureIcon", s.pictureIcon);

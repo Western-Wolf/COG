@@ -39,6 +39,14 @@ namespace
 		return ss.str();
 	}
 
+	std::string LowerAscii(std::string s)
+	{
+		for (char& c : s) {
+			c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+		}
+		return s;
+	}
+
 	std::vector<std::filesystem::path> ListJsonFilesSorted(const std::filesystem::path& dir)
 	{
 		std::vector<std::filesystem::path> files;
@@ -55,8 +63,11 @@ namespace
 			}
 			files.push_back(entry.path());
 		}
+		// Case-insensitive A→Z (same idea as Feed icon maps): "_cog.json" before "example.json"
+		// so underscore-prefixed stock files load first and overrides win. Raw ASCII puts
+		// "Example.json" before "_COG.json" (E < _), which wrongly let stock beat overrides.
 		std::sort(files.begin(), files.end(), [](const std::filesystem::path& a, const std::filesystem::path& b) {
-			return a.filename().string() < b.filename().string();
+			return LowerAscii(a.filename().string()) < LowerAscii(b.filename().string());
 		});
 		return files;
 	}

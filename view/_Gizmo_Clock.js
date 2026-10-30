@@ -1615,7 +1615,7 @@ function fillClockGizmoEditor(panel, gizmo) {
 	displaySection.className = "gizmo-display-settings";
 	const displayLede = document.createElement("p");
 	displayLede.className = "lede";
-	setTranslatedText(displayLede, "cog-clock-face", "Clock face");
+	setTranslatedText(displayLede, "cog-clock-face", "Clock face", CLOCK_TYPE_ID);
 	displaySection.appendChild(displayLede);
 	const displayHint = document.createElement("p");
 	displayHint.className = "hint";

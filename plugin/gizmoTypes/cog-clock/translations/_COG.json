@@ -7,6 +7,10 @@
     "en-CA": "Arrange date and time fields across lines. Each badge is one value in the order shown.",
     "fr-CA": "Disposez les champs de date et d'heure sur les lignes. Chaque badge est une valeur dans l'ordre affiché."
   },
+  "cog-clock-face": {
+    "en-CA": "Clock face",
+    "fr-CA": "Cadran"
+  },
   "cog-clock-icon-clock": {
     "en-CA": "Clock",
     "fr-CA": "Horloge"

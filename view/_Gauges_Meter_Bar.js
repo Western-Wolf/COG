@@ -954,7 +954,7 @@ function paintGaugeBar(el, gauge) {
 	}
 
 	const inactive =
-		!gaugeSettings(gauge).alwaysVisible &&
+		!gaugeSettings(gauge).neverHide &&
 		(src ? isHudHidden(src, gear) : !src) &&
 		document.body.classList.contains("is-focused");
 	el.classList.toggle("is-inactive", inactive);

@@ -414,7 +414,7 @@ std::int32_t CogRegistry::RegisterGizmo(
 		_gizmoTypeReceiptIndex[typeId] = receipt;
 		_gizmoTypeReceipts[receipt] = typeId;
 	}
-	// Ensure type-owned data folder (gizmos/<typeId>/) exists for icon maps, translations, etc.
+	// Ensure type-owned data folder (gizmoTypes/<typeId>/) exists for icon maps, translations, etc.
 	CogGizmoStorage::EnsureDir(typeId);
 	return receipt;
 }

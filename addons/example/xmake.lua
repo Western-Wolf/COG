@@ -149,9 +149,9 @@ target("COG_Example")
 
 			if m.gizmo_translations then
 				for _, type_id in ipairs({ "xmp-gearupdated", "xmp-pushupdated" }) do
-					local src = path.join(addon_dir, "gizmos", type_id, "translations", "_COG.json")
+					local src = path.join(addon_dir, "gizmoTypes", type_id, "translations", "_COG.json")
 					if os.isfile(src) then
-						local dst_dir = path.join(deploy_root, "SKSE", "Plugins", "COG", "gizmos", type_id, "translations")
+						local dst_dir = path.join(deploy_root, "SKSE", "Plugins", "COG", "gizmoTypes", type_id, "translations")
 						os.mkdir(dst_dir)
 						os.cp(src, path.join(dst_dir, "_COG.json"))
 					end

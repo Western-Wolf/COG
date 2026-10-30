@@ -371,7 +371,7 @@ function patchGaugeFrameLive(el, gauge, src, gear) {
 	ensureGauge(gauge);
 	const mode = normalizeGaugeDisplayMode(gaugeSettings(gauge).displayMode);
 	const inactive =
-		!gaugeSettings(gauge).alwaysVisible &&
+		!gaugeSettings(gauge).neverHide &&
 		(src ? isHudHidden(src, gear) : !src) &&
 		document.body.classList.contains("is-focused");
 	el.classList.toggle("is-inactive", inactive);
@@ -638,7 +638,7 @@ function paintGaugeFrame(el, gauge) {
 		paintGaugeFrameGear(el, gauge, src, gear, inset);
 	}
 	const inactive =
-		!gaugeSettings(gauge).alwaysVisible &&
+		!gaugeSettings(gauge).neverHide &&
 		(src ? isHudHidden(src, gear) : !src) &&
 		document.body.classList.contains("is-focused");
 	el.classList.toggle("is-inactive", inactive);

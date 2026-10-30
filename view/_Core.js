@@ -1125,6 +1125,9 @@ window.addEventListener("resize", () => {
 	if (!drag) {
 		renderGears();
 	}
+	if (typeof scheduleGizmoPaneHeights === "function") {
+		scheduleGizmoPaneHeights();
+	}
 });
 
 bootEditorChrome();

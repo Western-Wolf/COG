@@ -30,7 +30,7 @@ Gears have suppression options as a field that's registered when the gear is, bu
 
 +++ How do count colour stops work? #cog-help-count-colour-stops
 
-Count gears use the same multi-stop icon and bar colour editors as percent gears, but the stop fields are plain numbers that may go past 100. The live count picks the colour along that map. Percent and timer gears on a shared group colour map only use stops up to 100 (at 100% they take the last stop at or below 100). Leave the ramp empty to inherit the General backup icon or bar colour (GIF/WebP stay native when icon colour is empty).
+Count gears use the same multi-stop **icon** colour editor as percent gears, but icon stop fields are plain numbers that may go past 100. The live count picks the icon colour along that map. **Bar** colours are always percentages (0–100) — counts do not show a bar fill. On a shared group map, percent and timer gears only use icon stops up to 100 (at 100% they take the last stop at or below 100). Leave a ramp empty to inherit the General backup icon or bar colour (GIF/WebP stay native when icon colour is empty).
  +++
 
 +++ Why isn't my mod's HUD element coming back after I removed the Gear from my screen? #cog-help-menu-not-coming-back
@@ -58,9 +58,9 @@ Create and arrange lines. Add gears, reorder them, set size/spacing/stack, Borde
 
 +++ What does Fill from Hidden do? #cog-help-fill-from-hidden
 
-On a group, Fill from Hidden changes how percent/timer gears with a Hide when rule appear instead of vanishing hard.
+On a group, Fill from Hidden changes how percent/timer gears with a Hide when rule look while they are shown. Hide when still removes the gear when its condition is met, regardless of fill mode.
 
-Off keeps hard hide. Alpha fades the whole gear’s opacity. Up / Down keep a greyscale icon in the layout and fill it with the current icon colour from the bottom or top (soft seam at the frontier). Alpha & Up / Alpha & Down do the same with a more transparent greyscale trough. Counts still hard-hide; inactive timers still hard-hide.
+Off is hard hide only (no soft reveal). Alpha fades opacity as the value approaches the threshold. Up / Down fill a greyscale icon with colour from the bottom or top while shown (soft seam at the frontier). Alpha & Up / Alpha & Down do the same with a more transparent greyscale trough. Counts still hard-hide; inactive timers still hard-hide.
 
 Hide when itself is set per gear on the Gears tab: Off, Below, or Above, plus a threshold from 0 to 100% (up to three decimal places).
  +++
@@ -73,7 +73,7 @@ Add Gauge creates a free-floating indicator for one gear (independent of groups)
 
 Meter: Show Icon and Show Label each offer none / left / right / centered / up / down. When both use the same placement, the label sits farther from the gauge than the icon (on arcs, left/right share the hollow: icon on the chosen side, label fills the remaining width). Icon, Title, and Number colour modes pick a real source — Bar, Border, or Icon — and default to Border. On bars, left/right label text is aligned away from the bar; arc labels wrap and scale to fit the hollow. On arcs, up is above the peak and down is below the baseline. Shape is Bar (default) or Arc. Bar and Arc share border, trough, endcaps, and fill direction — Arc is a semicircle band.
 
-Frame: pick a Frames silhouette, fill/border colours, and Display mode Gear or Picture. Frame rotation turns the bezel only. Gear mode shows the bound gear’s icon/bar/value/title inside the plate. Picture mode shows chosen Pictures artwork only (progress from the bound gear); direction is relative to the frame, not the picture’s own rotation. Always Visible (on by default) keeps the frame shown even when the vanilla HUD is hidden or the gear’s Hide when rule would soft-hide it.
+Frame: pick a Frames silhouette, fill/border colours, and Display mode Gear or Picture. Frame rotation turns the bezel only. Gear mode shows the bound gear’s icon/bar/value/title inside the plate. Picture mode shows chosen Pictures artwork only (progress from the bound gear); direction is relative to the frame, not the picture’s own rotation. Never Hide (on by default) keeps the frame shown when the gear would soft-hide — Hide when rules or inactive timers (for example a werewolf picture while not transformed). It does not override Gauge Visibility (HUD gauges still hide with the vanilla HUD).
  +++
 
 ### Gizmos #cog-help-sec-gizmos
@@ -97,7 +97,7 @@ The Suppressor is editor-only. The visual element is there just to let the user 
 +++ What's with the icons in the Feed Gizmo? #cog-help-feed-icons
 
 Icons are on by default for each feed section, but can be turned off for any or all of them.
-* Notifications have a default icon, and mod authors can send their own via the Notify API (if you allow mod icons). Disk rules under `gizmos/cog-feed/notifications/` only apply when no API icon was set.
+* Notifications have a default icon, and mod authors can send their own via the Notify API (if you allow mod icons). Disk rules under `gizmoTypes/cog-feed/notifications/` only apply when no API icon was set.
 * Inventory, Location, Active Effects, and Skills share the same icon-rule system (see "For Mod Authors"). You'll only see each section's gizmo default icon when no rule matches.
  +++
 
@@ -105,9 +105,9 @@ Icons are on by default for each feed section, but can be turned off for any or 
 
 +++ Where are settings stored? #cog-help-settings-stored
 
-On disk under `Data/SKSE/Plugins/COG/`: `general.json`, `groups/`, `gears/`, `gauges/`, and `gizmos/`. The editor writes these while you play. 
+On disk under `Data/SKSE/Plugins/COG/`: `general.json`, `groups/`, `gears/`, `gauges/`, `gizmos/` (placed instances), and `gizmoTypes/` (type catalog JSON plus type-owned storage). The editor writes these while you play.
 
-Individual Gizmos may have their own folders with settings files, like the Feed Gizmo. See our docs on Nexus Mods for how you can use and customize those.
+Individual Gizmo types may have their own folders under `gizmoTypes/<typeId>/` with settings files, like the Feed Gizmo. See our docs on Nexus Mods for how you can use and customize those.
  +++
 
 +++ What image types can I use? #cog-help-image-types

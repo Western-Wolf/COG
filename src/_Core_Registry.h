@@ -143,7 +143,7 @@ struct CogGaugeSettings
 	float frameBorderThickness = 5.0f;
 	float insideSize = 65.0f;
 	std::string displayMode = "gear";
-	bool alwaysVisible = true;
+	bool neverHide = true;
 	bool barTrough = false;
 	std::string numberFormat = "barPercent";
 	std::string pictureIcon;
@@ -391,7 +391,7 @@ private:
 
 	std::filesystem::path DataRoot() const;
 	void EnsureDirs() const;
-	/** Migration Code for Transition from v1.01 or earlier to v1.1: gizmos/feed → gizmos/cog-feed. */
+	/** Migration Code for Transition from v1.01 or earlier to v1.1: gizmos/<typeId>/ → gizmoTypes/<typeId>/ (feed → cog-feed). */
 	void MigrateLegacyFeedDataDir() const;
 	/** Migration Code for Transition from v1.01 or earlier to v1.1: drop pre-cog-* builtin type records. */
 	bool MigrateLegacyBuiltinGizmoTypeIdsUnlocked();
@@ -431,7 +431,7 @@ private:
 	bool _uiHidden = false;
 	/** Global editor catalogs (translations/*.json). */
 	CogTranslations::Catalog _translations;
-	/** Per-type catalogs (gizmos/<typeId>/translations/*.json). */
+	/** Per-type catalogs (gizmoTypes/<typeId>/translations/*.json). */
 	std::unordered_map<std::string, CogTranslations::Catalog> _gizmoTranslations;
 	std::vector<CogGroup> _groups;
 	std::vector<CogGear> _gears;

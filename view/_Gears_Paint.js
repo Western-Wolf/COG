@@ -113,12 +113,18 @@ function meterAxis(src) {
 	return Math.max(0, Number(src && src.value) || 0);
 }
 
+/** Icon ramps: percent/timer truncate past 100; counts sample the full unbounded map. */
 function sampleRampForSource(ramp, src) {
 	const axis = meterAxis(src);
 	if (usesRatio(src)) {
 		return sampleColorRamp(truncateColorRampAt100(ramp), axis);
 	}
 	return sampleColorRamp(ramp, axis);
+}
+
+/** Bar ramps are always a 0–100% map (counts have no bar fill past 100). */
+function sampleBarRampForSource(ramp, src) {
+	return sampleColorRamp(truncateColorRampAt100(ramp), meterPercent(src));
 }
 
 function resolvedPalette(src, gear, group) {
@@ -136,7 +142,7 @@ function resolvedPalette(src, gear, group) {
 			barColor: barRamp,
 			borderColor: chromeBorder,
 			iconSample: sampleRampForSource(iconRamp, src) || themeIconColor(),
-			barSample: sampleRampForSource(barRamp, src) || themeFill()
+			barSample: sampleBarRampForSource(barRamp, src) || themeFill()
 		};
 	}
 	const look = appearanceOf(gear, src);
@@ -147,7 +153,7 @@ function resolvedPalette(src, gear, group) {
 		barColor: barRamp,
 		borderColor: chromeBorder,
 		iconSample: sampleRampForSource(iconRamp, src) || themeIconColor(),
-		barSample: sampleRampForSource(barRamp, src) || themeFill()
+		barSample: sampleBarRampForSource(barRamp, src) || themeFill()
 	};
 }
 
@@ -551,11 +557,12 @@ function gearHudAlpha(src, gear, group) {
 	if (src.type !== "percent" && src.type !== "timer") {
 		return 1;
 	}
-	const mode = groupFillMode(group, src, gear);
-	if (mode === "up" || mode === "down" || mode === "alphaUp" || mode === "alphaDown") {
-		// Stay in layout; icon greyscale/fill conveys the reveal.
-		return 1;
+	// Hide when always removes the gear when its condition is met — Fill from Hidden
+	// only softens how it looks while shown (alpha fade / icon fill), never overrides hide.
+	if (isHiddenByHideAt(src, gear)) {
+		return 0;
 	}
+	const mode = groupFillMode(group, src, gear);
 	if (mode === "alpha") {
 		if (src.type === "timer" && rule.unit === "absolute") {
 			const seconds = Number.isFinite(Number(src.current)) ? Number(src.current) : 0;
@@ -563,7 +570,7 @@ function gearHudAlpha(src, gear, group) {
 		}
 		return hideAtRevealProgress(rule, (Number(src.value) || 0) / 100);
 	}
-	return isHiddenByHideAt(src, gear) ? 0 : 1;
+	return 1;
 }
 
 function gearFillProgress(src, gear) {
@@ -612,6 +619,69 @@ function fillFrontierMask(dirUp, progress) {
 	return dirUp
 		? `linear-gradient(to top, #000 0%, #000 ${solid}%, rgba(0,0,0,0.5) ${pct}%, transparent ${clear}%)`
 		: `linear-gradient(to bottom, #000 0%, #000 ${solid}%, rgba(0,0,0,0.5) ${pct}%, transparent ${clear}%)`;
+}
+
+/** Natural size cache for fill-from-hidden faces (href → {w,h}). */
+const iconNaturalSizeCache = new Map();
+
+/**
+ * Size a fill/base face to the icon’s aspect ratio inside the square host.
+ * Avoids letterbox regions where CEF treats mask-size:contain padding as opaque.
+ * @returns {boolean} true when natural size was known and applied
+ */
+function fitFaceToIconAspect(face, host, href) {
+	if (!face || !host || !href) {
+		return false;
+	}
+	const box = host.clientWidth || host.offsetWidth || 0;
+	const apply = (nw, nh) => {
+		if (!face.isConnected || box <= 0) {
+			return;
+		}
+		const scale = Math.min(box / Math.max(nw, 1), box / Math.max(nh, 1));
+		const w = Math.max(1, Math.round(nw * scale));
+		const h = Math.max(1, Math.round(nh * scale));
+		face.style.inset = "auto";
+		face.style.width = `${w}px`;
+		face.style.height = `${h}px`;
+		face.style.left = "50%";
+		face.style.top = "50%";
+		face.style.right = "auto";
+		face.style.bottom = "auto";
+		face.style.transform = "translate(-50%, -50%)";
+	};
+	const cached = iconNaturalSizeCache.get(href);
+	if (cached) {
+		apply(cached.w, cached.h);
+		return true;
+	}
+	face.style.inset = "0";
+	face.style.width = "";
+	face.style.height = "";
+	face.style.left = "";
+	face.style.top = "";
+	face.style.right = "";
+	face.style.bottom = "";
+	face.style.transform = "";
+	const probe = new Image();
+	probe.onload = () => {
+		const nw = probe.naturalWidth || 1;
+		const nh = probe.naturalHeight || 1;
+		iconNaturalSizeCache.set(href, { w: nw, h: nh });
+		if (face.isConnected) {
+			apply(nw, nh);
+			face.style.webkitMaskSize = face.style.webkitMaskSize.includes(",")
+				? "100% 100%, 100% 100%"
+				: "100% 100%";
+			face.style.maskSize = face.style.maskSize.includes(",") ? "100% 100%, 100% 100%" : "100% 100%";
+			face.style.webkitMaskPosition = face.style.webkitMaskPosition.includes(",")
+				? "0 0, 0 0"
+				: "0 0";
+			face.style.maskPosition = face.style.maskPosition.includes(",") ? "0 0, 0 0" : "0 0";
+		}
+	};
+	probe.src = href;
+	return false;
 }
 
 /** GIF/WebP: greyscale base + coloured/native fill (keeps animation on native layer). */
@@ -707,7 +777,14 @@ function paintGearIconFillRaster(icon, href, mode, progress, plan) {
 		}
 		const tintOpacity =
 			p <= 0 ? 0 : colorPlan.kind === "blend" ? colorPlan.tintAmount : 1;
+		const fitted = fitFaceToIconAspect(fillTint, icon, href);
 		setRasterTintFace(fillTint, href, colorPlan.color, tintOpacity, grad);
+		if (fitted) {
+			fillTint.style.webkitMaskSize = "100% 100%, 100% 100%";
+			fillTint.style.maskSize = "100% 100%, 100% 100%";
+			fillTint.style.webkitMaskPosition = "0 0, 0 0";
+			fillTint.style.maskPosition = "0 0, 0 0";
+		}
 	} else if (fillTint) {
 		fillTint.remove();
 	}
@@ -750,29 +827,24 @@ function paintGearIconFillMasked(icon, href, paint, mode, progress) {
 	}
 
 	const maskUrl = `url("${href}")`;
-	base.style.inset = "0";
-	base.style.width = "";
-	base.style.height = "";
-	base.style.top = "";
-	base.style.bottom = "";
+	const fitted = fitFaceToIconAspect(base, icon, href);
+	fitFaceToIconAspect(fill, icon, href);
+	const iconMaskSize = fitted ? "100% 100%" : "contain";
+	const iconMaskPos = fitted ? "0 0" : "center";
+
 	base.style.background = FILL_FROM_HIDDEN_GREY;
 	base.style.opacity = withAlpha ? String(FILL_FROM_HIDDEN_TROUGH_ALPHA) : "1";
 	base.style.webkitMaskImage = maskUrl;
 	base.style.maskImage = maskUrl;
 	base.style.webkitMaskComposite = "";
 	base.style.maskComposite = "";
-	base.style.webkitMaskSize = "contain";
-	base.style.maskSize = "contain";
+	base.style.webkitMaskSize = iconMaskSize;
+	base.style.maskSize = iconMaskSize;
 	base.style.webkitMaskRepeat = "no-repeat";
 	base.style.maskRepeat = "no-repeat";
-	base.style.webkitMaskPosition = "center";
-	base.style.maskPosition = "center";
+	base.style.webkitMaskPosition = iconMaskPos;
+	base.style.maskPosition = iconMaskPos;
 
-	fill.style.inset = "0";
-	fill.style.width = "";
-	fill.style.height = "";
-	fill.style.top = "";
-	fill.style.bottom = "";
 	fill.style.background = color;
 	fill.style.opacity = p <= 0 ? "0" : "1";
 
@@ -783,10 +855,10 @@ function paintGearIconFillMasked(icon, href, paint, mode, progress) {
 	fill.style.maskComposite = "intersect";
 	fill.style.webkitMaskRepeat = "no-repeat, no-repeat";
 	fill.style.maskRepeat = "no-repeat, no-repeat";
-	fill.style.webkitMaskPosition = "center, 0 0";
-	fill.style.maskPosition = "center, 0 0";
-	fill.style.webkitMaskSize = "contain, 100% 100%";
-	fill.style.maskSize = "contain, 100% 100%";
+	fill.style.webkitMaskPosition = fitted ? "0 0, 0 0" : "center, 0 0";
+	fill.style.maskPosition = fitted ? "0 0, 0 0" : "center, 0 0";
+	fill.style.webkitMaskSize = fitted ? "100% 100%, 100% 100%" : "contain, 100% 100%";
+	fill.style.maskSize = fitted ? "100% 100%, 100% 100%" : "contain, 100% 100%";
 
 	const img = icon.querySelector(":scope > img:not(.gear-icon-base):not(.gear-icon-fill)");
 	if (img) {

@@ -1,5 +1,5 @@
 # COG notification feed icon rules
-# Location: Data/SKSE/Plugins/COG/gizmos/cog-feed/notifications/
+# Location: Data/SKSE/Plugins/COG/gizmoTypes/cog-feed/notifications/
 # Last wins: later-named *.txt files and later lines override earlier matches.
 #
 # Grammar (base kinds name + form; all four operators):

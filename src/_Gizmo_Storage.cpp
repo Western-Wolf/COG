@@ -42,7 +42,7 @@ std::string CogGizmoStorage::Relative(std::string_view typeId)
 	if (id.empty()) {
 		return {};
 	}
-	return std::string("gizmos/") + id;
+	return std::string("gizmoTypes/") + id;
 }
 
 std::filesystem::path CogGizmoStorage::EnsureDir(std::string_view typeId)
@@ -51,7 +51,7 @@ std::filesystem::path CogGizmoStorage::EnsureDir(std::string_view typeId)
 	if (id.empty()) {
 		return {};
 	}
-	const auto dir = DataRoot() / "gizmos" / id;
+	const auto dir = DataRoot() / "gizmoTypes" / id;
 	std::error_code ec;
 	std::filesystem::create_directories(dir, ec);
 	if (ec) {

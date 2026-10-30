@@ -351,7 +351,8 @@ function fillSuppressorGizmoEditor(panel, gizmo) {
 		setTranslatedText(
 			lede,
 			"cog-suppressor-lede",
-			"Editor marker only (always hidden in-game). Always Hide forces soft-hide; Never Hide exempts a target from COG gear soft-hide and from Always Hide."
+			"Editor marker only (always hidden in-game). Always Hide forces soft-hide; Never Hide exempts a target from COG gear soft-hide and from Always Hide.",
+			"cog-suppressor"
 		);
 	} else {
 		lede.textContent =

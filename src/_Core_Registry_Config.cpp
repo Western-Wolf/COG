@@ -245,72 +245,110 @@ bool CogRegistry::MigrateLegacyBuiltinGizmoTypeIdsUnlocked()
 }
 
 // Migration Code for Transition from v1.01 or earlier to v1.1:
-// One-time rename moves gizmos/feed/ → gizmos/cog-feed/ when the legacy tree still holds section rule *.txt files.
+// Move type-owned trees gizmos/<dir>/ → gizmoTypes/<NormalizeGizmoType(dir)>/ (feed → cog-feed in one hop).
 void CogRegistry::MigrateLegacyFeedDataDir() const
 {
 	const auto root = DataRoot();
-	const auto legacy = root / "gizmos" / "feed";
-	const auto modern = root / "gizmos" / "cog-feed";
+	const auto gizmosRoot = root / "gizmos";
+	const auto typesRoot = root / "gizmoTypes";
 	std::error_code ec;
-	if (!std::filesystem::is_directory(legacy, ec)) {
+	if (!std::filesystem::is_directory(gizmosRoot, ec)) {
 		return;
 	}
-	bool hasTxt = false;
-	for (std::filesystem::recursive_directory_iterator it(legacy, ec), end; !ec && it != end; it.increment(ec)) {
-		if (it->is_regular_file(ec) && it->path().extension() == ".txt") {
-			hasTxt = true;
-			break;
+
+	struct PendingMove
+	{
+		std::filesystem::path source;
+		std::string destTypeId;
+	};
+	std::vector<PendingMove> pending;
+	for (const auto& entry : std::filesystem::directory_iterator(gizmosRoot, ec)) {
+		if (ec || !entry.is_directory(ec)) {
+			continue;
 		}
+		const auto name = entry.path().filename().string();
+		if (name.empty() || name.find("..") != std::string::npos) {
+			continue;
+		}
+		const auto destTypeId = NormalizeGizmoType(name);
+		if (destTypeId.empty()) {
+			continue;
+		}
+		pending.push_back(PendingMove{entry.path(), destTypeId});
 	}
-	if (!hasTxt) {
-		return;
-	}
-	if (!std::filesystem::exists(modern, ec)) {
-		std::filesystem::create_directories(modern.parent_path(), ec);
+	// Prefer already-normalized names first so missing-only merges keep modern files over legacy aliases (feed).
+	std::sort(pending.begin(), pending.end(), [](const PendingMove& a, const PendingMove& b) {
+		const bool aExact = a.source.filename().string() == a.destTypeId;
+		const bool bExact = b.source.filename().string() == b.destTypeId;
+		if (aExact != bExact) {
+			return aExact && !bExact;
+		}
+		return a.destTypeId < b.destTypeId ||
+			   (a.destTypeId == b.destTypeId && a.source.filename().string() < b.source.filename().string());
+	});
+
+	auto mergeMissingFiles = [](const std::filesystem::path& from, const std::filesystem::path& to) {
+		std::error_code mergeEc;
+		for (std::filesystem::recursive_directory_iterator it(from, mergeEc), end; !mergeEc && it != end;
+			 it.increment(mergeEc)) {
+			if (!it->is_regular_file(mergeEc)) {
+				continue;
+			}
+			const auto rel = std::filesystem::relative(it->path(), from, mergeEc);
+			if (mergeEc || rel.empty()) {
+				continue;
+			}
+			const auto dest = to / rel;
+			if (std::filesystem::exists(dest, mergeEc)) {
+				continue;
+			}
+			std::filesystem::create_directories(dest.parent_path(), mergeEc);
+			mergeEc.clear();
+			std::filesystem::copy_file(it->path(), dest, mergeEc);
+			if (mergeEc) {
+				logger::warn(
+					"COG: Migration Code for Transition from v1.01 or earlier to v1.1: could not copy {} ({})",
+					it->path().string(),
+					mergeEc.message());
+			}
+		}
+	};
+
+	for (const auto& move : pending) {
+		const auto dest = typesRoot / move.destTypeId;
 		ec.clear();
-		std::filesystem::rename(legacy, modern, ec);
-		if (ec) {
-			logger::error(
-				"COG: Migration Code for Transition from v1.01 or earlier to v1.1: failed to rename gizmos/feed → gizmos/cog-feed ({})",
-				ec.message());
-			return;
-		}
-		logger::info(
-			"COG: Migration Code for Transition from v1.01 or earlier to v1.1: renamed gizmos/feed → gizmos/cog-feed");
-		return;
-	}
-	// Both trees present: copy any missing legacy files into cog-feed, then remove the legacy tree.
-	for (std::filesystem::recursive_directory_iterator it(legacy, ec), end; !ec && it != end; it.increment(ec)) {
-		if (!it->is_regular_file(ec)) {
+		if (!std::filesystem::exists(dest, ec)) {
+			std::filesystem::create_directories(typesRoot, ec);
+			ec.clear();
+			std::filesystem::rename(move.source, dest, ec);
+			if (ec) {
+				logger::error(
+					"COG: Migration Code for Transition from v1.01 or earlier to v1.1: failed to rename gizmos/{} → gizmoTypes/{} ({})",
+					move.source.filename().string(),
+					move.destTypeId,
+					ec.message());
+				continue;
+			}
+			logger::info(
+				"COG: Migration Code for Transition from v1.01 or earlier to v1.1: renamed gizmos/{} → gizmoTypes/{}",
+				move.source.filename().string(),
+				move.destTypeId);
 			continue;
 		}
-		const auto rel = std::filesystem::relative(it->path(), legacy, ec);
-		if (ec || rel.empty()) {
-			continue;
-		}
-		const auto dest = modern / rel;
-		if (std::filesystem::exists(dest, ec)) {
-			continue;
-		}
-		std::filesystem::create_directories(dest.parent_path(), ec);
+		mergeMissingFiles(move.source, dest);
 		ec.clear();
-		std::filesystem::copy_file(it->path(), dest, ec);
+		std::filesystem::remove_all(move.source, ec);
 		if (ec) {
 			logger::warn(
-				"COG: Migration Code for Transition from v1.01 or earlier to v1.1: could not copy {} ({})",
-				it->path().string(),
+				"COG: Migration Code for Transition from v1.01 or earlier to v1.1: left gizmos/{} after merge ({})",
+				move.source.filename().string(),
 				ec.message());
+		} else {
+			logger::info(
+				"COG: Migration Code for Transition from v1.01 or earlier to v1.1: merged gizmos/{} into gizmoTypes/{}",
+				move.source.filename().string(),
+				move.destTypeId);
 		}
-	}
-	ec.clear();
-	std::filesystem::remove_all(legacy, ec);
-	if (ec) {
-		logger::warn(
-			"COG: Migration Code for Transition from v1.01 or earlier to v1.1: left gizmos/feed after merge ({})",
-			ec.message());
-	} else {
-		logger::info(
-			"COG: Migration Code for Transition from v1.01 or earlier to v1.1: merged gizmos/feed into gizmos/cog-feed");
 	}
 }
 
@@ -666,11 +704,11 @@ void CogRegistry::LoadTranslationsUnlocked()
 	const auto root = DataRoot();
 	CogTranslations::LoadDir(_translations, root / "translations");
 
-	// Per-type packs under gizmos/<typeId>/translations/ (directory name = type id).
+	// Per-type packs under gizmoTypes/<typeId>/translations/ (directory name = type id; skip .json catalog files).
 	std::error_code ec;
-	const auto gizmosRoot = root / "gizmos";
-	if (std::filesystem::is_directory(gizmosRoot, ec)) {
-		for (const auto& entry : std::filesystem::directory_iterator(gizmosRoot, ec)) {
+	const auto typesRoot = root / "gizmoTypes";
+	if (std::filesystem::is_directory(typesRoot, ec)) {
+		for (const auto& entry : std::filesystem::directory_iterator(typesRoot, ec)) {
 			if (ec || !entry.is_directory(ec)) {
 				continue;
 			}

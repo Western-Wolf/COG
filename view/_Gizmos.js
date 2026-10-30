@@ -68,7 +68,7 @@ window.CogRegisterGizmoRenderer = function (typeId, api) {
 };
 
 /**
- * Type-owned data folder under SKSE/Plugins/COG (relative), e.g. "gizmos/cog-feed".
+ * Type-owned data folder under SKSE/Plugins/COG (relative), e.g. "gizmoTypes/cog-feed".
  * Matches Papyrus COG_API.GizmoStorage / C++ CogGizmoStorage::Relative.
  * COG creates the absolute folder on register/load; view code builds subpaths off this string
  * (e.g. CogGizmoStorage("cog-feed") + "/effects").
@@ -77,7 +77,7 @@ window.CogGizmoStorage = function (typeId) {
 	if (!String(typeId || "").trim()) {
 		return "";
 	}
-	return `gizmos/${normalizeGizmoType(typeId)}`;
+	return `gizmoTypes/${normalizeGizmoType(typeId)}`;
 };
 
 function gizmoRendererApi(typeId) {
@@ -1687,6 +1687,48 @@ function renderGizmos(body) {
 	layout.appendChild(galleryCol);
 	layout.appendChild(listCol);
 	body.appendChild(layout);
+	scheduleGizmoPaneHeights();
+}
+
+/**
+ * Lock .gizmos-layout to the visible panel so each column’s scrollport sits fully
+ * on-screen. Without this, CEF grows the pane with open <details> and clips the
+ * bottom of the overflow box — scrollbar hits max before Display’s second row /
+ * later instances.
+ */
+function syncGizmoPaneHeights() {
+	const panel = document.getElementById("editor-panel");
+	const body = document.getElementById("tab-body");
+	if (!panel || !body || !body.classList.contains("is-gizmos")) {
+		return;
+	}
+	const layout = body.querySelector(".gizmos-layout");
+	const intro = body.querySelector(".gizmos-intro");
+	if (!layout) {
+		return;
+	}
+	const padBottom = parseFloat(window.getComputedStyle(body).paddingBottom) || 0;
+	const panelBottom = panel.getBoundingClientRect().bottom;
+	let layoutTop;
+	if (intro) {
+		const introMargin = parseFloat(window.getComputedStyle(intro).marginBottom) || 0;
+		layoutTop = intro.getBoundingClientRect().bottom + introMargin;
+	} else {
+		const padTop = parseFloat(window.getComputedStyle(body).paddingTop) || 0;
+		layoutTop = body.getBoundingClientRect().top + padTop;
+	}
+	const h = Math.max(80, Math.floor(panelBottom - padBottom - layoutTop));
+	layout.style.height = `${h}px`;
+	layout.style.maxHeight = `${h}px`;
+}
+
+function scheduleGizmoPaneHeights() {
+	const run = () => syncGizmoPaneHeights();
+	if (typeof requestAnimationFrame === "function") {
+		requestAnimationFrame(() => requestAnimationFrame(run));
+	} else {
+		setTimeout(run, 0);
+	}
 }
 
 function isBuiltinGizmoType(typeDef) {
@@ -1822,9 +1864,11 @@ function bindExclusiveGizmo(details) {
 			if (openGizmoId === details.dataset.gizmoId || activeGizmoId === details.dataset.gizmoId) {
 				selectEditorItem("", "");
 			}
+			scheduleGizmoPaneHeights();
 			return;
 		}
 		selectEditorItem("gizmo", details.dataset.gizmoId || "");
+		scheduleGizmoPaneHeights();
 	});
 }
 

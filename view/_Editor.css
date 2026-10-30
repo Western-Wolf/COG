@@ -306,6 +306,7 @@ body.is-focused #editor {
 
 #tab-body {
 	flex: 1;
+	min-height: 0;
 	overflow: auto;
 	padding: 0.9em 1.1em 1.1em;
 }
@@ -1868,7 +1869,7 @@ button.action:hover,
 
 .gizmos-layout {
 	display: grid;
-	grid-template-columns: 1fr 1fr;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 	gap: 1rem;
 	align-items: start;
 }
@@ -1877,7 +1878,11 @@ button.action:hover,
 	margin: 0 0 0.85em;
 }
 
-/* Pin description; gallery + instances fill remaining height and scroll separately. */
+/*
+ * Gizmos: pin intro; gallery + instances scroll separately (height locked in JS —
+ * syncGizmoPaneHeights — so CEF doesn’t grow the pane past the panel and clip
+ * the bottom of the scrollport).
+ */
 #tab-body.is-gizmos {
 	display: flex;
 	flex-direction: column;
@@ -1890,17 +1895,21 @@ button.action:hover,
 }
 
 #tab-body.is-gizmos .gizmos-layout {
-	flex: 1 1 auto;
+	flex: 0 0 auto;
 	min-height: 0;
 	align-items: stretch;
 	overflow: hidden;
+	/* height / max-height set by syncGizmoPaneHeights() */
 }
 
 #tab-body.is-gizmos .gizmo-gallery-col,
 #tab-body.is-gizmos .gizmo-list-col {
 	min-height: 0;
+	height: 100%;
 	overflow-x: hidden;
 	overflow-y: auto;
+	padding-bottom: 1.5em;
+	box-sizing: border-box;
 }
 
 .gizmo-gallery-col {

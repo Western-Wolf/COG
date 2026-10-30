@@ -15,7 +15,7 @@ namespace CogTranslations
 	/** Merge one JSON file into catalog (last-wins per tag/lang). */
 	void MergeFile(Catalog& into, const std::filesystem::path& path);
 
-	/** Load all *.json in dir A→Z by filename; last-wins. */
+	/** Load all *.json in dir A→Z by filename (case-insensitive); last-wins. */
 	void LoadDir(Catalog& into, const std::filesystem::path& dir);
 
 	/** Collect distinct language codes present in catalog. */

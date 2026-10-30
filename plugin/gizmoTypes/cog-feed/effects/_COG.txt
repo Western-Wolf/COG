@@ -1,5 +1,5 @@
 # COG active-effects feed icon rules
-# Location: Data/SKSE/Plugins/COG/gizmos/cog-feed/effects/
+# Location: Data/SKSE/Plugins/COG/gizmoTypes/cog-feed/effects/
 # Last wins: later-named *.txt files and later lines override earlier matches.
 # Put broad rules above; specific equals / form pins below.
 #

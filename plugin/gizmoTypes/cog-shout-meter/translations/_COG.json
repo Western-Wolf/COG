@@ -1,0 +1,6 @@
+{
+  "cog-shout-meter-intro": {
+    "en-CA": "Shows your equipped shout in Dragon script. Words fill as you speak them; cooldown fades from the chosen edge with a gradient trail. The whole label rotates with the gizmo.",
+    "fr-CA": "Affiche votre cri équipé en écriture draconique. Les mots se remplissent à mesure que vous les prononcez; le temps de recharge s'estompe depuis le bord choisi avec une traînée en dégradé. Toute l'étiquette pivote avec le gizmo."
+  }
+}

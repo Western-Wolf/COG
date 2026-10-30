@@ -44,7 +44,7 @@ namespace
 		CogRegistry::Get().UpdateGizmoPayload(receipt, std::move(payloadJson));
 	}
 
-	/** Relative path under SKSE/Plugins/COG (e.g. "gizmos/cog-feed"); creates the folder. */
+	/** Relative path under SKSE/Plugins/COG (e.g. "gizmoTypes/cog-feed"); creates the folder. */
 	std::string GizmoStorage(RE::StaticFunctionTag*, std::string typeId)
 	{
 		CogGizmoStorage::EnsureDir(typeId);

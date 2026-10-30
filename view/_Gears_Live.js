@@ -230,15 +230,15 @@ function applyLivePatchToHud() {
 			safeCall(`applyLivePatch:gauge:${gauge.id != null ? gauge.id : "?"}`, () => {
 				const el = findHudGaugeEl(gauge.id);
 				const { src, gear } = typeof gaugeLinked === "function" ? gaugeLinked(gauge) : { src: null, gear: null };
-				const stayVisible = !!gaugeSettings(gauge).alwaysVisible;
-				const hidden = !stayVisible && !!(src && typeof isHudHidden === "function" && isHudHidden(src, gear));
+				const neverHide = !!gaugeSettings(gauge).neverHide;
+				const hidden = !neverHide && !!(src && typeof isHudHidden === "function" && isHudHidden(src, gear));
 				if (!el) {
-					if (preview || stayVisible || !hidden) {
+					if (preview || neverHide || !hidden) {
 						needsRebuild = true;
 					}
 					return;
 				}
-				if (hidden && !preview && !stayVisible) {
+				if (hidden && !preview && !neverHide) {
 					needsRebuild = true;
 					return;
 				}
@@ -277,10 +277,10 @@ function applyLivePercentToBoundGauges(incoming, preview) {
 		safeCall(`patchHudGaugeLive:${gauge.id != null ? gauge.id : "?"}`, () => {
 			const el = findHudGaugeEl(gauge.id);
 			const { src, gear } = typeof gaugeLinked === "function" ? gaugeLinked(gauge) : { src: null, gear: null };
-			const stayVisible = !!gaugeSettings(gauge).alwaysVisible;
-			const hidden = !stayVisible && !!(src && typeof isHudHidden === "function" && isHudHidden(src, gear));
+			const neverHide = !!gaugeSettings(gauge).neverHide;
+			const hidden = !neverHide && !!(src && typeof isHudHidden === "function" && isHudHidden(src, gear));
 			if (!el) {
-				if (preview || stayVisible || !hidden) {
+				if (preview || neverHide || !hidden) {
 					needsRebuild = true;
 				}
 				return;
@@ -539,7 +539,7 @@ function renderGears() {
 	if (!hudVisible && !preview) {
 		// Keep HUD DOM mounted; body.hud-hidden hides it via CSS. Destroying here made
 		// quicksave/Loading Menu flash every element as it was rebuilt on show.
-		// Still sync gauges/gizmos so visibility "ui" (and alwaysVisible gauges) can mount.
+		// Still sync gauges/gizmos so visibility "ui" gauges can mount.
 		syncHudGauges(root, frontRoot, false);
 		syncHudGizmos(root, frontRoot, false);
 		syncHudFrontLayer();

@@ -122,15 +122,15 @@ EndFunction
 Function RegisterGizmos()
 	; === COG API: schema + storage + RegisterGizmo ===
 	; Colours align with Gears 3-stop ramp endpoints; showCount paints the digit beside the icon.
-	; labelTag matches gizmos/<typeId>/translations/_COG.json (not in global COG catalog).
+	; labelTag matches gizmoTypes/<typeId>/translations/_COG.json (not in global COG catalog).
 	String schema = "["
 	schema += "{\"key\":\"zeroColor\",\"kind\":\"color\",\"label\":\"Zero colour\",\"labelTag\":\"cog-zero-colour\",\"default\":\"#20DF20\"},"
 	schema += "{\"key\":\"tenColor\",\"kind\":\"color\",\"label\":\"Ten colour\",\"labelTag\":\"cog-ten-colour\",\"default\":\"#DF2020\"},"
 	schema += "{\"key\":\"showCount\",\"kind\":\"bool\",\"label\":\"Show Count\",\"labelTag\":\"cog-show-count\",\"default\":true}"
 	schema += "]"
 
-	; Ensure per-type data folders exist (translations ship under gizmos/<typeId>/translations/).
-	; Return value is the relative path under SKSE/Plugins/COG (e.g. gizmos/xmp-gearupdated).
+	; Ensure per-type data folders exist (translations ship under gizmoTypes/<typeId>/translations/).
+	; Return value is the relative path under SKSE/Plugins/COG (e.g. gizmoTypes/xmp-gearupdated).
 	Debug.Trace("COG Example Gizmos storage: " + COG_API.GizmoStorage("xmp-gearupdated"))
 	Debug.Trace("COG Example Gizmos storage: " + COG_API.GizmoStorage("xmp-pushupdated"))
 

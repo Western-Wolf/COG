@@ -69,6 +69,8 @@ body.is-focused #hud-front .hud-group.is-front {
 	mask-position: center;
 	-webkit-mask-size: contain;
 	mask-size: contain;
+	-webkit-mask-mode: alpha;
+	mask-mode: alpha;
 	pointer-events: none;
 }
 
@@ -81,8 +83,10 @@ body.is-focused #hud-front .hud-group.is-front {
 .hud-group .gear-icon.is-fill-hidden .gear-icon-base,
 .hud-group .gear-icon.is-fill-hidden .gear-icon-fill {
 	position: absolute;
-	inset: 0;
+	/* Geometry set by fitFaceToIconAspect (aspect-fit); avoid full-cell letterbox fill. */
 	pointer-events: none;
+	-webkit-mask-mode: alpha;
+	mask-mode: alpha;
 }
 
 .hud-group .gear-icon.is-fill-hidden .gear-icon-fill {

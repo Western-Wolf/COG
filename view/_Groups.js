@@ -1289,7 +1289,7 @@ function renderGroups(body) {
 			const fadeTitle = details.querySelector('[data-role="fillFromHiddenTitle"]') || fadeRow;
 			fadeTitle.appendChild(
 				makeInfoTip(
-					"How percent/timer gears with Hide when reveal. Off = hard hide. Alpha fades opacity. Up/Down keep a greyscale icon and fill with colour from the bottom or top (soft seam). Alpha & Up/Down also fade the unfilled area to bar-trough opacity. GIF/WebP fill uses native colours when icon ends are blank. Counts still hard-hide.",
+					"How percent/timer gears look while shown under Hide when. Hide when still removes the gear when its condition is met. Off = hard hide only. Alpha fades opacity toward the threshold. Up/Down fill a greyscale icon from the bottom or top (soft seam). Alpha & Up/Down also fade the unfilled area to bar-trough opacity. GIF/WebP fill uses native colours when icon ends are blank. Counts still hard-hide.",
 					"cog-group-fill-from-hidden-tip"
 				)
 			);
@@ -1347,10 +1347,13 @@ function renderGroups(body) {
 			renderEditor(true);
 		});
 		colorFields.classList.add("color-ramp-stack");
-		const groupRampTip =
-			"Stop values are shared by every gear on this line. Percent and timer gears only use stops up to 100 (at 100% they take the last stop at or below 100). Count gears use the same map past 100. Empty inherits the General backup.";
-		const groupRampOpts = { axis: "count", hideHint: true };
-		const tagColorRamp = (editor, headingTag, headingFallback) => {
+		const groupIconRampTip =
+			"Icon stop values are shared by every gear on this line. Percent and timer gears only use stops up to 100 (at 100% they take the last stop at or below 100). Count gears use the same map past 100. Empty inherits the General backup.";
+		const groupBarRampTip =
+			"Bar stops are always percentages (0–100). Percent and timer gears sample by fill; counts do not show a bar. Empty inherits the General backup.";
+		const groupIconRampOpts = { axis: "count", hideHint: true };
+		const groupBarRampOpts = { axis: "percent", hideHint: true };
+		const tagColorRamp = (editor, headingTag, headingFallback, tipText, tipTag) => {
 			const heading = editor.querySelector(".color-ramp-heading");
 			if (heading && typeof setTranslatedText === "function") {
 				setTranslatedText(heading, headingTag, headingFallback);
@@ -1360,7 +1363,7 @@ function renderGroups(body) {
 				headingRow.className = "color-ramp-heading-row";
 				heading.replaceWith(headingRow);
 				headingRow.appendChild(heading);
-				headingRow.appendChild(makeInfoTip(groupRampTip, "cog-group-colour-ramp-tip"));
+				headingRow.appendChild(makeInfoTip(tipText, tipTag));
 			}
 			return editor;
 		};
@@ -1382,10 +1385,12 @@ function renderGroups(body) {
 							live
 						);
 					},
-					groupRampOpts
+					groupIconRampOpts
 				),
 				"cog-icon-colours",
-				"Icon colours"
+				"Icon colours",
+				groupIconRampTip,
+				"cog-group-icon-colour-ramp-tip"
 			)
 		);
 		colorFields.appendChild(
@@ -1406,10 +1411,12 @@ function renderGroups(body) {
 							live
 						);
 					},
-					groupRampOpts
+					groupBarRampOpts
 				),
 				"cog-bar-colours",
-				"Bar colours"
+				"Bar colours",
+				groupBarRampTip,
+				"cog-group-bar-colour-ramp-tip"
 			)
 		);
 		enhanceSelects(details);

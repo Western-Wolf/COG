@@ -467,7 +467,8 @@ function fillShoutMeterGizmoEditor(panel, gizmo) {
 		setTranslatedText(
 			intro,
 			"cog-shout-meter-intro",
-			"Shows your equipped shout in Dragon script. Words fill as you speak them; cooldown fades from the chosen edge with a gradient trail. The whole label rotates with the gizmo."
+			"Shows your equipped shout in Dragon script. Words fill as you speak them; cooldown fades from the chosen edge with a gradient trail. The whole label rotates with the gizmo.",
+			"cog-shout-meter"
 		);
 	} else {
 		intro.textContent =

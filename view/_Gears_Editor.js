@@ -387,14 +387,14 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 		} else if (hideType === "timer") {
 			hideRow.appendChild(
 				makeInfoTip(
-					"Hide this gear when remaining time (seconds) is below or above the threshold. Group Fill from Hidden can soften the reveal.",
+					"Hide this gear when remaining time (seconds) is below or above the threshold. Group Fill from Hidden can soften how it looks while shown; it does not override Hide when.",
 					"cog-gear-hide-tip-timer"
 				)
 			);
 		} else {
 			hideRow.appendChild(
 				makeInfoTip(
-					"Hide this gear when its meter is below or above the threshold (0–100%). Group Fill from Hidden can soften the reveal.",
+					"Hide this gear when its meter is below or above the threshold (0–100%). Group Fill from Hidden can soften how it looks while shown; it does not override Hide when.",
 					"cog-gear-hide-tip-percent"
 				)
 			);
@@ -433,7 +433,9 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 	const iconSlot = form.querySelector('[data-role="iconSlot"]');
 	iconSlot.classList.add("color-ramp-stack");
 	const rampAxis = hideType === "count" ? "count" : "percent";
-	const rampOpts = { axis: rampAxis };
+	const iconRampOpts = { axis: rampAxis };
+	// Bars are always a 0–100% map (counts do not fill a bar past 100).
+	const barRampOpts = { axis: "percent" };
 	const iconRamp = makeIconRampEditor(
 		"Icon",
 		look.icon || "",
@@ -441,7 +443,7 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 		(ramp) => {
 			patchGearSettings(gear.id, { icon: ramp });
 		},
-		rampOpts
+		iconRampOpts
 	);
 	const iconHeading = iconRamp.querySelector(".color-ramp-heading");
 	const iconHint = iconRamp.querySelector(".color-ramp-hint");
@@ -464,23 +466,13 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 	iconSlot.appendChild(iconRamp);
 	const colors = form.querySelector('[data-role="colors"]');
 	colors.classList.add("color-ramp-stack");
-	const tagColorRamp = (editor, headingTag, headingFallback) => {
+	const tagColorRamp = (editor, headingTag, headingFallback, hintTag, hintFallback) => {
 		const heading = editor.querySelector(".color-ramp-heading");
 		const hint = editor.querySelector(".color-ramp-hint");
 		if (typeof setTranslatedText === "function") {
 			setTranslatedText(heading, headingTag, headingFallback);
-			if (rampAxis === "count") {
-				setTranslatedText(
-					hint,
-					"cog-color-ramp-hint-count",
-					"Empty inherits the backup. Multiple stops fade between values (counts may go past 100)."
-				);
-			} else {
-				setTranslatedText(
-					hint,
-					"cog-color-ramp-hint",
-					"Empty inherits the backup. Multiple stops fade between percentages."
-				);
+			if (hint) {
+				setTranslatedText(hint, hintTag, hintFallback);
 			}
 		}
 		return editor;
@@ -494,10 +486,14 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 				(ramp, live) => {
 					patchGearSettings(gear.id, { iconColor: ramp }, live);
 				},
-				rampOpts
+				iconRampOpts
 			),
 			"cog-icon-colours",
-			"Icon colours"
+			"Icon colours",
+			rampAxis === "count" ? "cog-color-ramp-hint-count" : "cog-color-ramp-hint",
+			rampAxis === "count"
+				? "Empty inherits the backup. Multiple stops fade between values (counts may go past 100)."
+				: "Empty inherits the backup. Multiple stops fade between percentages."
 		)
 	);
 	colors.appendChild(
@@ -509,10 +505,12 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 				(ramp, live) => {
 					patchGearSettings(gear.id, { barColor: ramp }, live);
 				},
-				rampOpts
+				barRampOpts
 			),
 			"cog-bar-colours",
-			"Bar colours"
+			"Bar colours",
+			"cog-color-ramp-hint",
+			"Empty inherits the backup. Multiple stops fade between percentages."
 		)
 	);
 	const commitText = (key, el) => {

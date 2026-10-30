@@ -1139,7 +1139,7 @@ function paintGaugeArc(el, gauge) {
 	fitGaugeArcHollowText(el, gauge, src, gear, capH, hollowInfo);
 
 	const inactive =
-		!gaugeSettings(gauge).alwaysVisible &&
+		!gaugeSettings(gauge).neverHide &&
 		(src ? isHudHidden(src, gear) : !src) &&
 		document.body.classList.contains("is-focused");
 	el.classList.toggle("is-inactive", inactive);

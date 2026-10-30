@@ -477,7 +477,7 @@ const GAUGE_SETTINGS_KEYS = new Set([
 	"frameBorderThickness",
 	"insideSize",
 	"displayMode",
-	"alwaysVisible",
+	"neverHide",
 	"barTrough",
 	"numberFormat",
 	"pictureIcon",
@@ -514,7 +514,7 @@ function defaultGaugeSettings() {
 		frameBorderThickness: 5,
 		insideSize: 65,
 		displayMode: "gear",
-		alwaysVisible: false,
+		neverHide: false,
 		barTrough: false,
 		numberFormat: "barPercent",
 		pictureIcon: "",
@@ -840,11 +840,23 @@ function ensureGauge(gauge) {
 		Math.max(5, Math.min(100, Number.isFinite(Number(bag.insideSize)) ? Number(bag.insideSize) : 65))
 	);
 	bag.displayMode = normalizeGaugeDisplayMode(bag.displayMode);
-	if (bag.alwaysVisible === undefined || bag.alwaysVisible === null) {
-		bag.alwaysVisible = bag.type === "frame";
+	// Migration Code for Transition from v1.01 or earlier to v1.1:
+	// alwaysVisible → neverHide (blocks soft-hide from Hide when / inactive timers; does not override Gauge Visibility HUD).
+	if (bag.neverHide === undefined || bag.neverHide === null) {
+		if (Object.prototype.hasOwnProperty.call(bag, "alwaysVisible")) {
+			bag.neverHide = !!bag.alwaysVisible;
+			noteMigration(`gauge ${gid} alwaysVisible → neverHide`);
+		} else if (Object.prototype.hasOwnProperty.call(gauge, "alwaysVisible")) {
+			bag.neverHide = !!gauge.alwaysVisible;
+			noteMigration(`gauge ${gid} alwaysVisible → neverHide`);
+		} else {
+			bag.neverHide = bag.type === "frame";
+		}
 	} else {
-		bag.alwaysVisible = !!bag.alwaysVisible;
+		bag.neverHide = !!bag.neverHide;
 	}
+	delete bag.alwaysVisible;
+	delete gauge.alwaysVisible;
 	bag.barTrough = bag.barTrough === true;
 	bag.numberFormat = normalizeNumberFormat(bag.numberFormat, "barPercent");
 	bag.pictureIcon = String(bag.pictureIcon || "").trim() || defaultPictureIconPath();
@@ -1135,7 +1147,7 @@ function gaugeStyleSig(gauge) {
 		s.frameBorderThickness,
 		s.insideSize,
 		s.barTrough,
-		s.alwaysVisible,
+		s.neverHide,
 		s.pictureIcon,
 		s.pictureDirection,
 		s.pictureRotation,
@@ -1382,12 +1394,14 @@ function syncHudGauges(root, frontRoot, preview) {
 		if (visibility === "none" && !preview) {
 			return;
 		}
-		const stayVisible = !!gaugeSettings(gauge).alwaysVisible;
-		if (visibility === "hud" && !hudVisible && !preview && !stayVisible) {
+		// neverHide blocks soft-hide (Hide when + inactive timers); it must not override Gauge Visibility HUD.
+		if (visibility === "hud" && !hudVisible && !preview) {
 			return;
 		}
+		const neverHide = !!gaugeSettings(gauge).neverHide;
 		const { src, gear } = gaugeLinked(gauge);
-			const hidden = !stayVisible && !!(src && isHudHidden(src, gear));
+			// isHudHidden covers hideAt and inactive timers (gearHudAlpha / isInactiveTimer).
+			const hidden = !neverHide && !!(src && isHudHidden(src, gear));
 		const fadeKey = hudGaugeFadeKey(gauge.id);
 		if (!hudFadeShouldShow(fadeKey, hidden && !isFront, preview, now)) {
 				return;
@@ -1438,9 +1452,8 @@ function syncHudGauges(root, frontRoot, preview) {
 		}
 		el.classList.toggle("is-front", isFront);
 		el.classList.toggle("is-preview", visibility === "none");
-		// CSS soft-hide only keeps data-visibility="ui". alwaysVisible still means stay in menus.
-		el.dataset.visibility =
-			visibility === "none" ? "none" : visibility === "ui" || stayVisible ? "ui" : visibility;
+		// CSS soft-hide only keeps data-visibility="ui". neverHide does not promote HUD → ui.
+		el.dataset.visibility = visibility;
 		applyHudFadeClasses(el, fadeKey, preview, now);
 		});
 	}

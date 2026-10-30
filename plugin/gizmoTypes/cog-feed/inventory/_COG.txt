@@ -1,5 +1,5 @@
 # COG inventory feed icon rules
-# Location: Data/SKSE/Plugins/COG/gizmos/cog-feed/inventory/
+# Location: Data/SKSE/Plugins/COG/gizmoTypes/cog-feed/inventory/
 # Last wins: later-named *.txt files and later lines override earlier matches.
 # Put broad rules above; specific equals / form pins below.
 # Armor weight/slots are listed after material name heuristics so clothing/armor
@@ -79,6 +79,22 @@ name contains `venison` = Food and Drink/steak.svg
 name contains `beef` = Food and Drink/steak.svg
 name contains `fish` = Food and Drink/fish.svg
 name contains `salmon` = Food and Drink/fish.svg
+# Base-game alchemy fish (no "fish" / "salmon" in the display name)
+name contains `longfin` = Food and Drink/fish.svg
+name contains `spadetail` = Food and Drink/fish.svg
+name contains `histcarp` = Food and Drink/fish.svg
+name contains `river betty` = Food and Drink/fish.svg
+name contains `silverside` = Food and Drink/fish.svg
+# Fishing Creation (ccBGSSSE001-Fish) — names that do not contain "fish" / "salmon"
+name contains `angler` = Food and Drink/fish.svg
+name contains `arctic char` = Food and Drink/fish.svg
+name contains `grayling` = Food and Drink/fish.svg
+name contains `brook bass` = Food and Drink/fish.svg
+name equals `carp` = Food and Drink/fish.svg
+name equals `cooked carp` = Food and Drink/fish.svg
+name equals `cod` = Food and Drink/fish.svg
+name equals `cooked cod` = Food and Drink/fish.svg
+name contains `anthias` = Food and Drink/fish.svg
 name contains `meat` = Food and Drink/steak.svg
 name contains `roast` = Food and Drink/steak.svg
 name contains `charred` = Food and Drink/steak.svg

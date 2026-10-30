@@ -1,0 +1,210 @@
+{
+  "cog-feed-active-effects": {
+    "en-CA": "Active Effects",
+    "fr-CA": "Effets actifs"
+  },
+  "cog-feed-add-from": {
+    "en-CA": "Add from",
+    "fr-CA": "Ajouter depuis"
+  },
+  "cog-feed-add-one-source": {
+    "en-CA": "Please add at least one source.",
+    "fr-CA": "Veuillez ajouter au moins une source."
+  },
+  "cog-feed-align": {
+    "en-CA": "Align",
+    "fr-CA": "Aligner"
+  },
+  "cog-feed-allow-mods-choose-colour": {
+    "en-CA": "Allow Mods to Choose Colour",
+    "fr-CA": "Autoriser les mods à choisir la couleur"
+  },
+  "cog-feed-allow-mods-choose-colour-tip": {
+    "en-CA": "When on, message colour can come from SkyUILib (for compatibility) or COG_Feed_API.Notify / COG_API.Notify. When off, every message uses the Notifications colour.",
+    "fr-CA": "Lorsque c'est activé, la couleur du message peut provenir de SkyUILib (pour la compatibilité) ou de COG_Feed_API.Notify / COG_API.Notify. Lorsque c'est désactivé, chaque message utilise la couleur des Notifications."
+  },
+  "cog-feed-allow-mods-choose-icon": {
+    "en-CA": "Allow Mods to Choose Icon",
+    "fr-CA": "Autoriser les mods à choisir l'icône"
+  },
+  "cog-feed-allow-mods-choose-icon-tip": {
+    "en-CA": "When on, mods can use COG_Feed_API.Notify (or legacy COG_API.Notify) to supply a per-message icon path under assets/icons/. When off, every message uses the Notifications icon (if Show icons is on).",
+    "fr-CA": "Lorsque c'est activé, les mods peuvent utiliser COG_Feed_API.Notify (ou l'ancien COG_API.Notify) pour fournir un chemin d'icône par message sous assets/icons/. Lorsque c'est désactivé, chaque message utilise l'icône des Notifications (si Afficher les icônes est activé)."
+  },
+  "cog-feed-backdrop-fade": {
+    "en-CA": "Backdrop Fade",
+    "fr-CA": "Fondu d'arrière-plan"
+  },
+  "cog-feed-backdrop-fade-hint": {
+    "en-CA": "Soft gradient behind each message. Setting opacity to 0 disables.",
+    "fr-CA": "Dégradé doux derrière chaque message. Une opacité à 0 le désactive."
+  },
+  "cog-feed-bar-colour": {
+    "en-CA": "Bar Colour",
+    "fr-CA": "Couleur de la barre"
+  },
+  "cog-feed-bar-width": {
+    "en-CA": "Bar Width",
+    "fr-CA": "Largeur de la barre"
+  },
+  "cog-feed-current-location": {
+    "en-CA": "Current Location",
+    "fr-CA": "Lieu actuel"
+  },
+  "cog-feed-default-icon": {
+    "en-CA": "Default Icon",
+    "fr-CA": "Icône par défaut"
+  },
+  "cog-feed-direction": {
+    "en-CA": "Direction",
+    "fr-CA": "Direction"
+  },
+  "cog-feed-effects-hint": {
+    "en-CA": "Timed player effects only. They stay until the timer ends, then fade. Timer min/max are under Progress Bar.",
+    "fr-CA": "Effets temporisés du joueur uniquement. Ils restent jusqu'à la fin de la minuterie, puis s'estompent. Min/max de la minuterie : sous Barre de progression."
+  },
+  "cog-feed-fade-colour": {
+    "en-CA": "Fade colour",
+    "fr-CA": "Couleur du fondu"
+  },
+  "cog-feed-icon-rules": {
+    "en-CA": "Rules controlling icons can be found in {folder}.",
+    "fr-CA": "Les règles qui contrôlent les icônes se trouvent dans {folder}."
+  },
+  "cog-feed-icon-rules-notifications-api": {
+    "en-CA": "Rules controlling icons can be found in {folder}, or overwritten by the Notifications API.",
+    "fr-CA": "Les règles qui contrôlent les icônes se trouvent dans {folder}, ou peuvent être remplacées par l'API Notifications."
+  },
+  "cog-feed-icons": {
+    "en-CA": "Icons",
+    "fr-CA": "Icônes"
+  },
+  "cog-feed-intro": {
+    "en-CA": "Combined notification and inventory message feed. Add as many sections as you like, or split sections into multiple feeds.",
+    "fr-CA": "Flux combiné de notifications et de messages d'inventaire. Ajoutez autant de sections que vous voulez, ou répartissez les sections en plusieurs flux."
+  },
+  "cog-feed-inventory": {
+    "en-CA": "Inventory",
+    "fr-CA": "Inventaire"
+  },
+  "cog-feed-inventory-hide-note": {
+    "en-CA": "When enabled, this section tracks inventory changes, soft-hides hud.inventory (TrueHUD Recent Loot), and diverts inventory-style notifications from hud.notifications.",
+    "fr-CA": "Lorsque cette section est activée, elle suit les changements d'inventaire, masque en douceur hud.inventory (TrueHUD Recent Loot), et détourne les notifications de type inventaire de hud.notifications."
+  },
+  "cog-feed-level-progress": {
+    "en-CA": "Level Progress",
+    "fr-CA": "Progression de niveau"
+  },
+  "cog-feed-location": {
+    "en-CA": "Location",
+    "fr-CA": "Lieu"
+  },
+  "cog-feed-location-discovery": {
+    "en-CA": "Location Discovery",
+    "fr-CA": "Découverte de lieu"
+  },
+  "cog-feed-location-hide-note-both": {
+    "en-CA": "When enabled, this section hides hud.currentLocation and diverts location discovery from hud.questUpdates.",
+    "fr-CA": "Lorsque cette section est activée, elle masque hud.currentLocation et détourne la découverte de lieux de hud.questUpdates."
+  },
+  "cog-feed-location-hide-note-current": {
+    "en-CA": "When enabled, this section hides hud.currentLocation.",
+    "fr-CA": "Lorsque cette section est activée, elle masque hud.currentLocation."
+  },
+  "cog-feed-location-hide-note-discovery": {
+    "en-CA": "When enabled, this section diverts location discovery from hud.questUpdates.",
+    "fr-CA": "Lorsque cette section est activée, elle détourne la découverte de lieux de hud.questUpdates."
+  },
+  "cog-feed-max": {
+    "en-CA": "Max",
+    "fr-CA": "Max"
+  },
+  "cog-feed-max-remaining": {
+    "en-CA": "Max remaining",
+    "fr-CA": "Max restant"
+  },
+  "cog-feed-min-remaining": {
+    "en-CA": "Min remaining",
+    "fr-CA": "Min restant"
+  },
+  "cog-feed-notifications": {
+    "en-CA": "Notifications",
+    "fr-CA": "Notifications"
+  },
+  "cog-feed-number-format-bar-total": {
+    "en-CA": "Show bar and value",
+    "fr-CA": "Afficher la barre et la valeur"
+  },
+  "cog-feed-number-format-total": {
+    "en-CA": "Show value",
+    "fr-CA": "Afficher la valeur"
+  },
+  "cog-feed-opacity": {
+    "en-CA": "Opacity",
+    "fr-CA": "Opacité"
+  },
+  "cog-feed-persist": {
+    "en-CA": "Persist",
+    "fr-CA": "Persister"
+  },
+  "cog-feed-progress-bar": {
+    "en-CA": "Progress Bar",
+    "fr-CA": "Barre de progression"
+  },
+  "cog-feed-progress-bar-hint": {
+    "en-CA": "Shared bar colour, width, number format, and timer window for Active Effects and Skills Level Progress.",
+    "fr-CA": "Couleur, largeur, format numérique et fenêtre de minuterie partagés pour les effets actifs et la progression de niveau des compétences."
+  },
+  "cog-feed-section-hides": {
+    "en-CA": "When enabled, this section hides {targets}.",
+    "fr-CA": "Lorsque cette section est activée, elle masque {targets}."
+  },
+  "cog-feed-show-icons": {
+    "en-CA": "Show Icons",
+    "fr-CA": "Afficher les icônes"
+  },
+  "cog-feed-show-text": {
+    "en-CA": "Show text",
+    "fr-CA": "Afficher le texte"
+  },
+  "cog-feed-show-timer": {
+    "en-CA": "Show timer",
+    "fr-CA": "Afficher la minuterie"
+  },
+  "cog-feed-skill-progress": {
+    "en-CA": "Skill Progress",
+    "fr-CA": "Progression de compétence"
+  },
+  "cog-feed-skills": {
+    "en-CA": "Skills",
+    "fr-CA": "Compétences"
+  },
+  "cog-feed-skills-hide-note": {
+    "en-CA": "When enabled, this section soft-hides hud.questUpdates (skill-up and level-up banners share that clip). Skill Progress and Level Progress only control what appears in this Feed. Level Up Menu is never blocked.",
+    "fr-CA": "Lorsque cette section est activée, elle masque en douceur hud.questUpdates (les bandeaux de montée de compétence et de niveau partagent ce clip). Progression de compétence et Progression de niveau ne contrôlent que ce qui s'affiche dans ce Feed. Le menu de montée de niveau n'est jamais bloqué."
+  },
+  "cog-feed-sources": {
+    "en-CA": "Sources",
+    "fr-CA": "Sources"
+  },
+  "cog-feed-stolen": {
+    "en-CA": "Stolen",
+    "fr-CA": "Volé"
+  },
+  "cog-feed-suppress-inventory": {
+    "en-CA": "Suppress inventory",
+    "fr-CA": "Masquer l'inventaire"
+  },
+  "cog-feed-suppress-inventory-tip": {
+    "en-CA": "When on, inventory-style notification toasts are suppressed (not shown on the vanilla HUD or in this Notifications feed) while Notifications are active. Many activators and containers fire those even when you are not looting — leave this on unless you want them on the vanilla HUD. The Inventory section tracks real item changes separately.",
+    "fr-CA": "Lorsque c'est activé, les toasts de notification de style inventaire sont masqués (non affichés sur le HUD vanilla ni dans ce flux Notifications) tant que les Notifications sont actives. De nombreux activateurs et contenants les déclenchent même lorsque vous ne fouillez pas — laissez ceci activé sauf si vous les voulez sur le HUD vanilla. La section Inventaire suit les vrais changements d'objets séparément."
+  },
+  "cog-feed-suppress-transform-effects": {
+    "en-CA": "Suppress Werewolf/Vampire transformation effects",
+    "fr-CA": "Masquer les effets de transformation de loup-garou/vampire"
+  },
+  "cog-feed-use-default": {
+    "en-CA": "Use default",
+    "fr-CA": "Utiliser la valeur par défaut"
+  }
+}
