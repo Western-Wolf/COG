@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "_UI_CogUi.h"
+#include "_UI_ExtKeyBridge.h"
 #include "_UI_KeyNames.h"
 #include "_Core_Registry.h"
 #include "_Core_HudSuppress.h"
@@ -562,6 +563,7 @@ void CogUi::BindEditorToggle()
 	KeyHandler::RegisterSink();
 	SyncEditorKey();
 	SyncHideToggleKey();
+	CogExtKeyBridge::Start();
 }
 
 void CogUi::SyncEditorKey()
