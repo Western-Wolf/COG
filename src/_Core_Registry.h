@@ -172,6 +172,8 @@ struct CogGizmo
 	std::string typeId = "cog-clock";
 	// none | hud (HUD Visible) | ui (UI Visible / menus too)
 	std::string visibility = "hud";
+	// Soft-hide HUD aliases / paths while this instance is play-active (root; not settings).
+	std::vector<std::string> hudSuppress;
 	CogBoxDisplay display{ 0.1f, 0.1f, 0.0f, 275.0f, 40.0f, 100.0f };
 	// Owning mod of the gizmo type (empty for builtin types).
 	std::string sourceMod;
@@ -194,8 +196,15 @@ struct CogGizmoType
 	std::string defaultVisibility = "hud";
 	// Empty = builtin JS renderer for typeId. Else path under PrismaUI/views/, e.g. "MyMod/compass.js".
 	std::string viewScript;
-	// JSON array of setting field descriptors for the editor.
+	/**
+	 * Editor settings source: "schema" (legacy JSON array) or "html" (Data-relative HTML form).
+	 * Migration Code for Transition from v1.11 or earlier to v1.2: schema mode retained for old RegisterGizmo callers.
+	 */
+	std::string settingsMode = "schema";
+	// JSON array of setting field descriptors (schema mode). Empty "[]" for HTML mode.
 	std::string settingsSchemaJson = "[]";
+	/** Data-relative path as registered (HTML mode), e.g. "PrismaUI/views/Example/gear_settings.html". */
+	std::string settingsHtmlSourcePath;
 	// Live payload from UpdateGizmo (type-scoped stash; not persisted).
 	std::string livePayloadJson;
 };
@@ -270,7 +279,11 @@ public:
 	/** True while BeginRegister…EndRegister is open for this sourceMod (Save/Push deferred). */
 	bool IsRegisterBatchOpen(std::string_view mod) const;
 
-	/** Register/upsert a custom gizmo type; returns a session receipt (0 on failure). */
+	/**
+	 * Register/upsert a custom gizmo type; returns a session receipt (0 on failure).
+	 * settingsSchema: Data-relative HTML path, or legacy JSON array/object starting with [ or {
+	 * (Migration Code for Transition from v1.11 or earlier to v1.2).
+	 */
 	std::int32_t RegisterGizmo(
 		std::string mod,
 		std::string typeId,
@@ -279,7 +292,7 @@ public:
 		float defaultWidth,
 		float defaultHeight,
 		std::string viewScript,
-		std::string settingsSchemaJson,
+		std::string settingsSchema,
 		std::string defaultVisibility = "hud");
 	/** Push live JSON to all placed instances of the type for this RegisterGizmo receipt. */
 	void UpdateGizmoPayload(std::int32_t receipt, std::string payloadJson);

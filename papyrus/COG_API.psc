@@ -101,15 +101,17 @@ Function Notify(String asMessage, String asColor = "#FFFFFF", String asIcon = ""
 ; RegisterGizmo registers a gallery type (not a placed instance). Players place instances from the editor.
 ; COG owns transform (x, y, width, height, rotation, visibility). Your viewScript owns drawing via gizmo.settings.
 ; viewScript: path under PrismaUI/views/, e.g. "MyMod/compass.js" (loaded as ../MyMod/compass.js from COG).
-; settingsSchemaJson: JSON array of editor fields, e.g.
-;   [{"key":"textColor","kind":"color","label":"Text","default":"#e8d2a0"}]
-; kinds: string | int | float | bool | enum | color. enum needs "options":[...].
+; settingsSchema: Data-relative path to an HTML settings form, e.g. "PrismaUI/views/MyMod/compass_settings.html".
+;   COG copies it into gizmoTypes/<typeId>/settings.html on register (overwrite). Bind fields with
+;   data-gizmo-value / data-gizmo-field / data-gizmo-default; optional cog-visibility for root visibility.
+; Migration Code for Transition from v1.11 or earlier to v1.2: a JSON array/object starting with [ or {
+;   still registers as the legacy schema editor (phasing out — new mods should ship HTML).
 ; Use the same BeginRegister / EndRegister batch as gears. Returns a session receipt (0 on failure).
 ; typeIds starting with "cog-" are reserved for COG. Prefer a short mod prefix (e.g. xmp-, mymod-).
 ; Type catalog is persisted and loaded before gizmo instances. Missing instance fields fall back to
-; this type record (defaultVisibility / defaultWidth/Height / settingsSchema defaults), then universal defaults.
+; this type record (defaultVisibility / defaultWidth/Height / HTML data-gizmo-default), then universal defaults.
 ; defaultVisibility: "hud" | "ui" | "none" (default "hud").
-Int Function RegisterGizmo(String sourceMod, String typeId, String displayName, String galleryIcon, Float defaultWidth, Float defaultHeight, String viewScript, String settingsSchemaJson = "[]", String defaultVisibility = "hud") Global Native
+Int Function RegisterGizmo(String sourceMod, String typeId, String displayName, String galleryIcon, Float defaultWidth, Float defaultHeight, String viewScript, String settingsSchema = "[]", String defaultVisibility = "hud") Global Native
 ; Push live JSON to every placed instance of the gizmo type for this RegisterGizmo receipt.
 ; Stashed on the type (session-only) so delete/recreate and late placements still get it.
 ; Your view script reads gizmo.livePayload (or livePayloadJson) in update().

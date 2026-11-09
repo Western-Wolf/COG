@@ -1224,42 +1224,19 @@ void CogHudSuppress::CollectSuppressions(const CogRegistry& reg, std::vector<Cog
 		if (!CogRegistryJson::GizmoIsPlayActive(gizmo)) {
 			continue;
 		}
-		if (type == "cog-shout-meter") {
-			CogHudSuppressController c;
-			c.kind = "gizmo";
-			c.id = gizmo.id;
-			c.label = gizmoLabel;
-			c.role = "hide";
-			addLinked("hud.casting", std::move(c));
-			continue;
-		}
-		if (type != "cog-feed") {
-			continue;
-		}
-		auto addFeed = [&](const char* alias, bool enabled) {
-			if (!enabled) {
-				return;
+		// Universal root hudSuppress (builtins + customs). Feed/Shout write via cog-hudSuppress.
+		for (const auto& raw : gizmo.hudSuppress) {
+			const auto token = CogRegistryJson::TrimCopy(raw);
+			if (token.empty()) {
+				continue;
 			}
 			CogHudSuppressController c;
 			c.kind = "gizmo";
 			c.id = gizmo.id;
 			c.label = gizmoLabel;
 			c.role = "hide";
-			addLinked(alias, std::move(c));
-		};
-		const bool showNotifications = CogRegistryJson::GizmoSettingsBool(gizmo, "showNotifications", false);
-		const bool showInventory = CogRegistryJson::GizmoSettingsBool(gizmo, "showInventory", false);
-		const bool showLocation = CogRegistryJson::GizmoSettingsBool(gizmo, "showLocation", false);
-		const bool showActiveEffects = CogRegistryJson::GizmoSettingsBool(gizmo, "showActiveEffects", false);
-		const bool showSkills = CogRegistryJson::GizmoSettingsBool(gizmo, "showSkills", false);
-		addFeed("hud.notifications", showNotifications);
-		addFeed("hud.inventory", showInventory);
-		addFeed(
-			"hud.currentLocation",
-			showLocation && CogRegistryJson::GizmoSettingsBool(gizmo, "showCurrentLocation", true));
-		addFeed("hud.activeEffects", showActiveEffects);
-		// Skill/level banners share QuestUpdateBaseInstance with quest toasts — whole clip when Skills is on.
-		addFeed("hud.questUpdates", showSkills);
+			addLinked(token, std::move(c));
+		}
 	}
 
 	out.reserve(byKey.size());

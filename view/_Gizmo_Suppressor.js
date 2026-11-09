@@ -343,43 +343,26 @@ function makeSuppressorKeyListEditor(panel, gizmo, listKey, titleTag, title, hin
 	panel.appendChild(section);
 }
 
-function fillSuppressorGizmoEditor(panel, gizmo) {
-	ensureSuppressorGizmo(gizmo);
-	const lede = document.createElement("p");
-	lede.className = "lede";
-	if (typeof setTranslatedText === "function") {
-		setTranslatedText(
-			lede,
-			"cog-suppressor-lede",
-			"Editor marker only (always hidden in-game). Always Hide forces soft-hide; Never Hide exempts a target from COG gear soft-hide and from Always Hide.",
-			"cog-suppressor"
-		);
-	} else {
-		lede.textContent =
-			"Editor marker only (always hidden in-game). Always Hide forces soft-hide; Never Hide exempts a target from COG gear soft-hide and from Always Hide.";
+window.CogMountSuppressorKeyList = function CogMountSuppressorKeyList(
+	host,
+	gid,
+	listKey,
+	titleTag,
+	title,
+	hintTag,
+	hint
+) {
+	if (!host) {
+		return;
 	}
-	panel.appendChild(lede);
-	appendEditorRule(panel);
-	makeSuppressorKeyListEditor(
-		panel,
-		gizmo,
-		"alwaysHide",
-		"cog-always-hide",
-		"Always Hide",
-		"cog-always-hide-hint",
-		"Hide these HUD targets whenever this Suppressor exists (even if no matching Gear is on screen)."
-	);
-	appendEditorRule(panel);
-	makeSuppressorKeyListEditor(
-		panel,
-		gizmo,
-		"neverHide",
-		"cog-never-hide",
-		"Never Hide",
-		"cog-never-hide-hint",
-		"Keep these visible — wins over gear soft-hide and Always Hide."
-	);
-}
+	host.replaceChildren();
+	const gizmo = typeof gizmoFor === "function" ? gizmoFor(gid) : null;
+	if (!gizmo) {
+		return;
+	}
+	ensureSuppressorGizmo(gizmo);
+	makeSuppressorKeyListEditor(host, gizmo, listKey, titleTag, title, hintTag, hint);
+};
 
 window.CogRegisterGizmoRenderer("cog-suppressor", {
 	create() {
@@ -388,6 +371,5 @@ window.CogRegisterGizmoRenderer("cog-suppressor", {
 	ensure: ensureSuppressorGizmo,
 	build: buildGizmoSuppressorEl,
 	layout: layoutHudGizmoSuppressor,
-	paint: paintGizmoSuppressor,
-	fillEditor: fillSuppressorGizmoEditor
+	paint: paintGizmoSuppressor
 });

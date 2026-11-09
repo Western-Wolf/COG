@@ -1,5 +1,5 @@
--- COG core SKSE plugin + Prisma view deploy (repo staging; release.ps1 zips from here).
-local deploy_root = path.join(os.projectdir(), "_stage", "COG - Custom Overlay Gadgets")
+-- COG core SKSE plugin + Prisma view deploy (build/stage scratch; release.ps1 zips from here).
+local deploy_root = path.join(os.projectdir(), "build", "stage", "COG - Custom Overlay Gadgets")
 local cog_dir = os.scriptdir()
 
 target("COG")
@@ -10,6 +10,9 @@ target("COG")
 		author = "WesternWolff",
 		description = "Custom Overlay Gadgets — Prisma UI HUD toolkit"
 	})
+
+	-- Exact tools/releases Version string (e.g. 1.20) for logs / editor badge.
+	add_defines('COG_PRODUCT_VERSION="' .. (cog_product_version or "0") .. '"')
 
 	add_files("src/**.cpp")
 	add_headerfiles("src/**.h")
@@ -177,6 +180,13 @@ target("COG")
 				for _, file in ipairs(os.files(path.join(pack_src, "*.json"))) do
 					os.cp(file, path.join(pack_dst, path.filename(file)))
 				end
+			end
+			-- Builtin HTML settings (overwrite shipped default each build).
+			local settings_src = path.join(cog_dir, "plugin/gizmoTypes", type_id, "settings.html")
+			if os.isfile(settings_src) then
+				local type_dst = path.join(cog_data, "gizmoTypes", type_id)
+				os.mkdir(type_dst)
+				os.cp(settings_src, path.join(type_dst, "settings.html"))
 			end
 		end
 

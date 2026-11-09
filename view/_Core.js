@@ -2,7 +2,7 @@
 // Classic script; loads last after all section scripts.
 
 // var (not let): _UI_Translation.js and other classic scripts read window.snapshot.
-var snapshot = { sources: [], shoutMeter: null, general: { showDefaultGroup: true, editorKey: "F3", hideToggleKey: "", hideIncludesFlash: true, uiHidden: false, fillColor: "#c4a35a", borderColor: "#e8d2a0", iconColor: "#ffffff", gadgetFont: "Roboto", language: "en-CA", highlightMissingTranslations: false, updateStockTitlesOnTranslation: false }, groups: [], gears: [], gauges: [], gizmos: [], gizmoTypes: [], icons: [], importedIcons: [], fonts: [], suppressions: [], languages: ["en-CA"], translations: {}, gizmoTranslations: {} };
+var snapshot = { version: "", sources: [], shoutMeter: null, general: { showDefaultGroup: true, editorKey: "F3", hideToggleKey: "", hideIncludesFlash: true, uiHidden: false, fillColor: "#c4a35a", borderColor: "#e8d2a0", iconColor: "#ffffff", gadgetFont: "Roboto", language: "en-CA", highlightMissingTranslations: false, updateStockTitlesOnTranslation: false }, groups: [], gears: [], gauges: [], gizmos: [], gizmoTypes: [], icons: [], importedIcons: [], fonts: [], suppressions: [], languages: ["en-CA"], translations: {}, gizmoTranslations: {} };
 let saveTimer = null;
 let activeTab = "general";
 let drag = null;
@@ -49,6 +49,26 @@ function mergeTranslationCatalogs(incoming) {
 		changed = true;
 	}
 	return changed;
+}
+
+function syncCogVersionBadge() {
+	const badge = document.getElementById("cog-version-badge");
+	if (!badge) {
+		return;
+	}
+	const version = String((snapshot && snapshot.version) || "").trim().replace(/^v/i, "");
+	if (!version) {
+		badge.textContent = "";
+		badge.hidden = true;
+		badge.setAttribute("aria-hidden", "true");
+		badge.removeAttribute("title");
+		return;
+	}
+	// Leading space + "v" so the superscript reads as " v1.20" next to the title.
+	badge.textContent = ` v${version}`;
+	badge.hidden = false;
+	badge.removeAttribute("aria-hidden");
+	badge.title = `COG v${version}`;
 }
 
 function refreshAfterTranslationCatalogs() {
@@ -125,7 +145,10 @@ window.applySnapshot = (jsonStr) => {
 				snapshot.gameTime = incoming.gameTime;
 			}
 			if (Array.isArray(incoming.gizmoTypes)) {
-				snapshot.gizmoTypes = incoming.gizmoTypes;
+				snapshot.gizmoTypes =
+					typeof mergeGizmoTypesPreserveSettingsHtml === "function"
+						? mergeGizmoTypesPreserveSettingsHtml(incoming.gizmoTypes, snapshot.gizmoTypes)
+						: incoming.gizmoTypes;
 				ensureGizmoViewScripts();
 			}
 			if (Array.isArray(incoming.suppressions)) {
@@ -183,10 +206,15 @@ window.applySnapshot = (jsonStr) => {
 		const prevGroups = snapshot.groups;
 		const prevGauges = snapshot.gauges;
 		const prevGizmos = snapshot.gizmos;
+		const prevGizmoTypes = snapshot.gizmoTypes;
 		const prevLanguages = snapshot.languages;
 		const prevTranslations = snapshot.translations;
 		const prevGizmoTranslations = snapshot.gizmoTranslations;
+		const prevVersion = snapshot.version;
 		snapshot = incoming;
+		if (!incoming.version) {
+			snapshot.version = prevVersion;
+		}
 		// Catalog may be omitted on lean ticks — keep last in-memory icons/fonts.
 		if (!Array.isArray(incoming.icons)) {
 			snapshot.icons = prevIcons;
@@ -196,6 +224,10 @@ window.applySnapshot = (jsonStr) => {
 		}
 		if (!Array.isArray(incoming.fonts)) {
 			snapshot.fonts = prevFonts;
+		}
+		// settingsHtml is catalog-only — preserve last body when lean PushToUi omits it.
+		if (Array.isArray(incoming.gizmoTypes) && typeof mergeGizmoTypesPreserveSettingsHtml === "function") {
+			snapshot.gizmoTypes = mergeGizmoTypesPreserveSettingsHtml(incoming.gizmoTypes, prevGizmoTypes);
 		}
 		// Translation catalogs arrive via applyTranslationCatalogs — preserve if omitted.
 		if (!Array.isArray(incoming.languages)) {
@@ -221,6 +253,7 @@ window.applySnapshot = (jsonStr) => {
 			snapshot.gizmos = prevGizmos;
 		}
 		normalizeSnapshot();
+		syncCogVersionBadge();
 		if (rebindListening && snapshot.general.editorKey && snapshot.general.editorKey !== prevKey) {
 			rebindListening = false;
 		}

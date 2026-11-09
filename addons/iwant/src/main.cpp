@@ -2,6 +2,10 @@
 #include "Papyrus.h"
 #include "IconImport.h"
 
+#ifndef COG_PRODUCT_VERSION
+#	define COG_PRODUCT_VERSION "?"
+#endif
+
 namespace
 {
 	std::string LoadedEspHeaderVersion(std::string_view pluginFile)
@@ -35,10 +39,7 @@ namespace
 
 	void LogEspVersionsWhenLoaded()
 	{
-		const auto dll =
-			SKSE::PluginDeclaration::GetSingleton()
-				? REL::FormatProductVersion(SKSE::PluginDeclaration::GetSingleton()->GetVersion())
-				: std::string{ "?" };
+		const auto dll = std::string{ COG_PRODUCT_VERSION };
 		constexpr const char* kWidgets = "iWant Widgets.esl";
 		constexpr const char* kStatusBars = "iWant Status Bars.esp";
 		const auto widgets = LoadedEspHeaderVersion(kWidgets);
@@ -68,7 +69,7 @@ SKSE_PLUGIN_LOAD(const SKSE::LoadInterface* a_skse)
 	SKSE::Init(a_skse, { .trampoline = true, .trampolineSize = 1 << 10 });
 
 	const auto* plugin = SKSE::PluginDeclaration::GetSingleton();
-	const auto version = plugin ? REL::FormatProductVersion(plugin->GetVersion()) : std::string{ "?" };
+	const auto version = std::string{ COG_PRODUCT_VERSION };
 	const auto name = plugin ? plugin->GetName() : "COG_iWant"sv;
 	logger::info("{} v{} loaded", name, version);
 

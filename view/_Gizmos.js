@@ -51,7 +51,7 @@ function normalizeGizmoType(value) {
 /**
  * Register a gizmo type implementation (mods + builtins).
  * Custom/mod types typically provide: mount / update / unmount.
- * Rich builtins also provide: create / ensure / build / layout / paint / fillEditor
+ * Rich builtins also provide: create / ensure / build / layout / paint (+ HTML settings)
  * (and optionally layoutBox / fontSizePx). create() owns instance defaults;
  * settingsSchema on the type def remains metadata for mods / tools.
  */
@@ -186,8 +186,8 @@ const GIZMO_SETTINGS_KEYS = new Set([
 	"troughOpacity",
 	"maxVisible",
 	"stackOrigin",
-	"durationMs",
-	"fadeMs",
+	"duration",
+	"fade",
 	"showNotifications",
 	"showInventory",
 	"showLocation",
@@ -551,24 +551,34 @@ function patchGizmoSetting(id, key, value, live) {
 	syncHudGizmo(gizmo);
 }
 
-function appendGizmoVisibilityEditor(panel, gizmo) {
+function appendGizmoVisibilityEditor(panel, gizmo, opts) {
 	const gid = gizmo.id;
+	const omitLabel = !!(opts && opts.omitLabel);
+	const tipHost = opts && opts.tipHost ? opts.tipHost : null;
 	const field = document.createElement("label");
 	field.className = "pos-field compact";
-	const title = document.createElement("span");
-	title.className = "field-title-row";
-	const labelSpan = document.createElement("span");
-	if (typeof setTranslatedText === "function") {
-		setTranslatedText(labelSpan, "cog-visibility", "Visibility");
-	} else {
-		labelSpan.textContent = "Visibility";
-	}
-	title.appendChild(labelSpan);
 	const visibilityTip = makeInfoTip(
 		"HUD Visible: only while the vanilla Heads-Up Display is up (hidden with the HUD in menus). UI Visible: also keep showing while menus hide the HUD (inventory, map, dialogue, etc.). None: editor preview only.",
 		"cog-gizmo-visibility-tip"
 	);
-	title.appendChild(visibilityTip);
+	if (tipHost) {
+		tipHost.classList.add("field-title-row");
+		tipHost.appendChild(visibilityTip);
+	} else {
+		const title = document.createElement("span");
+		title.className = "field-title-row";
+		if (!omitLabel) {
+			const labelSpan = document.createElement("span");
+			if (typeof setTranslatedText === "function") {
+				setTranslatedText(labelSpan, "cog-visibility", "Visibility");
+			} else {
+				labelSpan.textContent = "Visibility";
+			}
+			title.appendChild(labelSpan);
+		}
+		title.appendChild(visibilityTip);
+		field.appendChild(title);
+	}
 	const sel = document.createElement("select");
 	sel.dataset.role = "visibility";
 	sel.innerHTML = `<option value="none">None</option>
@@ -583,7 +593,6 @@ function appendGizmoVisibilityEditor(panel, gizmo) {
 	sel.addEventListener("change", () => {
 		patchGizmo(gid, { visibility: normalizeGizmoVisibility(sel.value) });
 	});
-	field.appendChild(title);
 	field.appendChild(sel);
 	const row = document.createElement("div");
 	row.className = "style-row";
@@ -609,6 +618,539 @@ function schemaFieldLabelTag(field) {
 	);
 }
 
+/** Keep last-seen settingsHtml when lean PushToUi omits the body. */
+function mergeGizmoTypesPreserveSettingsHtml(incoming, previous) {
+	if (!Array.isArray(incoming)) {
+		return Array.isArray(previous) ? previous : [];
+	}
+	const prevById = new Map();
+	for (const t of previous || []) {
+		if (t && t.typeId) {
+			prevById.set(normalizeGizmoType(t.typeId), t);
+		}
+	}
+	return incoming.map((t) => {
+		if (!t || t.settingsHtml != null) {
+			return t;
+		}
+		const prev = prevById.get(normalizeGizmoType(t.typeId));
+		if (prev && prev.settingsHtml != null) {
+			return Object.assign({}, t, { settingsHtml: prev.settingsHtml });
+		}
+		return t;
+	});
+}
+
+/** Drop external <link> only. Scripts, styles, and inline handlers are allowed (builtins need section UX scripts). */
+function sanitizeGizmoSettingsHtml(html) {
+	const tpl = document.createElement("template");
+	tpl.innerHTML = String(html || "");
+	tpl.content.querySelectorAll("link").forEach((el) => el.remove());
+	return tpl.innerHTML;
+}
+
+/** innerHTML does not run <script>; re-insert nodes so inline/external scripts execute. */
+function activateGizmoSettingsScripts(host) {
+	if (!host) {
+		return;
+	}
+	host.querySelectorAll("script").forEach((old) => {
+		const next = document.createElement("script");
+		for (const attr of [...old.attributes]) {
+			next.setAttribute(attr.name, attr.value);
+		}
+		next.textContent = old.textContent;
+		old.replaceWith(next);
+	});
+}
+
+function parseGizmoHtmlDefault(raw, host) {
+	if (raw == null) {
+		return undefined;
+	}
+	const s = String(raw);
+	if (!host) {
+		return s;
+	}
+	const tag = String(host.tagName || "").toUpperCase();
+	const type = String(host.type || "").toLowerCase();
+	if (tag === "INPUT" && type === "checkbox") {
+		return s === "true" || s === "1";
+	}
+	if (tag === "INPUT" && (type === "number" || host.getAttribute("inputmode") === "numeric")) {
+		const n = Number(s);
+		return Number.isFinite(n) ? n : s;
+	}
+	return s;
+}
+
+function readGizmoHtmlControlValue(el) {
+	if (!el) {
+		return undefined;
+	}
+	const tag = String(el.tagName || "").toUpperCase();
+	const type = String(el.type || "").toLowerCase();
+	if (tag === "INPUT" && type === "checkbox") {
+		return !!el.checked;
+	}
+	if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") {
+		return el.value;
+	}
+	return el.value != null ? el.value : undefined;
+}
+
+function writeGizmoHtmlControlValue(el, value) {
+	if (!el) {
+		return;
+	}
+	const tag = String(el.tagName || "").toUpperCase();
+	const type = String(el.type || "").toLowerCase();
+	if (tag === "INPUT" && type === "checkbox") {
+		el.checked = value === true || value === "true" || value === 1 || value === "1";
+		return;
+	}
+	if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") {
+		el.value = value == null ? "" : String(value);
+	}
+}
+
+/** Label text / tag for an HTML control (attrs on the control, or legacy gizmo-html-color-row wrapper). */
+function gizmoHtmlFieldLabel(el) {
+	const row = el && el.closest ? el.closest(".gizmo-html-color-row") : null;
+	const labelEl = row ? row.querySelector(".gizmo-html-setting-label") : null;
+	const tag =
+		(labelEl && labelEl.getAttribute("data-translation")) ||
+		(el && el.getAttribute("data-translation")) ||
+		"";
+	const fallback =
+		(labelEl &&
+			(labelEl.getAttribute("data-translation-fallback") || String(labelEl.textContent || "").trim())) ||
+		(el && el.getAttribute("data-translation-fallback")) ||
+		(el && el.getAttribute("data-gizmo-label")) ||
+		"";
+	return { tag, fallback, mount: row || el };
+}
+
+/** Affix / decimals for reusable HTML number field kinds (clamps stay in create/ensure). */
+function gizmoHtmlNumberKindSpec(kind) {
+	switch (String(kind || "")
+		.trim()
+		.toLowerCase()) {
+		case "number":
+			return { decimals: 3, suffix: "", integer: false, autoZero: false };
+		case "integer":
+			return { decimals: 0, suffix: "", integer: true, autoZero: false };
+		case "degree":
+			return { decimals: 3, suffix: "°", integer: false, autoZero: false };
+		case "pixel":
+			return { decimals: 3, suffix: "px", integer: false, autoZero: true };
+		case "percentage":
+			return { decimals: 3, suffix: "%", integer: false, autoZero: false };
+		case "second":
+			return { decimals: 3, suffix: "s", integer: false, autoZero: false };
+		default:
+			return null;
+	}
+}
+
+/** Root gizmo.hudSuppress — string array of HUD aliases / paths (not settings). */
+function normalizeGizmoHudSuppressList(raw) {
+	if (typeof raw === "string") {
+		const t = String(raw).trim();
+		if (!t) {
+			return [];
+		}
+		try {
+			return normalizeGizmoHudSuppressList(JSON.parse(t));
+		} catch (e) {
+			return normalizeGizmoHudSuppressList(t.split(","));
+		}
+	}
+	if (!Array.isArray(raw)) {
+		return [];
+	}
+	const out = [];
+	const seen = new Set();
+	for (const item of raw) {
+		const key = String(item == null ? "" : item).trim();
+		if (!key) {
+			continue;
+		}
+		const fold = key.toLowerCase();
+		if (seen.has(fold)) {
+			continue;
+		}
+		seen.add(fold);
+		out.push(key);
+	}
+	return out;
+}
+
+function hudSuppressListsEqual(a, b) {
+	const left = normalizeGizmoHudSuppressList(a);
+	const right = normalizeGizmoHudSuppressList(b);
+	if (left.length !== right.length) {
+		return false;
+	}
+	for (let i = 0; i < left.length; i++) {
+		if (left[i].toLowerCase() !== right[i].toLowerCase()) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/**
+ * HTML settings form editor (Papyrus customs + builtins).
+ * Reserved opt-in roots: data-gizmo-value="cog-visibility" | "cog-hudSuppress" (not auto-injected).
+ */
+function fillHtmlGizmoEditor(panel, gizmo) {
+	const gid = gizmo.id;
+	const typeId = gizmo.typeId;
+	const live = () => gizmoFor(gid) || gizmo;
+	const typeDef = gizmoTypeDef(gizmo.typeId);
+	const isBuiltin = !!(typeDef && String(typeDef.sourceMod || "").toUpperCase() === "COG");
+	if (!isBuiltin) {
+		const intro = document.createElement("p");
+		intro.className = "hint";
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(
+				intro,
+				"cog-gizmo-custom-intro",
+				"Custom gizmo from a mod. Drag, resize, and rotate on the HUD; settings below come from the mod."
+			);
+		} else {
+			intro.textContent =
+				"Custom gizmo from a mod. Drag, resize, and rotate on the HUD; settings below come from the mod.";
+		}
+		panel.appendChild(intro);
+		appendEditorRule(panel);
+	}
+
+	const host = document.createElement("div");
+	host.className = "gizmo-html-settings";
+	host.dataset.gizmoId = gid;
+	host.dataset.gizmoType = typeId || "";
+	host.innerHTML = sanitizeGizmoSettingsHtml(typeDef && typeDef.settingsHtml);
+	activateGizmoSettingsScripts(host);
+	panel.appendChild(host);
+
+	// Stamp per-type catalog lookup onto translation attrs when authors omit data-translation-type.
+	host
+		.querySelectorAll(
+			"[data-translation], [data-translation-title], [data-translation-placeholder], [data-translation-aria-label], [data-translation-summary], [data-cog-info-tip]"
+		)
+		.forEach((el) => {
+			if (!el.getAttribute("data-translation-type") && typeId) {
+				el.setAttribute("data-translation-type", typeId);
+			}
+		});
+	if (typeof applyTranslations === "function") {
+		applyTranslations(host);
+	}
+
+	// Optional info tips on headings / title rows (parity with makeInfoTip in fillEditor).
+	if (typeof makeInfoTip === "function") {
+		host.querySelectorAll("[data-cog-info-tip]").forEach((el) => {
+			const tipText = el.getAttribute("data-cog-info-tip") || "";
+			const tipTag = el.getAttribute("data-cog-info-tip-tag") || "";
+			const tipType = el.getAttribute("data-translation-type") || typeId;
+			el.classList.add("field-title-row");
+			el.appendChild(makeInfoTip(tipText, tipTag, tipType));
+			el.removeAttribute("data-cog-info-tip");
+			el.removeAttribute("data-cog-info-tip-tag");
+		});
+	}
+
+	const rejectedCog = new Set();
+	const bindersByKey = new Map();
+	let visibilityBound = false;
+	let hudSuppressBound = false;
+
+	const syncSettingsKey = (key, value, livePaint) => {
+		patchGizmoSetting(gid, key, value, livePaint);
+		const binders = bindersByKey.get(key) || [];
+		for (const binder of binders) {
+			if (typeof binder.sync === "function") {
+				binder.sync(value);
+			}
+		}
+	};
+
+	const nodes = [...host.querySelectorAll("[data-gizmo-value]")];
+	for (const el of nodes) {
+		if (!host.contains(el)) {
+			continue;
+		}
+		const key = String(el.getAttribute("data-gizmo-value") || "").trim();
+		if (!key) {
+			continue;
+		}
+		if (key.startsWith("cog-")) {
+			if (key === "cog-visibility") {
+				if (!visibilityBound) {
+					const mountPoint = el.closest("label") || el;
+					const holder = document.createElement("div");
+					holder.className = "gizmo-html-visibility-slot";
+					mountPoint.replaceWith(holder);
+					let tipHost = null;
+					let prev = holder.previousElementSibling;
+					while (prev) {
+						if (prev.classList && prev.classList.contains("section-heading")) {
+							tipHost = prev;
+							break;
+						}
+						if (prev.classList && prev.classList.contains("editor-rule")) {
+							prev = prev.previousElementSibling;
+							continue;
+						}
+						break;
+					}
+					// Section heading owns the title + tip; control row is select only.
+					appendGizmoVisibilityEditor(holder, live(), { omitLabel: true, tipHost });
+					visibilityBound = true;
+				} else {
+					(el.closest("label") || el).remove();
+				}
+				continue;
+			}
+			if (key === "cog-hudSuppress") {
+				if (!hudSuppressBound) {
+					hudSuppressBound = true;
+					const defaultRaw = el.getAttribute("data-gizmo-default");
+					let current = normalizeGizmoHudSuppressList(live().hudSuppress);
+					if (!current.length && defaultRaw != null && String(defaultRaw).trim() !== "") {
+						current = normalizeGizmoHudSuppressList(defaultRaw);
+					}
+					el.value = JSON.stringify(current);
+					if (!hudSuppressListsEqual(live().hudSuppress, current)) {
+						patchGizmo(gid, { hudSuppress: current });
+					}
+					const commit = () => {
+						const next = normalizeGizmoHudSuppressList(el.value);
+						el.value = JSON.stringify(next);
+						patchGizmo(gid, { hudSuppress: next });
+					};
+					el.addEventListener("change", commit);
+					el.addEventListener("input", commit);
+					bindersByKey.set("cog-hudSuppress", [
+						{
+							sync: (v) => {
+								if (document.activeElement === el) {
+									return;
+								}
+								el.value = JSON.stringify(normalizeGizmoHudSuppressList(v));
+							}
+						}
+					]);
+				} else {
+					(el.closest("label") || el).remove();
+				}
+				continue;
+			}
+			if (!rejectedCog.has(key)) {
+				rejectedCog.add(key);
+				console.warn(`COG: rejected unknown reserved data-gizmo-value "${key}" on type ${typeId}`);
+			}
+			continue;
+		}
+
+		const fieldKind = String(el.getAttribute("data-gizmo-field") || "")
+			.trim()
+			.toLowerCase();
+		const defaultRaw = el.getAttribute("data-gizmo-default");
+		const settings = () => syncGizmoSettingsJson(live());
+		let current = settings()[key];
+		if (current == null && defaultRaw != null) {
+			current = parseGizmoHtmlDefault(defaultRaw, el);
+			if (current !== undefined) {
+				patchGizmoSetting(gid, key, current, false);
+			}
+		}
+
+		if (fieldKind === "color") {
+			const fallback =
+				defaultRaw != null && String(defaultRaw).trim() !== ""
+					? String(defaultRaw)
+					: DEFAULT_GIZMO_GOLD;
+			const labelInfo = gizmoHtmlFieldLabel(el);
+			const colorField = makeOptionalColorField(
+				labelInfo.fallback || "",
+				current != null ? current : fallback,
+				fallback,
+				(hex, livePaint) => syncSettingsKey(key, hex, livePaint)
+			);
+			// Same chrome as fillEditor / gauges: compact column field, label above.
+			colorField.classList.add("compact");
+			if (labelInfo.tag && typeof tagFieldLabel === "function") {
+				tagFieldLabel(colorField, labelInfo.tag, labelInfo.fallback || labelInfo.tag, typeId);
+			}
+			labelInfo.mount.replaceWith(colorField);
+			bindersByKey.set(key, [
+				...(bindersByKey.get(key) || []),
+				{
+					sync: (v) => {
+						const text = colorField.querySelector(".color-hex");
+						const swatch = colorField.querySelector(".color-swatch");
+						const hex = v == null ? "" : String(v);
+						if (text && document.activeElement !== text) {
+							text.value = String(hex).replace(/^#/, "");
+						}
+						if (swatch) {
+							swatch.style.background = hex || "transparent";
+						}
+					}
+				}
+			]);
+			continue;
+		}
+
+		if (fieldKind === "icon" || fieldKind === "endcap") {
+			const isEndcap = fieldKind === "endcap";
+			const labelInfo = gizmoHtmlFieldLabel(el);
+			const iconCtrl = makeIconControl({
+				label: labelInfo.fallback || (isEndcap ? "Endcap" : "Icon"),
+				value: current != null ? String(current) : "",
+				folder: isEndcap ? "Endcaps" : "",
+				endArtPicker: isEndcap,
+				showName: true,
+				clearLabel: isEndcap
+					? typeof t === "function"
+						? t("cog-clear-endcap", "Clear endcap")
+						: "Clear endcap"
+					: undefined,
+				onCommit: (path) => {
+					let next = path || "";
+					if (isEndcap && !next && typeof defaultEndCapArtPath === "function") {
+						next = defaultEndCapArtPath();
+					}
+					syncSettingsKey(key, next);
+				}
+			});
+			iconCtrl.classList.add("compact");
+			if (labelInfo.tag && typeof tagFieldLabel === "function") {
+				tagFieldLabel(iconCtrl, labelInfo.tag, labelInfo.fallback || labelInfo.tag, typeId);
+			}
+			labelInfo.mount.replaceWith(iconCtrl);
+			bindersByKey.set(key, [
+				...(bindersByKey.get(key) || []),
+				{
+					sync: (v) => {
+						const swatch = iconCtrl.querySelector(".icon-swatch");
+						if (swatch && typeof paintIconSwatch === "function") {
+							const href =
+								isEndcap && typeof resolveEndcapHref === "function"
+									? resolveEndcapHref
+									: undefined;
+							paintIconSwatch(swatch, v == null ? "" : String(v), true, href);
+						}
+					}
+				}
+			]);
+			continue;
+		}
+
+		const numSpec = gizmoHtmlNumberKindSpec(fieldKind);
+		if (numSpec) {
+			const decimals = numSpec.decimals;
+			const initial =
+				current != null && Number.isFinite(Number(current))
+					? Number(current)
+					: defaultRaw != null && Number.isFinite(Number(defaultRaw))
+						? Number(defaultRaw)
+						: 0;
+			if (numSpec.autoZero) {
+				el.value = initial > 0 ? fmtDec(initial, decimals) : "";
+			} else if (numSpec.integer) {
+				el.value = String(Math.round(initial));
+			} else {
+				el.value = fmtDec(initial, decimals);
+			}
+			bindNumberField(el, {
+				suffix: numSpec.suffix || undefined,
+				decimals: numSpec.integer ? 0 : decimals,
+				parse: (raw) => {
+					if (numSpec.autoZero && String(raw).trim() === "") {
+						return 0;
+					}
+					if (String(raw).trim() === "" || raw === "." || raw === "-") {
+						return null;
+					}
+					const v = Number(raw);
+					if (!Number.isFinite(v)) {
+						return null;
+					}
+					return numSpec.integer ? Math.round(v) : v;
+				},
+				apply: (v) => syncSettingsKey(key, v, false),
+				format: numSpec.autoZero
+					? (v) => (Number(v) > 0 ? fmtDec(v, decimals) : "")
+					: numSpec.integer
+						? (v) => String(Math.round(Number(v) || 0))
+						: undefined,
+				current: () => {
+					const cur = settings()[key];
+					return cur != null && Number.isFinite(Number(cur)) ? Number(cur) : initial;
+				}
+			});
+			bindersByKey.set(key, [
+				...(bindersByKey.get(key) || []),
+				{
+					sync: (v) => {
+						if (document.activeElement === el) {
+							return;
+						}
+						const n = Number(v);
+						if (numSpec.autoZero) {
+							el.value = Number.isFinite(n) && n > 0 ? fmtDec(n, decimals) : "";
+						} else if (numSpec.integer) {
+							el.value = String(Math.round(Number.isFinite(n) ? n : initial));
+						} else {
+							el.value = fmtDec(Number.isFinite(n) ? n : initial, decimals);
+						}
+					}
+				}
+			]);
+			continue;
+		}
+
+		writeGizmoHtmlControlValue(el, current);
+		const commit = () => {
+			const next = readGizmoHtmlControlValue(el);
+			syncSettingsKey(key, next, false);
+		};
+		el.addEventListener("change", commit);
+		if (String(el.tagName || "").toUpperCase() === "INPUT") {
+			const type = String(el.type || "").toLowerCase();
+			if (type === "text" || type === "number" || type === "color" || type === "") {
+				el.addEventListener("input", commit);
+			}
+		}
+		if (String(el.tagName || "").toUpperCase() === "TEXTAREA") {
+			el.addEventListener("input", commit);
+		}
+		bindersByKey.set(key, [
+			...(bindersByKey.get(key) || []),
+			{
+				sync: (v) => {
+					if (document.activeElement === el) {
+						return;
+					}
+					writeGizmoHtmlControlValue(el, v);
+				}
+			}
+		]);
+	}
+
+	// Scripts may run before control values are written — let them re-sync show/hide panels.
+	try {
+		host.dispatchEvent(new CustomEvent("cog-html-settings-bound"));
+	} catch (e) {
+		/* ignore */
+	}
+}
+
+// Migration Code for Transition from v1.11 or earlier to v1.2: schema editor + auto Visibility.
 function fillSchemaGizmoEditor(panel, gizmo) {
 	const gid = gizmo.id;
 	const typeId = gizmo.typeId;
@@ -1039,6 +1581,14 @@ function patchGizmo(id, patch, skipHud, live) {
 					changed = true;
 					pos[pk] = pv;
 				}
+			}
+			continue;
+		}
+		if (key === "hudSuppress") {
+			const next = normalizeGizmoHudSuppressList(value);
+			if (!hudSuppressListsEqual(gizmo.hudSuppress, next)) {
+				changed = true;
+				gizmo.hudSuppress = next;
 			}
 			continue;
 		}
@@ -1878,7 +2428,17 @@ function fillGizmoEditor(panel, gizmo) {
 	if (api && typeof api.fillEditor === "function") {
 		api.fillEditor(panel, gizmo);
 	} else {
-		fillSchemaGizmoEditor(panel, gizmo);
+		const typeDef = gizmoTypeDef(gizmo.typeId);
+		const htmlMode =
+			typeDef &&
+			(typeDef.settingsMode === "html" ||
+				(typeDef.settingsHtml != null && String(typeDef.settingsHtml).length > 0));
+		if (htmlMode) {
+			fillHtmlGizmoEditor(panel, gizmo);
+		} else {
+			// Migration Code for Transition from v1.11 or earlier to v1.2
+			fillSchemaGizmoEditor(panel, gizmo);
+		}
 	}
 	appendGizmoPositionSizeEditor(panel, gizmo);
 }

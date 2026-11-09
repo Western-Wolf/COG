@@ -1,0 +1,40 @@
+<!-- Builtin Suppressor settings. Key lists mount via CogMountSuppressorKeyList. -->
+<p class="lede" data-translation="cog-suppressor-lede" data-translation-fallback="Editor marker only (always hidden in-game). Always Hide forces soft-hide; Never Hide exempts a target from COG gear soft-hide and from Always Hide.">Editor marker only (always hidden in-game). Always Hide forces soft-hide; Never Hide exempts a target from COG gear soft-hide and from Always Hide.</p>
+<hr class="editor-rule">
+<div data-cog-mount="suppressor-alwaysHide"></div>
+<hr class="editor-rule">
+<div data-cog-mount="suppressor-neverHide"></div>
+<script>
+(function () {
+	var root = document.currentScript;
+	while (root && !(root.classList && root.classList.contains("gizmo-html-settings"))) {
+		root = root.parentElement;
+	}
+	if (!root || typeof window.CogMountSuppressorKeyList !== "function") return;
+	var gid = root.dataset.gizmoId;
+	var alwaysHost = root.querySelector('[data-cog-mount="suppressor-alwaysHide"]');
+	var neverHost = root.querySelector('[data-cog-mount="suppressor-neverHide"]');
+	if (alwaysHost) {
+		window.CogMountSuppressorKeyList(
+			alwaysHost,
+			gid,
+			"alwaysHide",
+			"cog-always-hide",
+			"Always Hide",
+			"cog-always-hide-hint",
+			"Hide these HUD targets whenever this Suppressor exists (even if no matching Gear is on screen)."
+		);
+	}
+	if (neverHost) {
+		window.CogMountSuppressorKeyList(
+			neverHost,
+			gid,
+			"neverHide",
+			"cog-never-hide",
+			"Never Hide",
+			"cog-never-hide-hint",
+			"Keep these visible — wins over gear soft-hide and Always Hide."
+		);
+	}
+})();
+</script>

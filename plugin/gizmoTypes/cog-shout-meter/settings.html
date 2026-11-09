@@ -1,0 +1,48 @@
+<!-- Builtin Shout Meter settings. Bound by fillHtmlGizmoEditor. -->
+<!-- Root soft-hide list (static): casting bar while this shout meter is play-active. -->
+<input type="hidden" data-gizmo-value="cog-hudSuppress" data-gizmo-default='["hud.casting"]' value='["hud.casting"]'>
+<p class="hint" data-translation="cog-shout-meter-intro" data-translation-fallback="Shows your equipped shout in Dragon script. Words fill as you speak them; cooldown fades from the chosen edge with a gradient trail. The whole label rotates with the gizmo.">Shows your equipped shout in Dragon script. Words fill as you speak them; cooldown fades from the chosen edge with a gradient trail. The whole label rotates with the gizmo.</p>
+<hr class="editor-rule">
+<p class="lede section-heading">
+	<span data-translation="cog-text-settings" data-translation-fallback="Text settings">Text settings</span>
+</p>
+<div class="style-row">
+	<label class="pos-field compact">
+		<span data-translation="cog-font-align" data-translation-fallback="Font align">Font align</span>
+		<select data-gizmo-value="textAlign" data-gizmo-default="center">
+			<option value="center" data-translation="cog-center" data-translation-fallback="Center">Center</option>
+			<option value="left" data-translation="cog-left" data-translation-fallback="Left">Left</option>
+			<option value="right" data-translation="cog-right" data-translation-fallback="Right">Right</option>
+		</select>
+	</label>
+	<label class="pos-field compact">
+		<span data-translation="cog-fade-starts-from" data-translation-fallback="Fade starts from">Fade starts from</span>
+		<select data-gizmo-value="drainOrigin" data-gizmo-default="center">
+			<option value="center" data-translation="cog-center" data-translation-fallback="Center">Center</option>
+			<option value="left" data-translation="cog-left" data-translation-fallback="Left">Left</option>
+			<option value="right" data-translation="cog-right" data-translation-fallback="Right">Right</option>
+		</select>
+	</label>
+	<label class="pos-field compact">
+		<span data-translation="cog-words-to-show" data-translation-fallback="Words to show">Words to show</span>
+		<select data-gizmo-value="wordsMode" data-gizmo-default="unlocked">
+			<option value="unlocked" data-translation="cog-unlocked" data-translation-fallback="Unlocked">Unlocked</option>
+			<option value="known" data-translation="cog-known" data-translation-fallback="Known">Known</option>
+			<option value="all" data-translation="cog-all" data-translation-fallback="All">All</option>
+		</select>
+	</label>
+	<label class="pos-field compact">
+		<span data-translation="cog-font" data-translation-fallback="Font">Font</span>
+		<input type="text" inputmode="numeric" data-gizmo-field="pixel" data-gizmo-value="fontSize" data-gizmo-default="0" data-translation-placeholder="cog-auto" data-translation-placeholder-fallback="auto" placeholder="auto">
+	</label>
+</div>
+<div class="style-row">
+	<input type="color" data-gizmo-field="color" data-gizmo-value="primaryColor" data-gizmo-default="#ffffff" data-translation="cog-primary" data-translation-fallback="Primary">
+	<input type="color" data-gizmo-field="color" data-gizmo-value="secondaryColor" data-gizmo-default="#5ba4f9" data-translation="cog-secondary" data-translation-fallback="Secondary">
+</div>
+<div class="style-row">
+	<label class="pos-field compact">
+		<span data-translation="cog-trough-opacity" data-translation-fallback="Trough Opacity">Trough Opacity</span>
+		<input type="text" inputmode="decimal" data-gizmo-field="percentage" data-gizmo-value="troughOpacity" data-gizmo-default="20">
+	</label>
+</div>

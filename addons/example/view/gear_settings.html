@@ -1,0 +1,28 @@
+<!-- Example gizmo settings — shared by xmp-gearupdated and xmp-pushupdated.
+     Bindings: data-gizmo-value → gizmo.settings (or reserved cog-visibility → root visibility).
+     Color/icon upgrades read data-translation* from the control (label-above chrome).
+     Visibility tip is attached to the section heading by fillHtmlGizmoEditor. -->
+<p class="lede section-heading">
+	<span data-translation="cog-visibility" data-translation-fallback="Visibility">Visibility</span>
+</p>
+<select data-gizmo-value="cog-visibility">
+	<option value="hud">HUD Visible</option>
+	<option value="ui">UI Visible</option>
+	<option value="none">None</option>
+</select>
+<hr class="editor-rule">
+<p class="lede section-heading">
+	<span data-translation="cog-colour" data-translation-fallback="Colour">Colour</span>
+</p>
+<div class="style-row">
+	<input type="color" data-gizmo-field="color" data-gizmo-value="zeroColor" data-gizmo-default="#20DF20" data-translation="cog-zero-colour" data-translation-fallback="Zero colour">
+	<input type="color" data-gizmo-field="color" data-gizmo-value="tenColor" data-gizmo-default="#DF2020" data-translation="cog-ten-colour" data-translation-fallback="Ten colour">
+</div>
+<hr class="editor-rule">
+<p class="lede section-heading">
+	<span data-translation="cog-count" data-translation-fallback="Count">Count</span>
+</p>
+<label class="check-row compact">
+	<input type="checkbox" data-gizmo-value="showCount" data-gizmo-default="true">
+	<span data-translation="cog-show-count" data-translation-fallback="Show Count">Show Count</span>
+</label>

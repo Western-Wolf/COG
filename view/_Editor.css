@@ -34,11 +34,10 @@ body.is-focused #editor {
 #editor-panel {
 	position: absolute;
 	left: 50%;
-	top: 7%;
-	transform: translateX(-50%);
-	width: 60em;
-	max-width: 92%;
-	max-height: 86%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	width: 60%;
+	height: 75%;
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
@@ -47,7 +46,7 @@ body.is-focused #editor {
 	color: #ffffff;
 	background: rgba(12, 10, 8, 0.92);
 	border: 1px solid rgba(232, 210, 160, 0.45);
-	border-radius: 6px;
+	border-radius: 16px;
 	isolation: isolate;
 	--cog-ctrl-hover-bg: rgba(196, 163, 90, 0.12);
 	--cog-ctrl-hover-border: rgba(232, 210, 160, 0.55);
@@ -526,9 +525,10 @@ body.is-focused #editor {
 	font-size: 0.85em;
 }
 
-/* Missing-translation highlight (general.highlightMissingTranslations).
-   rem + explicit UI font so badges stay small even on large/heading text. */
-#editor-panel .translation-fallback-badge {
+/* Missing-translation highlight (general.highlightMissingTranslations) and
+   banner product version. rem + UI font so badges stay small on heading text. */
+#editor-panel .translation-fallback-badge,
+#editor-panel .cog-version-badge {
 	margin-left: 0.25em;
 	font-family: var(--cog-font-ui);
 	font-size: 0.65rem;
@@ -538,6 +538,15 @@ body.is-focused #editor {
 	color: #c4a35a;
 	letter-spacing: 0.02em;
 	vertical-align: super;
+}
+
+/* .banner-title is flex — pin to the top of the tall C/O/G line (not the
+   lowercase baseline). Spacing comes from the leading space (" v1.20"). */
+#editor-panel .banner-title .cog-version-badge {
+	margin-left: 0;
+	align-self: flex-start;
+	/* Slight inset so it sits near the gear tops rather than flush with the box edge. */
+	margin-top: 0.35em;
 }
 
 #editor-panel .has-translation-fallback-attr {
@@ -1869,7 +1878,8 @@ button.action:hover,
 
 .gizmos-layout {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	/* Gallery ~40% · instances ~60% (between prior 50/50 and 1/3–2/3) */
+	grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
 	gap: 1rem;
 	align-items: start;
 }
@@ -1908,8 +1918,14 @@ button.action:hover,
 	height: 100%;
 	overflow-x: hidden;
 	overflow-y: auto;
-	padding-bottom: 1.5em;
+	/* Keep content clear of the column scrollbar (was flush against the thumb). */
+	padding: 0 0.5em 1.5em 0;
 	box-sizing: border-box;
+}
+
+/* Gallery: match left inset to the scrollbar-side pad so tiles sit evenly. */
+#tab-body.is-gizmos .gizmo-gallery-col {
+	padding-left: 0.5em;
 }
 
 .gizmo-gallery-col {
@@ -1941,7 +1957,7 @@ button.action:hover,
 .gizmo-gallery {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
-	gap: 0.65rem;
+	gap: 0.55rem;
 	align-items: start;
 }
 
@@ -1951,11 +1967,11 @@ button.action:hover,
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	gap: 0.4em;
+	gap: 0.34em;
 	width: 100%;
 	aspect-ratio: 1;
 	min-height: 0;
-	padding: 0.75em 0.55em;
+	padding: 0.6em 0.45em;
 	border: 1px solid var(--panel-border, #5a5248);
 	border-radius: 0.35em;
 	background: var(--panel-bg, rgba(24, 22, 20, 0.72));
@@ -1966,9 +1982,9 @@ button.action:hover,
 #editor-panel .gizmo-gallery-item::after {
 	content: "+";
 	position: absolute;
-	top: 0.2em;
-	right: 0.35em;
-	font-size: 1.15em;
+	top: 0.18em;
+	right: 0.3em;
+	font-size: 1.07em;
 	font-weight: 700;
 	line-height: 1;
 	color: var(--accent, #c4a35a);
@@ -1981,8 +1997,8 @@ button.action:hover,
 }
 
 .gizmo-gallery-item img {
-	width: 2.75em;
-	height: 2.75em;
+	width: 2.35em;
+	height: 2.35em;
 	object-fit: contain;
 	pointer-events: none;
 	/* Force monochrome black regardless of SVG currentColor / baked fills. */
@@ -1990,7 +2006,7 @@ button.action:hover,
 }
 
 .gizmo-gallery-item span {
-	font-size: 0.92em;
+	font-size: 0.86em;
 	font-weight: 600;
 	text-align: center;
 	line-height: 1.15;
@@ -2047,18 +2063,7 @@ button.action:hover,
 	flex: 0 0 auto;
 }
 
-.clock-line-btn,
-.clock-add-line {
-	font: inherit;
-	font-size: 0.8em;
-	color: #ffffff;
-	background: transparent;
-	border: 1px solid rgba(232, 210, 160, 0.35);
-	border-radius: 4px;
-	padding: 0.15em 0.45em;
-	cursor: pointer;
-}
-
+/* Layout only — chrome comes from #editor-panel button.tiny */
 .clock-line-btn {
 	min-width: 1.55em;
 	text-align: center;
@@ -2069,19 +2074,7 @@ button.action:hover,
 	align-self: flex-start;
 }
 
-.clock-line-btn:hover:not(:disabled),
-.clock-add-line:hover:not(:disabled) {
-	border-color: var(--cog-ctrl-hover-border);
-	background: var(--cog-ctrl-hover-bg);
-}
-
-.clock-line-btn:disabled,
-.clock-add-line:disabled {
-	opacity: 0.35;
-	cursor: default;
-}
-
-/* Token picks live in a body-portaled popover — style without #editor-panel. */
+/* Token picks are body-portaled (outside #editor-panel) — mirror button.tiny chrome. */
 .clock-token-pick {
 	font: inherit;
 	font-size: 0.8em;
@@ -2102,6 +2095,36 @@ button.action:hover,
 .clock-token-pick:disabled {
 	opacity: 0.35;
 	cursor: default;
+}
+
+/* HTML settings host — prefer editor-wide field/button rules; tip + visibility slot only. */
+.gizmo-html-settings {
+	display: flex;
+	flex-direction: column;
+	gap: 0.45em;
+}
+
+.gizmo-html-settings > .lede.section-heading {
+	display: flex;
+	align-items: center;
+	gap: 0.35em;
+}
+
+.gizmo-html-settings .gizmo-html-visibility-slot .style-row {
+	margin: 0;
+}
+
+.gizmo-html-settings .gizmo-html-visibility-slot .pos-field.compact {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.45em 0.65em;
+}
+
+.gizmo-html-settings .gizmo-html-visibility-slot .field-title-row {
+	display: inline-flex;
+	align-items: center;
 }
 
 .gizmo-text-settings .style-row.feed-text-main-row {
@@ -2131,31 +2154,6 @@ button.action:hover,
 	white-space: nowrap;
 }
 
-.gizmo-text-settings .style-row.feed-effects-controls {
-	align-items: flex-start;
-	flex-wrap: nowrap;
-	gap: 0.5em;
-}
-
-.gizmo-text-settings .style-row.feed-effects-controls > .icon-field,
-.gizmo-text-settings .style-row.feed-effects-controls > .pos-field {
-	flex: 0 1 auto;
-	min-width: 0;
-	align-self: flex-start;
-}
-
-.gizmo-text-settings .style-row.feed-effects-controls > .pos-field.compact {
-	flex: 0 0 auto;
-	min-width: 7.5em;
-	max-width: 100%;
-	width: max-content;
-}
-
-.gizmo-text-settings .style-row.feed-location-row {
-	flex-wrap: nowrap;
-	align-items: flex-end;
-}
-
 .gizmo-text-settings .style-row.feed-location-row.is-nested {
 	margin: 0.15em 0 0.45em 1.4em;
 }
@@ -2164,63 +2162,17 @@ button.action:hover,
 	margin: 0.15em 0;
 }
 
-.gizmo-text-settings .style-row.feed-location-row > .check-row {
-	flex: 0 1 11em;
-	min-width: 9em;
-	align-self: center;
-	padding-bottom: 0.35em;
-}
-
-.gizmo-text-settings > .check-row {
-	display: flex;
-	margin: 0.35em 0;
-}
-
 .gizmo-celestial-settings .style-row,
 .gizmo-text-settings .style-row {
 	align-items: flex-end;
 	gap: 0.5em;
 }
 
-/* Match gear edit icon swatches (no compact stretch / less chrome padding). */
-.gizmo-text-settings .icon-field {
-	flex: 0 0 auto;
-	min-width: 0;
-	max-width: none;
-}
-
-.gizmo-text-settings .icon-swatch {
-	padding: 0.15em;
-}
-
+/* Clock celestial endcap row — same pairing idea as gauge endcap-row, normal control sizes. */
 .gizmo-celestial-settings .style-row.endcap-row {
 	flex-wrap: nowrap;
 	align-items: flex-end;
-	gap: 0.3em;
-}
-
-.gizmo-celestial-settings .style-row.endcap-row .icon-field {
-	flex: 0 0 auto;
-	min-width: 0;
-	max-width: none;
-}
-
-.gizmo-celestial-settings .style-row.endcap-row .overlap-cap-field {
-	flex: 0 0 auto;
-	width: 4.25em;
-	min-width: 0;
-	max-width: none;
-}
-
-.gizmo-celestial-settings .overlap-cap-field input {
-	height: 2.35em;
-	box-sizing: border-box;
-	padding: 0 0.4em;
-}
-
-.gizmo-celestial-settings .overlap-cap-field span {
-	white-space: nowrap;
-	line-height: 1.15;
+	gap: 0.45em;
 }
 
 /* Gauge bar endcap art + overlap sit as a tight pair inside the wider settings row. */

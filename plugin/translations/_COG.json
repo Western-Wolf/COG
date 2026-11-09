@@ -516,8 +516,8 @@
     "fr-CA": "Couleurs générales"
   },
   "cog-gizmo-custom-intro": {
-    "en-CA": "Custom gizmo from a mod. Drag, resize, and rotate on the HUD; settings below come from the mod schema.",
-    "fr-CA": "Gizmo personnalisé provenant d'un mod. Glissez, redimensionnez et pivotez sur le HUD; les réglages ci-dessous viennent du schéma du mod."
+    "en-CA": "Custom gizmo from a mod. Drag, resize, and rotate on the HUD; settings below come from the mod.",
+    "fr-CA": "Gizmo personnalisé provenant d'un mod. Glissez, redimensionnez et pivotez sur le HUD; les réglages ci-dessous viennent du mod."
   },
   "cog-gizmo-no-custom-settings": {
     "en-CA": "No custom settings for this gizmo type.",

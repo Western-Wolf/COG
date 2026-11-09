@@ -1,6 +1,6 @@
 -- COG iWant compatibility pack (stub Widgets + Status Bars bridge + icon import DLL).
--- Stages under repo `_stage/`; release.ps1 builds the FOMOD zip from there (no MO2 mod folder).
-local deploy_root = path.join(os.projectdir(), "_stage", "COG - iWant Integration")
+-- Stages under build/stage/; release.ps1 builds the FOMOD zip from there (not an in-game mod path).
+local deploy_root = path.join(os.projectdir(), "build", "stage", "COG - iWant Integration")
 local addon_dir = os.scriptdir()
 
 target("COG_iWant")
@@ -11,6 +11,8 @@ target("COG_iWant")
 		author = "WesternWolff",
 		description = "COG iWant Widgets / Status Bars compatibility bridge"
 	})
+
+	add_defines('COG_PRODUCT_VERSION="' .. (cog_product_version or "0") .. '"')
 
 	add_files("src/**.cpp")
 	add_headerfiles("src/**.h")

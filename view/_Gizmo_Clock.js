@@ -1576,286 +1576,48 @@ function makeClockTemplateEditor(gizmo, gid) {
 	render();
 	return host;
 }
-function fillClockGizmoEditor(panel, gizmo) {
-	const gid = gizmo.id;
-	const live = () => gizmoFor(gid) || gizmo;
 
-	const modeRow = document.createElement("div");
-	modeRow.className = "style-row";
-	const modeField = document.createElement("label");
-	modeField.className = "pos-field compact";
-	modeField.innerHTML = `<span>Mode</span><select data-role="displayMode">
-		<option value="text">Text-only</option>
-		<option value="celestial">Celestial</option>
-	</select>`;
-	tagFieldLabel(modeField, "cog-mode", "Mode");
-	const modeSel = modeField.querySelector("select");
-	tagSelectOptions(modeSel, {
-		text: ["cog-mode-text-only", "Text-only"],
-		celestial: ["cog-mode-celestial", "Celestial"]
-	});
-	modeSel.value = normalizeGizmoDisplayMode(gizmo.settings.displayMode);
-	modeSel.addEventListener("change", () => {
-		const mode = normalizeGizmoDisplayMode(modeSel.value);
-		const patch = { displayMode: mode };
-		if (mode === "celestial" && live().display.width === DEFAULT_GIZMO_WIDTH_TEXT) {
-			patch.display = {
-				width: DEFAULT_GIZMO_WIDTH_CELESTIAL,
-				height: DEFAULT_GIZMO_HEIGHT_CELESTIAL
-			};
-		}
-		patchGizmo(gid, patch);
-		renderEditor(true);
-	});
-	modeRow.appendChild(modeField);
-	panel.appendChild(modeRow);
-
-	appendEditorRule(panel);
-	const displaySection = document.createElement("div");
-	displaySection.className = "gizmo-display-settings";
-	const displayLede = document.createElement("p");
-	displayLede.className = "lede";
-	setTranslatedText(displayLede, "cog-clock-face", "Clock face", CLOCK_TYPE_ID);
-	displaySection.appendChild(displayLede);
-	const displayHint = document.createElement("p");
-	displayHint.className = "hint";
-	setTranslatedText(
-		displayHint,
-		"cog-clock-display-hint",
-		"Arrange date and time fields across lines. Each badge is one value in the order shown.",
-		CLOCK_TYPE_ID
-	);
-	displaySection.appendChild(displayHint);
-	displaySection.appendChild(makeClockTemplateEditor(gizmo, gid));
-	panel.appendChild(displaySection);
-
-	appendEditorRule(panel);
-	const textSection = document.createElement("div");
-	textSection.className = "gizmo-text-settings";
-	const textLede = document.createElement("p");
-	textLede.className = "lede";
-	setTranslatedText(textLede, "cog-text-settings", "Text settings");
-	textSection.appendChild(textLede);
-	const textRow = document.createElement("div");
-	textRow.className = "style-row";
-	const iconField = document.createElement("label");
-	iconField.className = "pos-field compact";
-	iconField.innerHTML = `<span>Icon</span><select data-role="clockIcon">
-		<option value="none">None</option>
-		<option value="clock">Clock</option>
-		<option value="season">Season</option>
-	</select>`;
-	tagFieldLabel(iconField, "cog-icon", "Icon");
-	const iconSel = iconField.querySelector("select");
-	tagSelectOptions(
-		iconSel,
-		{
-			none: ["cog-none", "None"],
-			clock: ["cog-clock-icon-clock", "Clock"],
-			season: ["cog-clock-icon-season", "Season"]
-		},
-		CLOCK_TYPE_ID
-	);
-	iconSel.value = normalizeClockIcon(gizmo.settings.clockIcon);
-	iconSel.addEventListener("change", () => {
-		patchGizmo(gid, { clockIcon: normalizeClockIcon(iconSel.value) });
-	});
-	textRow.appendChild(iconField);
-	const alignField = document.createElement("label");
-	alignField.className = "pos-field compact";
-	alignField.innerHTML = `<span>Text align</span><select data-role="textAlign">
-		<option value="center">Center</option>
-		<option value="left">Left</option>
-		<option value="right">Right</option>
-	</select>`;
-	tagFieldLabel(alignField, "cog-text-align", "Text align");
-	const alignSel = alignField.querySelector("select");
-	tagSelectOptions(alignSel, {
-		center: ["cog-align-center", "Center"],
-		left: ["cog-align-left", "Left"],
-		right: ["cog-align-right", "Right"]
-	});
-	alignSel.value = normalizeClockTextAlign(gizmo.settings.textAlign);
-	alignSel.addEventListener("change", () => {
-		patchGizmo(gid, { textAlign: normalizeClockTextAlign(alignSel.value) });
-	});
-	textRow.appendChild(alignField);
-	const fontField = document.createElement("label");
-	fontField.className = "pos-field compact";
-	fontField.innerHTML = `<span>Font</span><input type="text" data-role="fontSize" inputmode="numeric" placeholder="auto">`;
-	tagFieldLabel(fontField, "cog-font", "Font");
-	const fontInput = fontField.querySelector("input");
-	setTranslatedPlaceholder(fontInput, "cog-auto", "auto");
-	fontInput.value = gizmo.settings.fontSize > 0 ? String(Math.round(gizmo.settings.fontSize)) : "";
-	bindNumberField(fontInput, {
-		suffix: "px",
-		parse: (raw) => {
-			if (String(raw).trim() === "") {
-				return 0;
-			}
-			const v = Number(raw);
-			return Number.isFinite(v) ? Math.max(0, Math.min(128, v)) : null;
-		},
-		apply: (v) => patchGizmo(gid, { fontSize: v }),
-		format: (v) => (v > 0 ? String(Math.round(v)) : ""),
-		current: () => live().settings.fontSize || 0
-	});
-	textRow.appendChild(fontField);
-	textSection.appendChild(textRow);
-	const textColorRow = document.createElement("div");
-	textColorRow.className = "style-row";
-	const iconColor = makeOptionalColorField(
-		"Icon Colour",
-		gizmo.settings.iconColor,
-		DEFAULT_GIZMO_GOLD,
-		(hex, live) => patchGizmo(gid, { iconColor: hex }, false, live)
-	);
-	iconColor.classList.add("compact");
-	tagFieldLabel(iconColor, "cog-icon-colour", "Icon Colour");
-	textColorRow.appendChild(iconColor);
-	const textColor = makeOptionalColorField(
-		"Text Colour",
-		gizmo.settings.textColor,
-		DEFAULT_GIZMO_GOLD,
-		(hex, live) => patchGizmo(gid, { textColor: hex }, false, live)
-	);
-	textColor.classList.add("compact");
-	tagFieldLabel(textColor, "cog-text-colour", "Text Colour");
-	textColorRow.appendChild(textColor);
-	textSection.appendChild(textColorRow);
-	panel.appendChild(textSection);
-
-	const celestialSection = document.createElement("div");
-	celestialSection.className = "gizmo-celestial-settings";
-	celestialSection.hidden = normalizeGizmoDisplayMode(gizmo.settings.displayMode) !== "celestial";
-	appendEditorRule(celestialSection);
-	const celestialLede = document.createElement("p");
-	celestialLede.className = "lede";
-	setTranslatedText(celestialLede, "cog-celestial-settings", "Celestial settings");
-	celestialSection.appendChild(celestialLede);
-	const celestialHint = document.createElement("p");
-	celestialHint.className = "hint";
-	setTranslatedText(
-		celestialHint,
-		"cog-clock-celestial-hint",
-		"Width is the arc diameter; Height is band thickness (same as an arc gauge).",
-		CLOCK_TYPE_ID
-	);
-	celestialSection.appendChild(celestialHint);
-	const celestialRow = document.createElement("div");
-	celestialRow.className = "style-row celestial-main-row";
-	const celestialShowField = document.createElement("label");
-	celestialShowField.className = "pos-field compact";
-	celestialShowField.innerHTML = `<span>Show celestial objects</span><select data-role="celestialShow">
-		<option value="always">Always</option>
-		<option value="sky">When sky is visible</option>
-		<option value="outdoors">When outdoors</option>
-	</select>`;
-	tagFieldLabel(celestialShowField, "cog-show-celestial-objects", "Show celestial objects");
-	const celestialShowSel = celestialShowField.querySelector("select");
-	tagSelectOptions(celestialShowSel, {
-		always: ["cog-always", "Always"],
-		sky: ["cog-when-sky-visible", "When sky is visible"],
-		outdoors: ["cog-when-outdoors", "When outdoors"]
-	});
-	celestialShowSel.value = normalizeCelestialShow(gizmo.settings.celestialShow);
-	celestialShowSel.addEventListener("change", () => {
-		patchGizmo(gid, { celestialShow: normalizeCelestialShow(celestialShowSel.value) });
-	});
-	celestialRow.appendChild(celestialShowField);
-	const endMode = document.createElement("label");
-	endMode.className = "pos-field compact mid";
-	endMode.innerHTML = `<span>Endcaps</span><select data-role="endCapMode">
-		<option value="border">Extend Border</option>
-		<option value="endcap">Use Endcap</option>
-	</select>`;
-	tagFieldLabel(endMode, "cog-endcaps", "Endcaps");
-	const endModeSel = endMode.querySelector("select");
-	tagSelectOptions(endModeSel, {
-		border: ["cog-extend-border", "Extend Border"],
-		endcap: ["cog-use-endcap", "Use Endcap"]
-	});
-	endModeSel.value = normalizeEndCapMode(gizmo.settings.endCapMode, gizmo.settings.endCap);
-	celestialRow.appendChild(endMode);
-	const endModeNow = endModeSel.value;
-	const showEndArt = endModeNow === "endcap";
-	endModeSel.addEventListener("change", () => {
-		const mode = normalizeEndCapMode(endModeSel.value, gizmo.settings.endCap) || "border";
-		const patch = { endCapMode: mode };
-		if (mode === "endcap" && !migrateEndCapPath(live().settings.endCap)) {
-			patch.endCap = defaultEndCapArtPath();
-		}
-		patchGizmo(gid, patch);
-		renderEditor(true);
-	});
-	celestialSection.appendChild(celestialRow);
-	if (showEndArt) {
-		const endArtRow = document.createElement("div");
-		endArtRow.className = "style-row endcap-row";
-		const endCaps = makeIconControl({
-			label: "Endcap",
-			value: gizmo.settings.endCap,
-			folder: "Endcaps",
-			endArtPicker: true,
-			clearLabel:
-				typeof t === "function" ? t("cog-clear-endcap", "Clear endcap") : "Clear endcap",
-			showName: true,
-			onCommit: (path) => patchGizmo(gid, { endCap: path || defaultEndCapArtPath() })
-		});
-		endCaps.classList.add("compact");
-		tagFieldLabel(endCaps, "cog-endcap", "Endcap");
-		endArtRow.appendChild(endCaps);
-		const overlap = document.createElement("label");
-		overlap.className = "pos-field compact narrow overlap-cap-field";
-		overlap.innerHTML = `<span>Overlap</span><input type="number" min="0" max="45" step="0.001" data-role="endCapOverlap">`;
-		tagFieldLabel(overlap, "cog-overlap", "Overlap");
-		const overlapInput = overlap.querySelector("input");
-		overlapInput.value = fmtPct(gizmo.settings.endCapOverlap);
-		bindNumberField(overlapInput, {
-			suffix: "%",
-			parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(45, Number(raw) || 0))),
-			apply: (v) => patchGizmo(gid, { endCapOverlap: v }),
-			current: () => live().settings.endCapOverlap
-		});
-		endArtRow.appendChild(overlap);
-		celestialSection.appendChild(endArtRow);
+window.CogMountClockLinesEditor = function CogMountClockLinesEditor(host, gid) {
+	if (!host) {
+		return;
 	}
-	const celestialColorRow = document.createElement("div");
-	celestialColorRow.className = "style-row";
-	const borderColor = makeOptionalColorField(
-		"Border Colour",
-		gizmo.settings.borderColor,
-		DEFAULT_GIZMO_GOLD,
-		(hex, live) => patchGizmo(gid, { borderColor: hex }, false, live)
-	);
-	borderColor.classList.add("compact");
-	tagFieldLabel(borderColor, "cog-border-colour", "Border Colour");
-	celestialColorRow.appendChild(borderColor);
-	const thick = document.createElement("label");
-	thick.className = "pos-field compact narrow";
-	thick.innerHTML = `<span>Border Thickness</span><input type="number" min="0" max="50" step="0.001" data-role="borderThickness">`;
-	tagFieldLabel(thick, "cog-border-thickness", "Border Thickness");
-	const thickInput = thick.querySelector("input");
-	thickInput.value = fmtPct(gizmo.settings.borderThickness);
-	bindNumberField(thickInput, {
-		suffix: "%",
-		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(50, Number(raw) || 0))),
-		apply: (v) => patchGizmo(gid, { borderThickness: v }),
-		current: () => live().settings.borderThickness
-	});
-	celestialColorRow.appendChild(thick);
-	const celestialColor = makeOptionalColorField(
-		"Celestial Colour",
-		gizmo.settings.celestialColor,
-		DEFAULT_GIZMO_CELESTIAL_COLOR,
-		(hex, live) => patchGizmo(gid, { celestialColor: hex }, false, live)
-	);
-	celestialColor.classList.add("compact");
-	tagFieldLabel(celestialColor, "cog-celestial-colour", "Celestial Colour");
-	celestialColorRow.appendChild(celestialColor);
-	celestialSection.appendChild(celestialColorRow);
-	panel.appendChild(celestialSection);
-}
+	host.replaceChildren();
+	const gizmo = typeof gizmoFor === "function" ? gizmoFor(gid) : null;
+	if (!gizmo) {
+		return;
+	}
+	host.appendChild(makeClockTemplateEditor(gizmo, gid));
+};
+
+window.CogOnClockDisplayModeChange = function CogOnClockDisplayModeChange(gid, rawMode) {
+	const live = typeof gizmoFor === "function" ? gizmoFor(gid) : null;
+	if (!live) {
+		return;
+	}
+	const mode = normalizeGizmoDisplayMode(rawMode);
+	const patch = { displayMode: mode };
+	if (mode === "celestial" && live.display && live.display.width === DEFAULT_GIZMO_WIDTH_TEXT) {
+		patch.display = {
+			width: DEFAULT_GIZMO_WIDTH_CELESTIAL,
+			height: DEFAULT_GIZMO_HEIGHT_CELESTIAL
+		};
+	}
+	patchGizmo(gid, patch);
+};
+
+window.CogOnClockEndCapModeChange = function CogOnClockEndCapModeChange(gid, rawMode) {
+	const live = typeof gizmoFor === "function" ? gizmoFor(gid) : null;
+	if (!live) {
+		return;
+	}
+	const settings = ensureGizmoSettings(live);
+	const mode = normalizeEndCapMode(rawMode, settings.endCap) || "border";
+	const patch = { endCapMode: mode };
+	if (mode === "endcap" && !migrateEndCapPath(settings.endCap)) {
+		patch.endCap = defaultEndCapArtPath();
+	}
+	patchGizmo(gid, patch);
+};
 
 window.CogRegisterGizmoRenderer("cog-clock", {
 	create() {
@@ -1868,7 +1630,6 @@ window.CogRegisterGizmoRenderer("cog-clock", {
 		paintGizmoClock(el, gizmo);
 		paintCelestialArc(el, gizmo);
 	},
-	fillEditor: fillClockGizmoEditor,
 	layoutBox: gizmoLayoutBoxClock,
 	fontSizePx(gizmo) {
 		const s = ensureGizmoSettings(gizmo);

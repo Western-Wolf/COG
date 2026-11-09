@@ -19,6 +19,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iterator>
@@ -355,7 +356,7 @@ std::int32_t CogRegistry::RegisterGizmo(
 	float defaultWidth,
 	float defaultHeight,
 	std::string viewScript,
-	std::string settingsSchemaJson,
+	std::string settingsSchema,
 	std::string defaultVisibility)
 {
 	mod = TrimCopy(std::move(mod));
@@ -372,10 +373,35 @@ std::int32_t CogRegistry::RegisterGizmo(
 		return 0;
 	}
 	viewScript = SanitizeViewScriptPath(std::move(viewScript));
-	if (!settingsSchemaJson.empty() && !LooksLikeJsonObjectOrArray(settingsSchemaJson)) {
-		settingsSchemaJson = "[]";
-	}
+	settingsSchema = TrimCopy(std::move(settingsSchema));
 	defaultVisibility = NormalizeGizmoVisibility(std::move(defaultVisibility));
+
+	// Detect settingsSchema: legacy JSON vs Data-relative HTML path.
+	// Migration Code for Transition from v1.11 or earlier to v1.2: `[`/`{` → schema editor.
+	const bool htmlMode = !settingsSchema.empty() && !LooksLikeJsonObjectOrArray(settingsSchema);
+	std::string htmlSourcePath;
+	std::filesystem::path htmlSourceAbs;
+	if (htmlMode) {
+		htmlSourcePath = SanitizeViewScriptPath(settingsSchema);
+		if (htmlSourcePath.empty()) {
+			logger::warn(
+				"RegisterGizmo rejected: invalid settings HTML path for typeId '{}' (mod='{}')",
+				typeId,
+				mod);
+			return 0;
+		}
+		htmlSourceAbs = std::filesystem::current_path() / "Data" / htmlSourcePath;
+		std::error_code existsEc;
+		if (!std::filesystem::is_regular_file(htmlSourceAbs, existsEc)) {
+			logger::warn(
+				"RegisterGizmo rejected: settings HTML missing or unreadable '{}' for typeId '{}' (mod='{}')",
+				htmlSourceAbs.string(),
+				typeId,
+				mod);
+			return 0;
+		}
+	}
+
 	std::lock_guard lock(_mutex);
 	CogGizmoType* slot = nullptr;
 	for (auto& t : _gizmoTypes) {
@@ -391,6 +417,36 @@ std::int32_t CogRegistry::RegisterGizmo(
 			slot->sourceMod);
 		return 0;
 	}
+
+	if (htmlMode) {
+		const auto htmlDestAbs = CogGizmoStorage::EnsureDir(typeId) / "settings.html";
+		std::error_code canonSrcEc;
+		std::error_code canonDstEc;
+		const auto canonSrc = std::filesystem::weakly_canonical(htmlSourceAbs, canonSrcEc);
+		const auto canonDst = std::filesystem::weakly_canonical(htmlDestAbs, canonDstEc);
+		const bool sameFile =
+			!canonSrcEc && !canonDstEc && !canonSrc.empty() && canonSrc == canonDst;
+		if (!sameFile) {
+			std::error_code copyEc;
+			std::filesystem::create_directories(htmlDestAbs.parent_path(), copyEc);
+			std::filesystem::copy_file(
+				htmlSourceAbs,
+				htmlDestAbs,
+				std::filesystem::copy_options::overwrite_existing,
+				copyEc);
+			if (copyEc) {
+				logger::warn(
+					"RegisterGizmo rejected: could not copy settings HTML '{}' → '{}' ({}) for typeId '{}' (mod='{}')",
+					htmlSourceAbs.string(),
+					htmlDestAbs.string(),
+					copyEc.message(),
+					typeId,
+					mod);
+				return 0;
+			}
+		}
+	}
+
 	if (!slot) {
 		_gizmoTypes.push_back({});
 		slot = &_gizmoTypes.back();
@@ -403,8 +459,15 @@ std::int32_t CogRegistry::RegisterGizmo(
 	slot->defaultHeight = defaultHeight > 0.0f ? defaultHeight : 48.0f;
 	slot->defaultVisibility = std::move(defaultVisibility);
 	slot->viewScript = std::move(viewScript);
-	slot->settingsSchemaJson =
-		settingsSchemaJson.empty() ? "[]" : std::move(settingsSchemaJson);
+	if (htmlMode) {
+		slot->settingsMode = "html";
+		slot->settingsHtmlSourcePath = std::move(htmlSourcePath);
+		slot->settingsSchemaJson = "[]";
+	} else {
+		slot->settingsMode = "schema";
+		slot->settingsHtmlSourcePath.clear();
+		slot->settingsSchemaJson = settingsSchema.empty() ? "[]" : std::move(settingsSchema);
+	}
 
 	std::int32_t receipt = 0;
 	if (auto existing = _gizmoTypeReceiptIndex.find(typeId); existing != _gizmoTypeReceiptIndex.end()) {
@@ -416,6 +479,7 @@ std::int32_t CogRegistry::RegisterGizmo(
 	}
 	// Ensure type-owned data folder (gizmoTypes/<typeId>/) exists for icon maps, translations, etc.
 	CogGizmoStorage::EnsureDir(typeId);
+	_catalogDirty = true;
 	return receipt;
 }
 
@@ -458,8 +522,10 @@ bool CogRegistry::ApplyGizmoTypeDefaultsUnlocked()
 
 void CogRegistry::RegisterBuiltinGizmoTypesUnlocked()
 {
+	// Builtins ship settings.html under plugin/gizmoTypes/<typeId>/ (xmake stages it).
+	// Defaults remain in JS create(); complex UX (clock lines, suppressor lists, Feed sections) uses HTML scripts.
 	auto upsert = [&](const char* typeId, const char* displayName, const char* icon, float w, float h,
-					  const char* defaultVisibility, const char* schema) {
+					  const char* defaultVisibility) {
 		CogGizmoType* slot = nullptr;
 		for (auto& t : _gizmoTypes) {
 			if (t.typeId == typeId) {
@@ -479,93 +545,16 @@ void CogRegistry::RegisterBuiltinGizmoTypesUnlocked()
 		slot->defaultHeight = h;
 		slot->defaultVisibility = NormalizeGizmoVisibility(defaultVisibility);
 		slot->viewScript.clear();
-		slot->settingsSchemaJson = schema;
+		slot->settingsMode = "html";
+		slot->settingsHtmlSourcePath =
+			std::string("SKSE/Plugins/COG/gizmoTypes/") + typeId + "/settings.html";
+		slot->settingsSchemaJson = "[]";
 		CogGizmoStorage::EnsureDir(typeId);
 	};
-	upsert("cog-clock", "Clock", "Actions/wait.svg", 275.0f, 40.0f, "hud",
-		R"([
-{"key":"displayMode","kind":"enum","label":"Mode","default":"celestial","options":["text","celestial"]},
-{"key":"fontSize","kind":"int","label":"Font size","default":18,"min":0,"max":128},
-{"key":"timeFormat","kind":"enum","label":"Time format","default":"24h","options":["12h","24h"]},
-{"key":"endCapMode","kind":"enum","label":"End caps","default":"border","options":["border","endcap"]},
-{"key":"endCap","kind":"string","label":"End cap art","default":"Endcaps/circle-half.svg"},
-{"key":"endCapOverlap","kind":"float","label":"End cap overlap","default":0,"min":0,"max":100},
-{"key":"borderThickness","kind":"float","label":"Border thickness %","default":15,"min":0,"max":50},
-{"key":"celestialShow","kind":"enum","label":"Celestial show","default":"always","options":["always","sky","outdoors"]},
-{"key":"textAlign","kind":"enum","label":"Align","default":"center","options":["left","center","right"]},
-{"key":"clockIcon","kind":"string","label":"Clock icon","default":"season"},
-{"key":"iconColor","kind":"color","label":"Icon colour","default":"#e8d2a0"},
-{"key":"textColor","kind":"color","label":"Text colour","default":"#e8d2a0"},
-{"key":"borderColor","kind":"color","label":"Border colour","default":"#e8d2a0"},
-{"key":"celestialColor","kind":"color","label":"Celestial colour","default":"#ffffff"}
-])");
-	upsert("cog-shout-meter", "Shout Meter", "Actions/shout.svg", 220.0f, 48.0f, "hud",
-		R"([
-{"key":"fontSize","kind":"int","label":"Font size","default":0,"min":0,"max":128},
-{"key":"textAlign","kind":"enum","label":"Align","default":"center","options":["left","center","right"]},
-{"key":"drainOrigin","kind":"enum","label":"Fade starts from","default":"center","options":["center","left","right"]},
-{"key":"wordsMode","kind":"enum","label":"Words","default":"unlocked","options":["unlocked","known","all"]},
-{"key":"primaryColor","kind":"color","label":"Primary","default":"#ffffff"},
-{"key":"secondaryColor","kind":"color","label":"Secondary","default":"#5ba4f9"},
-{"key":"troughOpacity","kind":"int","label":"Trough opacity %","default":20,"min":0,"max":100}
-])");
-	// Scalar Feed settings only — complex create()-owned defaults (and section UX) live in JS.
-	upsert("cog-feed", "Feed", "Scribe/list.svg", 400.0f, 400.0f, "ui",
-		R"([
-{"key":"fontSize","kind":"int","label":"Font size","default":18,"min":0,"max":128},
-{"key":"textAlign","kind":"enum","label":"Align","default":"left","options":["left","center","right"]},
-{"key":"iconPlacement","kind":"enum","label":"Icons","default":"left","options":["left","right"]},
-{"key":"textColor","kind":"color","label":"Text colour","default":"#e8d2a0"},
-{"key":"addColor","kind":"color","label":"Add colour","default":"#e8d2a0"},
-{"key":"removeColor","kind":"color","label":"Remove colour","default":"#e8d2a0"},
-{"key":"stolenColor","kind":"color","label":"Stolen colour","default":"#e8d2a0"},
-{"key":"maxVisible","kind":"int","label":"Max visible","default":15,"min":1,"max":20},
-{"key":"stackOrigin","kind":"enum","label":"Stack from","default":"top","options":["top","bottom"]},
-{"key":"durationMs","kind":"int","label":"Duration ms","default":5000,"min":500,"max":60000},
-{"key":"fadeMs","kind":"int","label":"Fade ms","default":1000,"min":0,"max":2000},
-{"key":"showNotifications","kind":"bool","label":"Notifications","default":false},
-{"key":"showInventory","kind":"bool","label":"Inventory","default":false},
-{"key":"showLocation","kind":"bool","label":"Location","default":false},
-{"key":"showActiveEffects","kind":"bool","label":"Active effects","default":false},
-{"key":"showSkills","kind":"bool","label":"Skills","default":false},
-{"key":"timerMinSec","kind":"float","label":"Timer min sec","default":1,"min":0,"max":600},
-{"key":"timerMaxSec","kind":"float","label":"Timer max sec","default":180,"min":0,"max":3600},
-{"key":"showEffectIcons","kind":"bool","label":"Effect icons","default":true},
-{"key":"showEffectText","kind":"bool","label":"Effect text","default":true},
-{"key":"showEffectTimer","kind":"bool","label":"Effect timer","default":true},
-{"key":"progressBarWidth","kind":"int","label":"Progress bar width","default":20,"min":5,"max":100},
-{"key":"numberFormat","kind":"enum","label":"Number format","default":"barTotal","options":["bar","barPercent","barTotal","percent","total"]},
-{"key":"barColor","kind":"color","label":"Bar colour","default":"#c4a35a"},
-{"key":"effectIcon","kind":"string","label":"Effect icon","default":"Magic/sparkles.svg"},
-{"key":"effectsColor","kind":"color","label":"Effects colour","default":"#e8d2a0"},
-{"key":"suppressTransformEffects","kind":"bool","label":"Suppress transform effects","default":true},
-{"key":"showNotificationIcons","kind":"bool","label":"Notification icons","default":true},
-{"key":"showInventoryIcons","kind":"bool","label":"Inventory icons","default":true},
-{"key":"showLocationIcons","kind":"bool","label":"Location icons","default":true},
-{"key":"showSkillIcons","kind":"bool","label":"Skill icons","default":true},
-{"key":"notificationIcon","kind":"string","label":"Notification icon","default":"Actions/speak.svg"},
-{"key":"allowModNotificationIcon","kind":"bool","label":"Allow mod notification icon","default":true},
-{"key":"allowModNotificationColor","kind":"bool","label":"Allow mod notification colour","default":true},
-{"key":"suppressInventory","kind":"bool","label":"Suppress inventory divert","default":true},
-{"key":"showLocationDiscovery","kind":"bool","label":"Location discovery","default":true},
-{"key":"showCurrentLocation","kind":"bool","label":"Current location","default":true},
-{"key":"locationDiscoveryIcon","kind":"string","label":"Discovery icon","default":"Camping/map.svg"},
-{"key":"currentLocationIcon","kind":"string","label":"Current location icon","default":"Camping/compass.svg"},
-{"key":"locationDiscoveryColor","kind":"color","label":"Discovery colour","default":"#e8d2a0"},
-{"key":"currentLocationColor","kind":"color","label":"Current location colour","default":"#e8d2a0"},
-{"key":"showSkillProgress","kind":"bool","label":"Skill progress","default":true},
-{"key":"showLevelProgress","kind":"bool","label":"Level progress","default":true},
-{"key":"skillProgressIcon","kind":"string","label":"Skill progress icon","default":"Scribe/book-open.svg"},
-{"key":"levelProgressIcon","kind":"string","label":"Level progress icon","default":"Celestial/star.svg"},
-{"key":"skillProgressColor","kind":"color","label":"Skill progress colour","default":"#e8d2a0"},
-{"key":"levelProgressColor","kind":"color","label":"Level progress colour","default":"#e8d2a0"},
-{"key":"backdropColor","kind":"color","label":"Backdrop colour","default":"#000000"},
-{"key":"backdropOpacity","kind":"int","label":"Backdrop opacity","default":35,"min":0,"max":100},
-{"key":"backdropDirection","kind":"enum","label":"Backdrop direction","default":"down","options":["up","down","center"]},
-{"key":"icon","kind":"string","label":"Inventory icon","default":"Treasure/bag.svg"}
-])");
-	// alwaysHide / neverHide are string arrays — not expressible in schema kinds; create() owns defaults.
-	upsert("cog-suppressor", "Suppressor", "Actions/stop.svg", 100.0f, 100.0f, "none", "[]");
+	upsert("cog-clock", "Clock", "Actions/wait.svg", 275.0f, 40.0f, "hud");
+	upsert("cog-shout-meter", "Shout Meter", "Actions/shout.svg", 220.0f, 48.0f, "hud");
+	upsert("cog-feed", "Feed", "Scribe/list.svg", 400.0f, 400.0f, "ui");
+	upsert("cog-suppressor", "Suppressor", "Actions/stop.svg", 100.0f, 100.0f, "none");
 }
 
 

@@ -1,0 +1,129 @@
+<!-- Builtin Clock settings. Bound by fillHtmlGizmoEditor; scripts mount token lines + toggle celestial. -->
+<div class="style-row">
+	<label class="pos-field compact">
+		<span data-translation="cog-mode" data-translation-fallback="Mode">Mode</span>
+		<select data-gizmo-value="displayMode" data-gizmo-default="celestial" data-cog-clock-mode>
+			<option value="text" data-translation="cog-mode-text-only" data-translation-fallback="Text-only">Text-only</option>
+			<option value="celestial" data-translation="cog-mode-celestial" data-translation-fallback="Celestial">Celestial</option>
+		</select>
+	</label>
+</div>
+<hr class="editor-rule">
+<p class="lede section-heading">
+	<span data-translation="cog-clock-face" data-translation-fallback="Clock face">Clock face</span>
+</p>
+<p class="hint" data-translation="cog-clock-display-hint" data-translation-fallback="Arrange date and time fields across lines. Each badge is one value in the order shown.">Arrange date and time fields across lines. Each badge is one value in the order shown.</p>
+<div data-cog-mount="clock-lines"></div>
+<hr class="editor-rule">
+<p class="lede section-heading">
+	<span data-translation="cog-text-settings" data-translation-fallback="Text settings">Text settings</span>
+</p>
+<div class="style-row">
+	<label class="pos-field compact">
+		<span data-translation="cog-icon" data-translation-fallback="Icon">Icon</span>
+		<select data-gizmo-value="clockIcon" data-gizmo-default="season">
+			<option value="none" data-translation="cog-none" data-translation-fallback="None">None</option>
+			<option value="clock" data-translation="cog-clock-icon-clock" data-translation-fallback="Clock">Clock</option>
+			<option value="season" data-translation="cog-clock-icon-season" data-translation-fallback="Season">Season</option>
+		</select>
+	</label>
+	<label class="pos-field compact">
+		<span data-translation="cog-text-align" data-translation-fallback="Text align">Text align</span>
+		<select data-gizmo-value="textAlign" data-gizmo-default="center">
+			<option value="center" data-translation="cog-align-center" data-translation-fallback="Center">Center</option>
+			<option value="left" data-translation="cog-align-left" data-translation-fallback="Left">Left</option>
+			<option value="right" data-translation="cog-align-right" data-translation-fallback="Right">Right</option>
+		</select>
+	</label>
+	<label class="pos-field compact">
+		<span data-translation="cog-font" data-translation-fallback="Font">Font</span>
+		<input type="text" inputmode="numeric" data-gizmo-field="pixel" data-gizmo-value="fontSize" data-gizmo-default="18" data-translation-placeholder="cog-auto" data-translation-placeholder-fallback="auto" placeholder="auto">
+	</label>
+</div>
+<div class="style-row">
+	<input type="color" data-gizmo-field="color" data-gizmo-value="iconColor" data-gizmo-default="#e8d2a0" data-translation="cog-icon-colour" data-translation-fallback="Icon Colour">
+	<input type="color" data-gizmo-field="color" data-gizmo-value="textColor" data-gizmo-default="#e8d2a0" data-translation="cog-text-colour" data-translation-fallback="Text Colour">
+</div>
+<div class="gizmo-celestial-settings" data-cog-panel="celestial">
+	<hr class="editor-rule">
+	<p class="lede section-heading">
+		<span data-translation="cog-celestial-settings" data-translation-fallback="Celestial settings">Celestial settings</span>
+	</p>
+	<p class="hint" data-translation="cog-clock-celestial-hint" data-translation-fallback="Width is the arc diameter; Height is band thickness (same as an arc gauge).">Width is the arc diameter; Height is band thickness (same as an arc gauge).</p>
+	<div class="style-row celestial-main-row">
+		<label class="pos-field compact">
+			<span data-translation="cog-show-celestial-objects" data-translation-fallback="Show celestial objects">Show celestial objects</span>
+			<select data-gizmo-value="celestialShow" data-gizmo-default="always">
+				<option value="always" data-translation="cog-always" data-translation-fallback="Always">Always</option>
+				<option value="sky" data-translation="cog-when-sky-visible" data-translation-fallback="When sky is visible">When sky is visible</option>
+				<option value="outdoors" data-translation="cog-when-outdoors" data-translation-fallback="When outdoors">When outdoors</option>
+			</select>
+		</label>
+		<label class="pos-field compact mid">
+			<span data-translation="cog-endcaps" data-translation-fallback="Endcaps">Endcaps</span>
+			<select data-gizmo-value="endCapMode" data-gizmo-default="border" data-cog-clock-endcap-mode>
+				<option value="border" data-translation="cog-extend-border" data-translation-fallback="Extend Border">Extend Border</option>
+				<option value="endcap" data-translation="cog-use-endcap" data-translation-fallback="Use Endcap">Use Endcap</option>
+			</select>
+		</label>
+	</div>
+	<div class="style-row endcap-row" data-cog-panel="endcap-art">
+		<input type="text" data-gizmo-field="endcap" data-gizmo-value="endCap" data-gizmo-default="Endcaps/circle-half.svg" data-translation="cog-endcap" data-translation-fallback="Endcap">
+		<label class="pos-field compact narrow overlap-cap-field">
+			<span data-translation="cog-overlap" data-translation-fallback="Overlap">Overlap</span>
+			<input type="text" inputmode="decimal" data-gizmo-field="percentage" data-gizmo-value="endCapOverlap" data-gizmo-default="0">
+		</label>
+	</div>
+	<div class="style-row">
+		<input type="color" data-gizmo-field="color" data-gizmo-value="borderColor" data-gizmo-default="#e8d2a0" data-translation="cog-border-colour" data-translation-fallback="Border Colour">
+		<label class="pos-field compact narrow">
+			<span data-translation="cog-border-thickness" data-translation-fallback="Border Thickness">Border Thickness</span>
+			<input type="text" inputmode="decimal" data-gizmo-field="percentage" data-gizmo-value="borderThickness" data-gizmo-default="15">
+		</label>
+		<input type="color" data-gizmo-field="color" data-gizmo-value="celestialColor" data-gizmo-default="#ffffff" data-translation="cog-celestial-colour" data-translation-fallback="Celestial Colour">
+	</div>
+</div>
+<script>
+(function () {
+	var root = document.currentScript;
+	while (root && !(root.classList && root.classList.contains("gizmo-html-settings"))) {
+		root = root.parentElement;
+	}
+	if (!root) return;
+	var gid = root.dataset.gizmoId;
+	var mount = root.querySelector('[data-cog-mount="clock-lines"]');
+	if (mount && typeof window.CogMountClockLinesEditor === "function") {
+		window.CogMountClockLinesEditor(mount, gid);
+	}
+	var celestial = root.querySelector('[data-cog-panel="celestial"]');
+	var endArt = root.querySelector('[data-cog-panel="endcap-art"]');
+	var modeSel = root.querySelector("[data-cog-clock-mode]");
+	var endModeSel = root.querySelector("[data-cog-clock-endcap-mode]");
+	function syncPanels() {
+		var mode = modeSel ? String(modeSel.value || "") : "celestial";
+		if (celestial) celestial.hidden = mode !== "celestial";
+		var endMode = endModeSel ? String(endModeSel.value || "") : "border";
+		if (endArt) endArt.hidden = endMode !== "endcap";
+	}
+	syncPanels();
+	root.addEventListener("cog-html-settings-bound", syncPanels);
+	if (modeSel) {
+		modeSel.addEventListener("change", function () {
+			var mode = String(modeSel.value || "");
+			if (typeof window.CogOnClockDisplayModeChange === "function") {
+				window.CogOnClockDisplayModeChange(gid, mode);
+			}
+			syncPanels();
+		});
+	}
+	if (endModeSel) {
+		endModeSel.addEventListener("change", function () {
+			var mode = String(endModeSel.value || "");
+			if (typeof window.CogOnClockEndCapModeChange === "function") {
+				window.CogOnClockEndCapModeChange(gid, mode);
+			}
+			syncPanels();
+		});
+	}
+})();
+</script>

@@ -234,7 +234,7 @@ void CogRegistry::FlushBatchCommitUnlocked()
 	if (!_batchCommitPending) {
 		return;
 	}
-	SaveConfigUnlocked();
+			SaveConfigUnlocked();
 	SaveGizmoTypesUnlocked();
 	_batchCommitPending = false;
 	if (!_modBatchOpen.empty()) {
@@ -248,7 +248,7 @@ void CogRegistry::FlushBatchCommitUnlocked()
 
 void CogRegistry::EndRegister(std::string mod)
 {
-	if (mod.empty()) {
+		if (mod.empty()) {
 		logger::warn("COG_API.EndRegister rejected: empty sourceMod");
 		return;
 	}
@@ -267,7 +267,7 @@ void CogRegistry::EndRegister(std::string mod)
 		const bool filled = ApplyGizmoTypeDefaultsUnlocked();
 		SaveGizmoTypesUnlocked();
 		if (dirty || filled || _batchCommitPending) {
-			SaveConfigUnlocked();
+		SaveConfigUnlocked();
 			_batchCommitPending = false;
 			layoutDirty = true;
 		} else {
@@ -277,7 +277,7 @@ void CogRegistry::EndRegister(std::string mod)
 		std::size_t gearCount = 0;
 		std::size_t liveCount = 0;
 		std::size_t typeCount = 0;
-		for (const auto& gear : _gears) {
+	for (const auto& gear : _gears) {
 			if (gear.sourceMod == mod) {
 				++gearCount;
 			}
@@ -288,7 +288,7 @@ void CogRegistry::EndRegister(std::string mod)
 				++liveCount;
 			}
 		}
-		for (const auto& t : _gizmoTypes) {
+	for (const auto& t : _gizmoTypes) {
 			if (t.sourceMod == mod) {
 				++typeCount;
 			}

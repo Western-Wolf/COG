@@ -120,14 +120,13 @@ Function BindAfterIconsReady()
 EndFunction
 
 Function RegisterGizmos()
-	; === COG API: schema + storage + RegisterGizmo ===
-	; Colours align with Gears 3-stop ramp endpoints; showCount paints the digit beside the icon.
-	; labelTag matches gizmoTypes/<typeId>/translations/_COG.json (not in global COG catalog).
-	String schema = "["
-	schema += "{\"key\":\"zeroColor\",\"kind\":\"color\",\"label\":\"Zero colour\",\"labelTag\":\"cog-zero-colour\",\"default\":\"#20DF20\"},"
-	schema += "{\"key\":\"tenColor\",\"kind\":\"color\",\"label\":\"Ten colour\",\"labelTag\":\"cog-ten-colour\",\"default\":\"#DF2020\"},"
-	schema += "{\"key\":\"showCount\",\"kind\":\"bool\",\"label\":\"Show Count\",\"labelTag\":\"cog-show-count\",\"default\":true}"
-	schema += "]"
+	; === COG API: HTML settings + storage + RegisterGizmo ===
+	; Settings HTML is Data-relative; COG copies each path into gizmoTypes/<typeId>/settings.html.
+	; Gear-updated: primary path beside the view scripts.
+	; Push-updated: secondary folder (same markup) so import-from-elsewhere is covered.
+	; Translation tags resolve from gizmoTypes/<typeId>/translations/_COG.json.
+	String settingsHtmlPrimary = "PrismaUI/views/Example/gear_settings.html"
+	String settingsHtmlSecondary = "PrismaUI/views/Example/settings/gear_settings.html"
 
 	; Ensure per-type data folders exist (translations ship under gizmoTypes/<typeId>/translations/).
 	; Return value is the relative path under SKSE/Plugins/COG (e.g. gizmoTypes/xmp-gearupdated).
@@ -142,14 +141,14 @@ Function RegisterGizmos()
 	If gearsLoaded
 		; === COG API: RegisterGizmo (gear-backed, fill icon, HUD visibility) ===
 		; Display name is short; hud / fill / sourceFor are documented in this comment only.
-		GizmoGearReceipt = COG_API.RegisterGizmo(SourceMod, "xmp-gearupdated", "Example (Gear Updated)", IconFill, 100.0, 100.0, "Example/example.js", schema, "hud")
+		GizmoGearReceipt = COG_API.RegisterGizmo(SourceMod, "xmp-gearupdated", "Example (Gear Updated)", IconFill, 100.0, 100.0, "Example/example.js", settingsHtmlPrimary, "hud")
 	Else
 		GizmoGearReceipt = 0
 	EndIf
 
 	; === COG API: RegisterGizmo (push-updated, hollow icon, UI visibility) ===
 	; Display name is short; ui / hollow / UpdateGizmo are documented in this comment only.
-	GizmoPushReceipt = COG_API.RegisterGizmo(SourceMod, "xmp-pushupdated", "Example (Push Updated)", IconHollow, 100.0, 100.0, "Example/example_push.js", schema, "ui")
+	GizmoPushReceipt = COG_API.RegisterGizmo(SourceMod, "xmp-pushupdated", "Example (Push Updated)", IconHollow, 100.0, 100.0, "Example/example_push.js", settingsHtmlSecondary, "ui")
 
 	; EndRegister omit-prunes xmp-gearupdated when Gears is absent this session.
 	COG_API.EndRegister(SourceMod)

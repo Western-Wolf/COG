@@ -7,8 +7,10 @@
 #include "_Gizmo_Feed_SourceActiveEffects.h"
 #include "_Gizmo_Feed_SourceSkills.h"
 #include "_Gizmo_Feed_SourceInventory.h"
+#include "_Gizmo_Storage.h"
 #include "_UI_CogUi.h"
 #include "_Core_Json.h"
+#include "_Core_ProductVersion.h"
 
 #include "RE/C/Calendar.h"
 #include "RE/S/Sky.h"
@@ -228,7 +230,7 @@ std::string CogRegistry::BuildSnapshotJson()
 		}
 		std::sort(languages.begin(), languages.end());
 		languages.erase(std::unique(languages.begin(), languages.end()), languages.end());
-		o << "{\"languages\":[";
+		o << "{\"version\":\"" << EscapeJson(CogProductVersionString()) << "\",\"languages\":[";
 		bool firstLang = true;
 		for (const auto& lang : languages) {
 			if (!firstLang) {
@@ -340,13 +342,35 @@ std::string CogRegistry::BuildSnapshotJson()
 			o << ",";
 		}
 		first = false;
+		const bool htmlMode = t.settingsMode == "html";
 		o << "{\"sourceMod\":\"" << EscapeJson(t.sourceMod) << "\",\"typeId\":\"" << EscapeJson(t.typeId)
 		  << "\",\"displayName\":\"" << EscapeJson(t.displayName) << "\",\"galleryIcon\":\""
 		  << EscapeJson(t.galleryIcon) << "\",\"defaultWidth\":" << t.defaultWidth
 		  << ",\"defaultHeight\":" << t.defaultHeight << ",\"defaultVisibility\":\""
 		  << EscapeJson(NormalizeGizmoVisibility(t.defaultVisibility)) << "\",\"viewScript\":\""
-		  << EscapeJson(t.viewScript) << "\",\"settingsSchema\":"
-		  << (t.settingsSchemaJson.empty() ? "[]" : t.settingsSchemaJson) << "}";
+		  << EscapeJson(t.viewScript) << "\",\"settingsMode\":\"" << EscapeJson(htmlMode ? "html" : "schema")
+		  << "\"";
+		if (htmlMode) {
+			o << ",\"settingsHtmlSourcePath\":\"" << EscapeJson(t.settingsHtmlSourcePath) << "\"";
+			o << ",\"settingsSchema\":[]";
+			// settingsHtml body only on catalog/dirty pushes — lean ticks omit it; JS preserves last-seen.
+			if (emitCatalog) {
+				const auto htmlPath = CogGizmoStorage::EnsureDir(t.typeId) / "settings.html";
+				std::string htmlBody;
+				{
+					std::ifstream in(htmlPath, std::ios::binary);
+					if (in) {
+						htmlBody.assign(
+							std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+					}
+				}
+				o << ",\"settingsHtml\":\"" << EscapeJson(htmlBody) << "\"";
+			}
+		} else {
+			o << ",\"settingsSchema\":"
+			  << (t.settingsSchemaJson.empty() ? "[]" : t.settingsSchemaJson);
+		}
+		o << "}";
 	}
 	if (emitCatalog) {
 		o << "],\"fonts\":[";

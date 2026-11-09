@@ -1,6 +1,6 @@
 -- COG Example API pack (Papyrus-only reference for public COG_API surface).
 -- Four ESL-flagged ESPs: Core (icons + tick) / Gears / Feed / Gizmos.
--- Stages under repo `_stage/`; release.ps1 packs the FOMOD zip from there.
+-- Stages under build/stage/; release.ps1 packs the FOMOD zip from there.
 --
 -- Note: helpers that call os.mkdir / os.cp / os.execv must live inside on_build —
 -- description-scope `os` is sandboxed and does not expose mkdir.
@@ -108,7 +108,7 @@ target("COG_Example")
 				m.desc
 			)
 
-			local deploy_root = path.join(os.projectdir(), "_stage", m.stage)
+			local deploy_root = path.join(os.projectdir(), "build", "stage", m.stage)
 			-- Fresh stage folder each build (drop retired single-ESP layout leftovers).
 			if os.isdir(deploy_root) then
 				os.rmdir(deploy_root)
@@ -134,6 +134,11 @@ target("COG_Example")
 				os.mkdir(view_dst)
 				os.cp(path.join(addon_dir, "view", "example.js"), path.join(view_dst, "example.js"))
 				os.cp(path.join(addon_dir, "view", "example_push.js"), path.join(view_dst, "example_push.js"))
+				-- Primary settings path (xmp-gearupdated) + secondary folder (xmp-pushupdated import demo).
+				os.cp(path.join(addon_dir, "view", "gear_settings.html"), path.join(view_dst, "gear_settings.html"))
+				local settings_dst = path.join(view_dst, "settings")
+				os.mkdir(settings_dst)
+				os.cp(path.join(addon_dir, "view", "gear_settings.html"), path.join(settings_dst, "gear_settings.html"))
 			end
 
 			if m.name_translations then
@@ -166,10 +171,15 @@ target("COG_Example")
 			print("Deployed " .. m.stage .. " to " .. deploy_root)
 		end
 
-		-- Remove retired monolithic stage if present.
-		local legacy_stage = path.join(os.projectdir(), "_stage", "COG - Example API")
-		if os.isdir(legacy_stage) then
-			os.rmdir(legacy_stage)
+		-- Drop retired top-level `_stage/` and old monolithic example stage if present.
+		local legacy_stage_root = path.join(os.projectdir(), "_stage")
+		if os.isdir(legacy_stage_root) then
+			os.rmdir(legacy_stage_root)
+			print("Removed legacy stage root: _stage")
+		end
+		local legacy_example = path.join(os.projectdir(), "build", "stage", "COG - Example API")
+		if os.isdir(legacy_example) then
+			os.rmdir(legacy_example)
 			print("Removed legacy stage: COG - Example API")
 		end
 	end)

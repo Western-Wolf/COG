@@ -14,6 +14,7 @@
 #include "_Core_Registry.h"
 #include "_Core_HudSuppress.h"
 #include "_Core_Icon.h"
+#include "_Core_ProductVersion.h"
 
 #include <string>
 
@@ -33,7 +34,7 @@ namespace
 	void LogSessionBanner()
 	{
 		const auto* plugin = SKSE::PluginDeclaration::GetSingleton();
-		const auto version = plugin ? REL::FormatProductVersion(plugin->GetVersion()) : std::string{ "?" };
+		const auto version = CogProductVersionString();
 		const auto name = plugin ? plugin->GetName() : "COG"sv;
 		logger::info(
 			"COG: session start — {} v{} ({}); view={}",

@@ -319,6 +319,10 @@ namespace CogRegistryJson
 		if (!type) {
 			return false;
 		}
+		// HTML mode merges data-gizmo-default in the editor (JS); C++ has no HTML parse.
+		if (type->settingsMode == "html") {
+			return false;
+		}
 		CogJson::Value settings;
 		ParseSettingsObject(g.settingsJson, settings);
 		if (!MergeMissingSettingsFromSchema(settings, type->settingsSchemaJson)) {
@@ -464,6 +468,7 @@ namespace CogRegistryJson
 		} else {
 			g.visibility = BuiltinDefaultVisibilityForType(g.typeId);
 		}
+		g.hudSuppress = ctx.GetStringArray(obj, "hudSuppress");
 
 		float defaultW = type ? type->defaultWidth : 240.0f;
 		float defaultH = type ? type->defaultHeight : 48.0f;
@@ -542,6 +547,11 @@ namespace CogRegistryJson
 		}
 		t.defaultVisibility = NormalizeGizmoVisibility(ctx.GetString(obj, "defaultVisibility"));
 		t.viewScript = SanitizeViewScriptPath(ctx.GetString(obj, "viewScript"));
+		t.settingsHtmlSourcePath = SanitizeViewScriptPath(ctx.GetString(obj, "settingsHtmlSourcePath"));
+		t.settingsMode = Lower(TrimCopy(ctx.GetString(obj, "settingsMode")));
+		if (t.settingsMode != "html" && t.settingsMode != "schema") {
+			t.settingsMode = t.settingsHtmlSourcePath.empty() ? "schema" : "html";
+		}
 		if (ctx.Has(obj, "settingsSchema")) {
 			t.settingsSchemaJson = ctx.GetRawJson(obj, "settingsSchema", "[]");
 		} else if (ctx.Has(obj, "settingsSchemaJson")) {
@@ -549,7 +559,9 @@ namespace CogRegistryJson
 		} else {
 			t.settingsSchemaJson = "[]";
 		}
-		if (t.settingsSchemaJson.empty() || !LooksLikeJsonObjectOrArray(t.settingsSchemaJson)) {
+		if (t.settingsMode == "html") {
+			t.settingsSchemaJson = "[]";
+		} else if (t.settingsSchemaJson.empty() || !LooksLikeJsonObjectOrArray(t.settingsSchemaJson)) {
 			t.settingsSchemaJson = "[]";
 		}
 		return t;
@@ -564,6 +576,12 @@ namespace CogRegistryJson
 		// Always persist visibility. Omitting "hud" made Feed's JS ensure treat a missing
 		// key as "ui" (new-feed default) and reset HUD Visible on the next snapshot push.
 		w.KeyString("visibility", NormalizeGizmoVisibility(g.visibility));
+		w.Key("hudSuppress");
+		w.BeginArray();
+		for (const auto& key : g.hudSuppress) {
+			w.String(key);
+		}
+		w.EndArray();
 		if (!g.sourceMod.empty()) {
 			w.KeyString("sourceMod", g.sourceMod);
 		}
@@ -597,7 +615,14 @@ namespace CogRegistryJson
 		w.KeyNumber("defaultHeight", t.defaultHeight);
 		w.KeyString("defaultVisibility", NormalizeGizmoVisibility(t.defaultVisibility));
 		w.KeyString("viewScript", t.viewScript);
-		w.KeyRaw("settingsSchema", t.settingsSchemaJson.empty() ? "[]" : t.settingsSchemaJson);
+		const bool htmlMode = t.settingsMode == "html";
+		w.KeyString("settingsMode", htmlMode ? "html" : "schema");
+		if (htmlMode) {
+			w.KeyString("settingsHtmlSourcePath", t.settingsHtmlSourcePath);
+			w.KeyRaw("settingsSchema", "[]");
+		} else {
+			w.KeyRaw("settingsSchema", t.settingsSchemaJson.empty() ? "[]" : t.settingsSchemaJson);
+		}
 		w.EndObject();
 	}
 

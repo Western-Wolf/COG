@@ -6,8 +6,31 @@ const DEFAULT_FEED_HEIGHT = 400;
 const DEFAULT_FEED_MAX = 15;
 const DEFAULT_FEED_STACK_ORIGIN = "top";
 const DEFAULT_FEED_TEXT_ALIGN = "left";
-const DEFAULT_FEED_DURATION_MS = 5000;
-const DEFAULT_FEED_FADE_MS = 1000;
+const DEFAULT_FEED_DURATION = 5;
+const DEFAULT_FEED_FADE = 1;
+const DEFAULT_FEED_DURATION_MS = DEFAULT_FEED_DURATION * 1000;
+const DEFAULT_FEED_FADE_MS = DEFAULT_FEED_FADE * 1000;
+
+/** Stored seconds → ms for timers. */
+function feedHoldMs(settings) {
+	const sec = Number(settings && settings.duration);
+	return (Number.isFinite(sec) ? sec : DEFAULT_FEED_DURATION) * 1000;
+}
+
+function feedFadeMs(settings) {
+	const sec = Number(settings && settings.fade);
+	return (Number.isFinite(sec) ? sec : DEFAULT_FEED_FADE) * 1000;
+}
+
+/** Migration Code for Transition from v1.11 or earlier to v1.2: durationMs/fadeMs → seconds. */
+function migrateFeedMsSetting(rawMs) {
+	const n = Number(rawMs);
+	if (!Number.isFinite(n)) {
+		return null;
+	}
+	// Values that look like milliseconds (>= 100) convert; smaller values already seconds.
+	return n >= 100 ? n / 1000 : n;
+}
 const DEFAULT_FEED_BACKDROP_COLOR = "#000000";
 const DEFAULT_FEED_BACKDROP_OPACITY = 35;
 const DEFAULT_FEED_BACKDROP_DIRECTION = "down";
@@ -210,8 +233,8 @@ function defaultFeedGizmo(n) {
 		stolenColor: DEFAULT_GIZMO_GOLD,
 		maxVisible: DEFAULT_FEED_MAX,
 		stackOrigin: DEFAULT_FEED_STACK_ORIGIN,
-		durationMs: DEFAULT_FEED_DURATION_MS,
-		fadeMs: DEFAULT_FEED_FADE_MS,
+		duration: DEFAULT_FEED_DURATION,
+		fade: DEFAULT_FEED_FADE,
 		showNotifications: false,
 		showInventory: false,
 		showLocation: false,
@@ -261,6 +284,7 @@ function defaultFeedGizmo(n) {
 		id: `gizmo_${Date.now().toString(36)}`,
 		typeId: "cog-feed",
 		visibility: "ui",
+		hudSuppress: [],
 		display: {
 			x: DEFAULT_HUD_X,
 			y: Math.min(0.92, DEFAULT_HUD_Y + 0.08),
@@ -272,6 +296,36 @@ function defaultFeedGizmo(n) {
 		settings,
 		settingsJson: JSON.stringify(settings)
 	};
+}
+
+/** Soft-hide aliases derived from Feed section / nested toggles (root hudSuppress). */
+function feedHudSuppressKeysFromSettings(s) {
+	const keys = [];
+	if (!s || typeof s !== "object") {
+		return keys;
+	}
+	if (s.showNotifications === true || s.showNotifications === "true") {
+		keys.push("hud.notifications");
+	}
+	if (s.showInventory === true || s.showInventory === "true") {
+		keys.push("hud.inventory");
+	}
+	if (
+		(s.showLocation === true || s.showLocation === "true") &&
+		s.showCurrentLocation !== false &&
+		s.showCurrentLocation !== "false"
+	) {
+		keys.push("hud.currentLocation");
+	}
+	if (s.showActiveEffects === true || s.showActiveEffects === "true") {
+		keys.push("hud.activeEffects");
+	}
+	if (s.showSkills === true || s.showSkills === "true") {
+		keys.push("hud.questUpdates");
+	}
+	return typeof normalizeGizmoHudSuppressList === "function"
+		? normalizeGizmoHudSuppressList(keys)
+		: keys;
 }
 
 function ensureFeedGizmo(gizmo) {
@@ -331,10 +385,25 @@ function ensureFeedGizmo(gizmo) {
 	s.stolenColor = optionalHex(s.stolenColor);
 	s.maxVisible = Math.max(1, Math.min(20, Math.round(Number(s.maxVisible) || DEFAULT_FEED_MAX)));
 	s.stackOrigin = normalizeStackOrigin(s.stackOrigin || DEFAULT_FEED_STACK_ORIGIN);
-	s.durationMs = Math.max(500, Math.min(60000, Number(s.durationMs) || DEFAULT_FEED_DURATION_MS));
+	// Migration Code for Transition from v1.11 or earlier to v1.2: durationMs/fadeMs → duration/fade (seconds).
+	if (Object.prototype.hasOwnProperty.call(s, "durationMs")) {
+		const migrated = migrateFeedMsSetting(s.durationMs);
+		if (migrated != null && (s.duration == null || s.duration === "")) {
+			s.duration = migrated;
+		}
+		delete s.durationMs;
+	}
+	if (Object.prototype.hasOwnProperty.call(s, "fadeMs")) {
+		const migrated = migrateFeedMsSetting(s.fadeMs);
+		if (migrated != null && (s.fade == null || s.fade === "")) {
+			s.fade = migrated;
+		}
+		delete s.fadeMs;
+	}
+	s.duration = Math.max(0.5, Math.min(60, Number(s.duration) || DEFAULT_FEED_DURATION));
 	{
-		const n = Number(s.fadeMs);
-		s.fadeMs = Math.max(0, Math.min(2000, Number.isFinite(n) ? n : DEFAULT_FEED_FADE_MS));
+		const n = Number(s.fade);
+		s.fade = Math.max(0, Math.min(2, Number.isFinite(n) ? n : DEFAULT_FEED_FADE));
 	}
 	s.showNotifications = s.showNotifications === true || s.showNotifications === "true";
 	s.showInventory = s.showInventory === true || s.showInventory === "true";
@@ -417,6 +486,7 @@ function ensureFeedGizmo(gizmo) {
 	gizmo.typeId = "cog-feed";
 	// Missing visibility → type default (cog-feed→ui), not a hard-coded coerce of "hud".
 	gizmo.visibility = coalesceGizmoVisibility(gizmo, "cog-feed");
+	gizmo.hudSuppress = feedHudSuppressKeysFromSettings(s);
 	gizmo.settings = s;
 	gizmo.settingsJson = JSON.stringify(s);
 	return gizmo;
@@ -725,12 +795,9 @@ function feedGizmoMaxDuration() {
 			continue;
 		}
 		// Settings are normalized on load / editor patch — do not ensure on the prune path.
-		const hold = Number(z.settings?.durationMs);
-		const fade = Number(z.settings?.fadeMs);
-		const life =
-			(Number.isFinite(hold) ? hold : DEFAULT_FEED_DURATION_MS) +
-			(Number.isFinite(fade) ? fade : DEFAULT_FEED_FADE_MS) * 2 +
-			500;
+		const hold = feedHoldMs(z.settings);
+		const fade = feedFadeMs(z.settings);
+		const life = hold + fade * 2 + 500;
 		if (Number.isFinite(life) && life > max) {
 			max = life;
 		}
@@ -955,10 +1022,8 @@ window.pushLocation = (jsonStr) => {
 };
 
 function feedLineOpacity(line, gizmo, now) {
-	const fadeMs = Number(gizmo.settings && gizmo.settings.fadeMs);
-	const holdMs = Number(gizmo.settings && gizmo.settings.durationMs);
-	const fade = Math.max(1, Number.isFinite(fadeMs) ? fadeMs : DEFAULT_FEED_FADE_MS);
-	const hold = Number.isFinite(holdMs) ? holdMs : DEFAULT_FEED_DURATION_MS;
+	const fade = Math.max(1, feedFadeMs(gizmo.settings));
+	const hold = feedHoldMs(gizmo.settings);
 	if (line.kind === "effect") {
 		if (line.active) {
 			return 1;
@@ -985,10 +1050,8 @@ function feedLineOpacity(line, gizmo, now) {
 
 function feedVisibleLines(gizmo, now, preview) {
 	// Settings are ensured on load / editor patch — paint trust them (B2).
-	const fadeMs = Number(gizmo.settings && gizmo.settings.fadeMs);
-	const holdMs = Number(gizmo.settings && gizmo.settings.durationMs);
-	const fade = Number.isFinite(fadeMs) ? fadeMs : DEFAULT_FEED_FADE_MS;
-	const hold = Number.isFinite(holdMs) ? holdMs : DEFAULT_FEED_DURATION_MS;
+	const fade = feedFadeMs(gizmo.settings);
+	const hold = feedHoldMs(gizmo.settings);
 	const life = hold + fade * 2;
 	const editorOpen = preview || document.body.classList.contains("is-focused");
 	const holdAge = fade + Math.min(250, Math.max(0, hold * 0.25));
@@ -2050,1135 +2113,21 @@ function appendFeedSectionNotes(section, hideTargets, iconFolder, opts) {
 	section.appendChild(iconLine);
 }
 
-function fillFeedGizmoEditor(panel, gizmo) {
-	const gid = gizmo.id;
-	const live = () => gizmoFor(gid) || gizmo;
-	const feedStorage =
-		typeof CogGizmoStorage === "function" ? CogGizmoStorage("cog-feed") : "gizmoTypes/cog-feed";
-
-	const intro = document.createElement("p");
-	intro.className = "hint";
-	if (typeof setTranslatedText === "function") {
-		setTranslatedText(
-			intro,
-			"cog-feed-intro",
-			"Combined notification and inventory message feed. Add as many sections as you like, or split sections into multiple feeds.",
-			FEED_TYPE_ID
-		);
-	} else {
-	intro.textContent =
-			"Combined notification and inventory message feed. Add as many sections as you like, or split sections into multiple feeds.";
+window.CogAppendFeedSectionNotes = function CogAppendFeedSectionNotes(host, hideTargets, iconFolder, opts) {
+	if (!host) {
+		return;
 	}
-	panel.appendChild(intro);
+	host.replaceChildren();
+	appendFeedSectionNotes(host, hideTargets, iconFolder, opts || {});
+};
 
-	appendEditorRule(panel);
-	appendGizmoVisibilityEditor(panel, gizmo);
-	appendEditorRule(panel);
-	const textSection = document.createElement("div");
-	textSection.className = "gizmo-text-settings";
-	const textLede = document.createElement("p");
-	textLede.className = "lede";
-	if (typeof setTranslatedText === "function") {
-		setTranslatedText(textLede, "cog-text-settings", "Text settings");
-	} else {
-		textLede.textContent = "Text settings";
-	}
-	textSection.appendChild(textLede);
+window.CogFeedHideNoteEntry = function CogFeedHideNoteEntry(name) {
+	return FEED_SECTION_HIDE_NOTES[name] || FEED_SECTION_HIDE_NOTES.default;
+};
 
-	const textRow = document.createElement("div");
-	textRow.className = "style-row feed-text-main-row";
-	const alignField = document.createElement("label");
-	alignField.className = "pos-field compact";
-	alignField.innerHTML = `<span>Align</span><select data-role="textAlign">
-		<option value="left">Left</option>
-		<option value="center">Center</option>
-		<option value="right">Right</option>
-	</select>`;
-	tagFieldLabel(alignField, "cog-feed-align", "Align", FEED_TYPE_ID);
-	const alignSel = alignField.querySelector("select");
-	tagSelectOptions(alignSel, {
-		left: ["cog-left", "Left"],
-		center: ["cog-center", "Center"],
-		right: ["cog-right", "Right"]
-	});
-	alignSel.value = normalizeClockTextAlign(gizmo.settings.textAlign || DEFAULT_FEED_TEXT_ALIGN);
-	alignSel.addEventListener("change", () => {
-		patchGizmo(gid, { textAlign: normalizeClockTextAlign(alignSel.value) });
-	});
-	textRow.appendChild(alignField);
-
-	const iconPlaceField = document.createElement("label");
-	iconPlaceField.className = "pos-field compact";
-	iconPlaceField.innerHTML = `<span>Icons</span><select data-role="iconPlacement">
-		<option value="left">Left</option>
-		<option value="right">Right</option>
-	</select>`;
-	tagFieldLabel(iconPlaceField, "cog-feed-icons", "Icons", FEED_TYPE_ID);
-	const iconPlaceSel = iconPlaceField.querySelector("select");
-	tagSelectOptions(iconPlaceSel, {
-		left: ["cog-left", "Left"],
-		right: ["cog-right", "Right"]
-	});
-	iconPlaceSel.value = normalizeFeedIconPlacement(gizmo.settings.iconPlacement || DEFAULT_FEED_ICON_PLACEMENT);
-	iconPlaceSel.addEventListener("change", () => {
-		patchGizmo(gid, { iconPlacement: normalizeFeedIconPlacement(iconPlaceSel.value) });
-	});
-	textRow.appendChild(iconPlaceField);
-
-	const fontField = document.createElement("label");
-	fontField.className = "pos-field compact narrow";
-	fontField.innerHTML = `<span>Font</span><input type="text" data-role="fontSize" inputmode="numeric" placeholder="18">`;
-	tagFieldLabel(fontField, "cog-font", "Font");
-	const fontInput = fontField.querySelector("input");
-	fontInput.value = gizmo.settings.fontSize > 0 ? String(Math.round(gizmo.settings.fontSize)) : "";
-	bindNumberField(fontInput, {
-		suffix: "px",
-		parse: (raw) => {
-			if (String(raw).trim() === "") {
-				return DEFAULT_GIZMO_FONT_SIZE;
-			}
-			const v = Number(raw);
-			return Number.isFinite(v) ? Math.max(0, Math.min(128, v)) : null;
-		},
-		apply: (v) => patchGizmo(gid, { fontSize: v }),
-		format: (v) => (v > 0 ? String(Math.round(v)) : ""),
-		current: () => live().settings.fontSize || DEFAULT_GIZMO_FONT_SIZE
-	});
-	textRow.appendChild(fontField);
-
-	const maxField = document.createElement("label");
-	maxField.className = "pos-field compact narrow";
-	maxField.innerHTML = `<span>Max</span><input type="number" min="1" max="20" step="1" data-role="maxVisible">`;
-	tagFieldLabel(maxField, "cog-feed-max", "Max", FEED_TYPE_ID);
-	const maxInput = maxField.querySelector("input");
-	maxInput.value = String(gizmo.settings.maxVisible);
-	bindNumberField(maxInput, {
-		parse: (raw) => Math.max(1, Math.min(20, Math.round(Number(raw) || DEFAULT_FEED_MAX))),
-		apply: (v) => patchGizmo(gid, { maxVisible: v }),
-		format: (v) => String(Math.round(v)),
-		current: () => live().settings.maxVisible
-	});
-	textRow.appendChild(maxField);
-	textSection.appendChild(textRow);
-
-	const timingRow = document.createElement("div");
-	timingRow.className = "style-row";
-	const stackField = document.createElement("label");
-	stackField.className = "pos-field compact";
-	stackField.innerHTML = `<span>Add from</span><select data-role="stackOrigin">
-		<option value="bottom">Bottom</option>
-		<option value="top">Top</option>
-	</select>`;
-	tagFieldLabel(stackField, "cog-feed-add-from", "Add from", FEED_TYPE_ID);
-	const stackSel = stackField.querySelector("select");
-	tagSelectOptions(stackSel, {
-		bottom: ["cog-bottom", "Bottom"],
-		top: ["cog-top", "Top"]
-	});
-	stackSel.value = normalizeStackOrigin(gizmo.settings.stackOrigin);
-	stackSel.addEventListener("change", () => {
-		patchGizmo(gid, { stackOrigin: normalizeStackOrigin(stackSel.value) });
-	});
-	timingRow.appendChild(stackField);
-
-	const durField = document.createElement("label");
-	durField.className = "pos-field compact";
-	durField.innerHTML = `<span>Persist</span><input type="text" data-role="durationSec" inputmode="decimal">`;
-	tagFieldLabel(durField, "cog-feed-persist", "Persist", FEED_TYPE_ID);
-	const durInput = durField.querySelector("input");
-	durInput.value = (gizmo.settings.durationMs / 1000).toFixed(3);
-	bindNumberField(durInput, {
-		suffix: "s",
-		parse: (raw) => {
-			if (String(raw).trim() === "" || raw === ".") {
-				return null;
-			}
-			const v = Number(raw);
-			return Number.isFinite(v) ? Math.max(0.5, Math.min(60, v)) * 1000 : null;
-		},
-		apply: (v) => patchGizmo(gid, { durationMs: v }),
-		format: (v) => (Number(v) / 1000).toFixed(3),
-		current: () => live().settings.durationMs
-	});
-	timingRow.appendChild(durField);
-
-	const fadeField = document.createElement("label");
-	fadeField.className = "pos-field compact";
-	fadeField.innerHTML = `<span>Fade</span><input type="text" data-role="fadeSec" inputmode="decimal">`;
-	tagFieldLabel(fadeField, "cog-fade", "Fade");
-	const fadeInput = fadeField.querySelector("input");
-	fadeInput.value = (gizmo.settings.fadeMs / 1000).toFixed(3);
-	bindNumberField(fadeInput, {
-		suffix: "s",
-		parse: (raw) => {
-			if (String(raw).trim() === "" || raw === ".") {
-				return null;
-			}
-			const v = Number(raw);
-			return Number.isFinite(v) ? Math.max(0, Math.min(2, v)) * 1000 : null;
-		},
-		apply: (v) => patchGizmo(gid, { fadeMs: v }),
-		format: (v) => (Number(v) / 1000).toFixed(3),
-		current: () => live().settings.fadeMs
-	});
-	timingRow.appendChild(fadeField);
-	textSection.appendChild(timingRow);
-
-	appendEditorRule(textSection);
-	const fadeLede = document.createElement("p");
-	fadeLede.className = "lede";
-	if (typeof setTranslatedText === "function") {
-		setTranslatedText(fadeLede, "cog-feed-backdrop-fade", "Backdrop Fade", FEED_TYPE_ID);
-	} else {
-		fadeLede.textContent = "Backdrop Fade";
-	}
-	textSection.appendChild(fadeLede);
-	const fadeHint = document.createElement("p");
-	fadeHint.className = "hint";
-	if (typeof setTranslatedText === "function") {
-		setTranslatedText(
-			fadeHint,
-			"cog-feed-backdrop-fade-hint",
-			"Soft gradient behind each message. Setting opacity to 0 disables.",
-			FEED_TYPE_ID
-		);
-	} else {
-	fadeHint.textContent =
-			"Soft gradient behind each message. Setting opacity to 0 disables.";
-	}
-	textSection.appendChild(fadeHint);
-
-	const backdropRow = document.createElement("div");
-	backdropRow.className = "style-row";
-	const backdropColor = makeOptionalColorField(
-		"Fade colour",
-		gizmo.settings.backdropColor,
-		DEFAULT_FEED_BACKDROP_COLOR,
-		(hex, live) => patchGizmo(gid, { backdropColor: hex }, false, live)
-	);
-	backdropColor.classList.add("compact");
-	tagFieldLabel(backdropColor, "cog-feed-fade-colour", "Fade colour", FEED_TYPE_ID);
-	backdropRow.appendChild(backdropColor);
-
-	const opacityField = document.createElement("label");
-	opacityField.className = "pos-field compact";
-	opacityField.innerHTML = `<span>Opacity</span><input type="number" min="0" max="100" step="0.001" data-role="backdropOpacity">`;
-	tagFieldLabel(opacityField, "cog-feed-opacity", "Opacity", FEED_TYPE_ID);
-	const opacityInput = opacityField.querySelector("input");
-	opacityInput.value = fmtPct(gizmo.settings.backdropOpacity);
-	bindNumberField(opacityInput, {
-		suffix: "%",
-		parse: (raw) => {
-			if (String(raw).trim() === "" || raw === "." || raw === "-") {
-				return null;
-			}
-			const v = Number(raw);
-			return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : null;
-		},
-		apply: (v) => patchGizmo(gid, { backdropOpacity: v }),
-		current: () => live().settings.backdropOpacity
-	});
-	backdropRow.appendChild(opacityField);
-
-	const dirField = document.createElement("label");
-	dirField.className = "pos-field compact";
-	dirField.innerHTML = `<span>Direction</span><select data-role="backdropDirection">
-		<option value="up">Up</option>
-		<option value="down">Down</option>
-		<option value="center">Center</option>
-	</select>`;
-	tagFieldLabel(dirField, "cog-feed-direction", "Direction", FEED_TYPE_ID);
-	const dirSel = dirField.querySelector("select");
-	tagSelectOptions(dirSel, {
-		up: ["cog-up", "Up"],
-		down: ["cog-down", "Down"],
-		center: ["cog-center", "Center"]
-	});
-	dirSel.value = normalizeFeedBackdropDirection(gizmo.settings.backdropDirection);
-	dirSel.addEventListener("change", () => {
-		patchGizmo(gid, { backdropDirection: normalizeFeedBackdropDirection(dirSel.value) });
-	});
-	backdropRow.appendChild(dirField);
-	textSection.appendChild(backdropRow);
-	panel.appendChild(textSection);
-
-		appendEditorRule(panel);
-	const progressSection = document.createElement("div");
-	progressSection.className = "gizmo-text-settings";
-	const progressLede = document.createElement("p");
-	progressLede.className = "lede";
-	if (typeof setTranslatedText === "function") {
-		setTranslatedText(progressLede, "cog-feed-progress-bar", "Progress Bar", FEED_TYPE_ID);
-	} else {
-		progressLede.textContent = "Progress Bar";
-	}
-	progressSection.appendChild(progressLede);
-	const progressHint = document.createElement("p");
-	progressHint.className = "hint";
-	if (typeof setTranslatedText === "function") {
-		setTranslatedText(
-			progressHint,
-			"cog-feed-progress-bar-hint",
-			"Shared bar colour, width, number format, and timer window for Active Effects and Skills Level Progress.",
-			FEED_TYPE_ID
-		);
-	} else {
-		progressHint.textContent =
-			"Shared bar colour, width, number format, and timer window for Active Effects and Skills Level Progress.";
-	}
-	progressSection.appendChild(progressHint);
-	const progressRow = document.createElement("div");
-	progressRow.className = "style-row";
-	const barColorField = makeOptionalColorField(
-		"Bar Colour",
-		gizmo.settings.barColor,
-		typeof defaultFillColor === "function" ? defaultFillColor() : "#c4a35a",
-		(hex, live) => patchGizmo(gid, { barColor: hex }, false, live)
-	);
-	barColorField.classList.add("compact");
-	tagFieldLabel(barColorField, "cog-feed-bar-colour", "Bar Colour", FEED_TYPE_ID);
-	progressRow.appendChild(barColorField);
-	const barWidthField = document.createElement("label");
-	barWidthField.className = "pos-field compact";
-	barWidthField.innerHTML = `<span>Bar Width</span><input type="number" min="5" max="100" step="0.001" data-role="progressBarWidth">`;
-	tagFieldLabel(barWidthField, "cog-feed-bar-width", "Bar Width", FEED_TYPE_ID);
-	const barWidthInput = barWidthField.querySelector("input");
-	barWidthInput.value = fmtPct(gizmo.settings.progressBarWidth);
-	bindNumberField(barWidthInput, {
-		suffix: "%",
-		parse: (raw) =>
-			String(raw).trim() === ""
-				? null
-				: Math.max(5, Math.min(100, Number(raw) || DEFAULT_FEED_PROGRESS_BAR_WIDTH)),
-		apply: (v) => patchGizmo(gid, { progressBarWidth: v }),
-		current: () => feedProgressBarWidth((gizmoFor(gid) || gizmo).settings)
-	});
-	progressRow.appendChild(barWidthField);
-	const numberFormatField = document.createElement("label");
-	numberFormatField.className = "pos-field compact wide";
-	numberFormatField.innerHTML = `<span>Number Format</span><select data-role="numberFormat">
-		<option value="bar">Show bar</option>
-		<option value="barPercent">Show bar and percentage</option>
-		<option value="barTotal">Show bar and value</option>
-		<option value="percent">Show percentage</option>
-		<option value="total">Show value</option>
-	</select>`;
-	tagFieldLabel(numberFormatField, "cog-number-format", "Number Format");
-	const numberFormatSel = numberFormatField.querySelector("select");
-	tagSelectOptions(
-		numberFormatSel,
-		{
-			bar: ["cog-number-format-bar", "Show bar"],
-			barPercent: ["cog-number-format-bar-percent", "Show bar and percentage"],
-			barTotal: ["cog-feed-number-format-bar-total", "Show bar and value"],
-			percent: ["cog-number-format-percent", "Show percentage"],
-			total: ["cog-feed-number-format-total", "Show value"]
-		},
-		FEED_TYPE_ID
-	);
-	numberFormatSel.value = normalizeNumberFormat(gizmo.settings.numberFormat, DEFAULT_FEED_NUMBER_FORMAT);
-	numberFormatSel.addEventListener("change", () => {
-		patchGizmo(gid, { numberFormat: normalizeNumberFormat(numberFormatSel.value, DEFAULT_FEED_NUMBER_FORMAT) });
-	});
-	progressRow.appendChild(numberFormatField);
-	progressSection.appendChild(progressRow);
-	const timerRow = document.createElement("div");
-	timerRow.className = "style-row";
-	const timerMinField = document.createElement("label");
-	timerMinField.className = "pos-field compact effects-remaining";
-	timerMinField.innerHTML = `<span>Min remaining</span><input type="number" min="0" max="600" step="1" data-role="timerMinSec">`;
-	tagFieldLabel(timerMinField, "cog-feed-min-remaining", "Min remaining", FEED_TYPE_ID);
-	const timerMinInput = timerMinField.querySelector("input");
-	timerMinInput.value = fmtDec(gizmo.settings.timerMinSec, 0);
-	bindNumberField(timerMinInput, {
-		suffix: "s",
-		parse: (raw) => (String(raw).trim() === "" ? 1 : Math.max(0, Math.min(600, Number(raw) || 0))),
-		apply: (v) => patchGizmo(gid, { timerMinSec: v == null ? 1 : v }),
-		decimals: 0,
-		current: () => (gizmoFor(gid) || gizmo).settings.timerMinSec
-	});
-	const timerMaxField = document.createElement("label");
-	timerMaxField.className = "pos-field compact effects-remaining";
-	timerMaxField.innerHTML = `<span>Max remaining</span><input type="number" min="0" max="3600" step="10" data-role="timerMaxSec">`;
-	tagFieldLabel(timerMaxField, "cog-feed-max-remaining", "Max remaining", FEED_TYPE_ID);
-	const timerMaxInput = timerMaxField.querySelector("input");
-	timerMaxInput.value = fmtDec(gizmo.settings.timerMaxSec, 0);
-	bindNumberField(timerMaxInput, {
-		suffix: "s",
-		parse: (raw) => (String(raw).trim() === "" ? null : Math.max(0, Math.min(3600, Number(raw) || 0))),
-		apply: (v) => patchGizmo(gid, { timerMaxSec: v }),
-		decimals: 0,
-		current: () => (gizmoFor(gid) || gizmo).settings.timerMaxSec
-	});
-	timerRow.appendChild(timerMinField);
-	timerRow.appendChild(timerMaxField);
-	progressSection.appendChild(timerRow);
-	panel.appendChild(progressSection);
-
-	appendEditorRule(panel);
-	const sourcesSection = document.createElement("div");
-	sourcesSection.className = "gizmo-text-settings";
-	const sourcesLede = document.createElement("p");
-	sourcesLede.className = "lede";
-	if (typeof setTranslatedText === "function") {
-		setTranslatedText(sourcesLede, "cog-feed-sources", "Sources", FEED_TYPE_ID);
-	} else {
-		sourcesLede.textContent = "Sources";
-	}
-	sourcesSection.appendChild(sourcesLede);
-
-	const appendSourceCheck = (role, tag, fallback, checked) => {
-		const field = document.createElement("label");
-		field.className = "check-row compact";
-		const input = document.createElement("input");
-		input.type = "checkbox";
-		input.dataset.role = role;
-		input.checked = checked;
-		field.appendChild(input);
-		field.appendChild(document.createTextNode(" "));
-		const span = document.createElement("span");
-		if (typeof setTranslatedText === "function") {
-			setTranslatedText(span, tag, fallback, undefined, FEED_TYPE_ID);
-		} else {
-			span.textContent = fallback;
-		}
-		field.appendChild(span);
-		return { field, input };
-	};
-	const sourcesRow = document.createElement("div");
-	sourcesRow.className = "style-row";
-	const { field: notifField, input: notifInput } = appendSourceCheck(
-		"showNotifications",
-		"cog-feed-notifications",
-		"Notifications",
-		gizmo.settings.showNotifications === true
-	);
-	const { field: invField, input: invInput } = appendSourceCheck(
-		"showInventory",
-		"cog-feed-inventory",
-		"Inventory",
-		gizmo.settings.showInventory === true
-	);
-	const { field: locField, input: locInput } = appendSourceCheck(
-		"showLocation",
-		"cog-feed-location",
-		"Location",
-		gizmo.settings.showLocation === true
-	);
-	const { field: fxField, input: fxInput } = appendSourceCheck(
-		"showActiveEffects",
-		"cog-feed-active-effects",
-		"Active Effects",
-		gizmo.settings.showActiveEffects === true
-	);
-	const { field: skillsField, input: skillsInput } = appendSourceCheck(
-		"showSkills",
-		"cog-feed-skills",
-		"Skills",
-		gizmo.settings.showSkills === true
-	);
-	const syncSources = () => {
-		patchGizmo(gid, {
-			showNotifications: notifInput.checked,
-			showInventory: invInput.checked,
-			showLocation: locInput.checked,
-			showActiveEffects: fxInput.checked,
-			showSkills: skillsInput.checked
-		});
-		renderEditor(true);
-	};
-	notifInput.addEventListener("change", syncSources);
-	invInput.addEventListener("change", syncSources);
-	locInput.addEventListener("change", syncSources);
-	fxInput.addEventListener("change", syncSources);
-	skillsInput.addEventListener("change", syncSources);
-	sourcesRow.appendChild(fxField);
-	sourcesRow.appendChild(invField);
-	sourcesRow.appendChild(locField);
-	sourcesRow.appendChild(notifField);
-	sourcesRow.appendChild(skillsField);
-	sourcesSection.appendChild(sourcesRow);
-
-	if (
-		!gizmo.settings.showNotifications &&
-		!gizmo.settings.showInventory &&
-		!gizmo.settings.showLocation &&
-		!gizmo.settings.showActiveEffects &&
-		!gizmo.settings.showSkills
-	) {
-		const noneHint = document.createElement("p");
-		noneHint.className = "hint";
-		if (typeof setTranslatedText === "function") {
-			setTranslatedText(
-				noneHint,
-				"cog-feed-add-one-source",
-				"Please add at least one source.",
-				FEED_TYPE_ID
-			);
-		} else {
-			noneHint.textContent = "Please add at least one source.";
-		}
-		sourcesSection.appendChild(noneHint);
-	}
-	panel.appendChild(sourcesSection);
-
-	if (gizmo.settings.showActiveEffects) {
-		appendEditorRule(panel);
-		const fxSection = document.createElement("div");
-		fxSection.className = "gizmo-text-settings";
-		const fxLede = document.createElement("p");
-		fxLede.className = "lede";
-		if (typeof setTranslatedText === "function") {
-			setTranslatedText(fxLede, "cog-feed-active-effects", "Active Effects", FEED_TYPE_ID);
-		} else {
-			fxLede.textContent = "Active Effects";
-		}
-		fxSection.appendChild(fxLede);
-		const fxHint = document.createElement("p");
-		fxHint.className = "hint";
-		if (typeof setTranslatedText === "function") {
-			setTranslatedText(
-				fxHint,
-				"cog-feed-effects-hint",
-				"Timed player effects only. They stay until the timer ends, then fade. Timer min/max are under Progress Bar.",
-				FEED_TYPE_ID
-			);
-		} else {
-			fxHint.textContent =
-				"Timed player effects only. They stay until the timer ends, then fade. Timer min/max are under Progress Bar.";
-		}
-		fxSection.appendChild(fxHint);
-
-		const makeFxCheck = (role, tag, fallback, checked, patchKey) => {
-			const field = document.createElement("label");
-			field.className = "check-row compact";
-			const input = document.createElement("input");
-			input.type = "checkbox";
-			input.dataset.role = role;
-			input.checked = checked;
-			field.appendChild(input);
-			field.appendChild(document.createTextNode(" "));
-			const span = document.createElement("span");
-			if (typeof setTranslatedText === "function") {
-				setTranslatedText(span, tag, fallback, undefined, FEED_TYPE_ID);
-			} else {
-				span.textContent = fallback;
-			}
-			field.appendChild(span);
-			input.addEventListener("change", () => {
-				patchGizmo(gid, { [patchKey]: input.checked });
-				renderEditor(true);
-			});
-			return field;
-		};
-
-		const fxRow = document.createElement("div");
-		fxRow.className = "style-row";
-		const fxColor = makeOptionalColorField(
-			"Text Colour",
-			gizmo.settings.effectsColor,
-			optionalHex(gizmo.settings.textColor) || DEFAULT_GIZMO_GOLD,
-			(hex, live) => patchGizmo(gid, { effectsColor: hex }, false, live)
-		);
-		fxColor.classList.add("compact");
-		tagFieldLabel(fxColor, "cog-text-colour", "Text Colour");
-		fxRow.appendChild(fxColor);
-		fxRow.appendChild(
-			makeFxCheck(
-				"showEffectText",
-				"cog-feed-show-text",
-				"Show text",
-				gizmo.settings.showEffectText !== false,
-				"showEffectText"
-			)
-		);
-		fxRow.appendChild(
-			makeFxCheck(
-				"showEffectTimer",
-				"cog-feed-show-timer",
-				"Show timer",
-				gizmo.settings.showEffectTimer !== false,
-				"showEffectTimer"
-			)
-		);
-		fxRow.appendChild(
-			makeFxCheck(
-				"showEffectIcons",
-				"cog-feed-show-icons",
-				"Show Icons",
-				gizmo.settings.showEffectIcons === true,
-				"showEffectIcons"
-			)
-		);
-		fxSection.appendChild(fxRow);
-
-		const transformRow = document.createElement("div");
-		transformRow.className = "style-row";
-		transformRow.appendChild(
-			makeFxCheck(
-				"suppressTransformEffects",
-				"cog-feed-suppress-transform-effects",
-				"Suppress Werewolf/Vampire transformation effects",
-				gizmo.settings.suppressTransformEffects !== false,
-				"suppressTransformEffects"
-			)
-		);
-		fxSection.appendChild(transformRow);
-
-		const iconRow = document.createElement("div");
-		iconRow.className = "style-row feed-effects-controls";
-		const fxIconCtrl = makeIconControl({
-			label: "Default Icon",
-			value: gizmo.settings.effectIcon || DEFAULT_FEED_EFFECT_ICON,
-			showName: true,
-			clearLabel: typeof t === "function" ? t("cog-feed-use-default", "Use default", FEED_TYPE_ID) : "Use default",
-			onCommit: (icon) => {
-				patchGizmo(gid, {
-					effectIcon: normalizeFeedEffectIcon(icon || DEFAULT_FEED_EFFECT_ICON)
-				});
-			}
-		});
-		tagFieldLabel(fxIconCtrl, "cog-feed-default-icon", "Default Icon", FEED_TYPE_ID);
-		iconRow.appendChild(fxIconCtrl);
-		fxSection.appendChild(iconRow);
-
-		appendFeedSectionNotes(fxSection, "hud.activeEffects", `${feedStorage}/effects/`);
-		panel.appendChild(fxSection);
-	}
-
-
-	if (gizmo.settings.showInventory) {
-		appendEditorRule(panel);
-		const invDefaults = document.createElement("div");
-		invDefaults.className = "gizmo-text-settings";
-		const invDefaultsLede = document.createElement("p");
-		invDefaultsLede.className = "lede";
-		if (typeof setTranslatedText === "function") {
-			setTranslatedText(invDefaultsLede, "cog-feed-inventory", "Inventory", FEED_TYPE_ID);
-		} else {
-			invDefaultsLede.textContent = "Inventory";
-		}
-		invDefaults.appendChild(invDefaultsLede);
-
-		const colorRow = document.createElement("div");
-		colorRow.className = "style-row";
-		const addColor = makeOptionalColorField(
-			"Add",
-			gizmo.settings.addColor,
-			optionalHex(gizmo.settings.textColor) || DEFAULT_GIZMO_GOLD,
-			(hex, live) => patchGizmo(gid, { addColor: hex }, false, live)
-		);
-		addColor.classList.add("compact");
-		tagFieldLabel(addColor, "cog-add", "Add");
-		colorRow.appendChild(addColor);
-		const removeColor = makeOptionalColorField(
-			"Remove",
-			gizmo.settings.removeColor,
-			optionalHex(gizmo.settings.textColor) || DEFAULT_GIZMO_GOLD,
-			(hex, live) => patchGizmo(gid, { removeColor: hex }, false, live)
-		);
-		removeColor.classList.add("compact");
-		tagFieldLabel(removeColor, "cog-remove", "Remove");
-		colorRow.appendChild(removeColor);
-		const stolenColor = makeOptionalColorField(
-			"Stolen",
-			gizmo.settings.stolenColor,
-			optionalHex(gizmo.settings.textColor) || DEFAULT_GIZMO_GOLD,
-			(hex, live) => patchGizmo(gid, { stolenColor: hex }, false, live)
-		);
-		stolenColor.classList.add("compact");
-		tagFieldLabel(stolenColor, "cog-feed-stolen", "Stolen", FEED_TYPE_ID);
-		colorRow.appendChild(stolenColor);
-		invDefaults.appendChild(colorRow);
-
-		const iconRow = document.createElement("div");
-		iconRow.className = "style-row";
-		const invIcon = makeIconControl({
-			label: "Default Icon",
-			value: gizmo.settings.icon || DEFAULT_FEED_INVENTORY_ICON,
-			showName: true,
-			clearLabel: typeof t === "function" ? t("cog-feed-use-default", "Use default", FEED_TYPE_ID) : "Use default",
-			onCommit: (icon) => {
-				patchGizmo(gid, { icon: normalizeFeedInventoryIcon(icon || DEFAULT_FEED_INVENTORY_ICON) });
-			}
-		});
-		tagFieldLabel(invIcon, "cog-feed-default-icon", "Default Icon", FEED_TYPE_ID);
-		iconRow.appendChild(invIcon);
-		const invIconsField = document.createElement("label");
-		invIconsField.className = "check-row compact";
-		const invIconsInput = document.createElement("input");
-		invIconsInput.type = "checkbox";
-		invIconsInput.dataset.role = "showInventoryIcons";
-		invIconsInput.checked = gizmo.settings.showInventoryIcons !== false;
-		invIconsField.appendChild(invIconsInput);
-		invIconsField.appendChild(document.createTextNode(" "));
-		const invIconsSpan = document.createElement("span");
-		if (typeof setTranslatedText === "function") {
-			setTranslatedText(invIconsSpan, "cog-feed-show-icons", "Show Icons", FEED_TYPE_ID);
-		} else {
-			invIconsSpan.textContent = "Show Icons";
-		}
-		invIconsField.appendChild(invIconsSpan);
-		invIconsInput.addEventListener("change", () => {
-			patchGizmo(gid, { showInventoryIcons: invIconsInput.checked });
-		});
-		iconRow.appendChild(invIconsField);
-		invDefaults.appendChild(iconRow);
-		appendFeedSectionNotes(invDefaults, "", `${feedStorage}/inventory/`, {
-			hideEntry: FEED_SECTION_HIDE_NOTES.inventory
-		});
-		panel.appendChild(invDefaults);
-	}
-
-
-	if (gizmo.settings.showLocation) {
-		appendEditorRule(panel);
-		const locDefaults = document.createElement("div");
-		locDefaults.className = "gizmo-text-settings";
-		const locLede = document.createElement("p");
-		locLede.className = "lede";
-		if (typeof setTranslatedText === "function") {
-			setTranslatedText(locLede, "cog-feed-location", "Location", FEED_TYPE_ID);
-		} else {
-			locLede.textContent = "Location";
-		}
-		locDefaults.appendChild(locLede);
-
-		const useDefaultLabel = typeof t === "function" ? t("cog-feed-use-default", "Use default", FEED_TYPE_ID) : "Use default";
-		const makeLocationIconRow = (colorValue, colorFallback, iconValue, normalizeIcon, patchColor, patchIcon) => {
-			const row = document.createElement("div");
-			row.className = "style-row feed-location-row is-nested";
-			const color = makeOptionalColorField(
-				"Colour",
-				colorValue,
-				colorFallback || DEFAULT_GIZMO_GOLD,
-				(hex, live) => patchGizmo(gid, { [patchColor]: hex }, false, live)
-			);
-			color.classList.add("compact");
-			tagFieldLabel(color, "cog-colour", "Colour");
-			row.appendChild(color);
-			const iconCtrl = makeIconControl({
-				label: "Icon",
-				value: iconValue,
-				showName: true,
-				clearLabel: useDefaultLabel,
-				onCommit: (icon) => {
-					patchGizmo(gid, { [patchIcon]: normalizeIcon(icon) });
-				}
-			});
-			tagFieldLabel(iconCtrl, "cog-icon", "Icon");
-			row.appendChild(iconCtrl);
-			return row;
-		};
-
-		const appendLocationType = (
-			role,
-			tag,
-			fallback,
-			checked,
-			patchCheck,
-			colorValue,
-			colorFallback,
-			iconValue,
-			normalizeIcon,
-			patchColor,
-			patchIcon
-		) => {
-			const block = document.createElement("div");
-			block.className = "feed-location-type";
-			const field = document.createElement("label");
-			field.className = "check-row compact";
-			const input = document.createElement("input");
-			input.type = "checkbox";
-			input.dataset.role = role;
-			input.checked = checked;
-			field.appendChild(input);
-			field.appendChild(document.createTextNode(" "));
-			const span = document.createElement("span");
-			if (typeof setTranslatedText === "function") {
-				setTranslatedText(span, tag, fallback, undefined, FEED_TYPE_ID);
-			} else {
-				span.textContent = fallback;
-			}
-			field.appendChild(span);
-			input.addEventListener("change", () => {
-				patchGizmo(gid, { [patchCheck]: input.checked });
-				renderEditor(true);
-			});
-			block.appendChild(field);
-			if (checked) {
-				block.appendChild(
-					makeLocationIconRow(
-						colorValue,
-						colorFallback,
-						iconValue,
-						normalizeIcon,
-						patchColor,
-						patchIcon
-					)
-				);
-			}
-			locDefaults.appendChild(block);
-		};
-
-		const locColorFallback =
-			optionalHex(gizmo.settings.textColor) || DEFAULT_GIZMO_GOLD;
-		appendLocationType(
-			"showLocationDiscovery",
-			"cog-feed-location-discovery",
-			"Location Discovery",
-			gizmo.settings.showLocationDiscovery !== false,
-			"showLocationDiscovery",
-			gizmo.settings.locationDiscoveryColor,
-			locColorFallback,
-			gizmo.settings.locationDiscoveryIcon || DEFAULT_FEED_LOCATION_DISCOVERY_ICON,
-			normalizeFeedLocationDiscoveryIcon,
-			"locationDiscoveryColor",
-			"locationDiscoveryIcon"
-		);
-		appendLocationType(
-			"showCurrentLocation",
-			"cog-feed-current-location",
-			"Current Location",
-			gizmo.settings.showCurrentLocation !== false,
-			"showCurrentLocation",
-			gizmo.settings.currentLocationColor,
-			locColorFallback,
-			gizmo.settings.currentLocationIcon || DEFAULT_FEED_CURRENT_LOCATION_ICON,
-			normalizeFeedCurrentLocationIcon,
-			"currentLocationColor",
-			"currentLocationIcon"
-		);
-
-		const locIconsField = document.createElement("label");
-		locIconsField.className = "check-row compact";
-		const locIconsInput = document.createElement("input");
-		locIconsInput.type = "checkbox";
-		locIconsInput.dataset.role = "showLocationIcons";
-		locIconsInput.checked = gizmo.settings.showLocationIcons !== false;
-		locIconsField.appendChild(locIconsInput);
-		locIconsField.appendChild(document.createTextNode(" "));
-		const locIconsSpan = document.createElement("span");
-		if (typeof setTranslatedText === "function") {
-			setTranslatedText(locIconsSpan, "cog-feed-show-icons", "Show Icons", FEED_TYPE_ID);
-		} else {
-			locIconsSpan.textContent = "Show Icons";
-		}
-		locIconsField.appendChild(locIconsSpan);
-		locIconsInput.addEventListener("change", () => {
-			patchGizmo(gid, { showLocationIcons: locIconsInput.checked });
-			renderEditor(true);
-		});
-		locDefaults.appendChild(locIconsField);
-		const showCurrent = gizmo.settings.showCurrentLocation !== false;
-		const showDiscovery = gizmo.settings.showLocationDiscovery !== false;
-		let locHideEntry = FEED_SECTION_HIDE_NOTES.locationBoth;
-		if (showCurrent && showDiscovery) {
-			locHideEntry = FEED_SECTION_HIDE_NOTES.locationBoth;
-		} else if (showCurrent) {
-			locHideEntry = FEED_SECTION_HIDE_NOTES.locationCurrent;
-		} else if (showDiscovery) {
-			locHideEntry = FEED_SECTION_HIDE_NOTES.locationDiscovery;
-		}
-		appendFeedSectionNotes(locDefaults, "", `${feedStorage}/location/`, {
-			hideEntry: locHideEntry
-		});
-		panel.appendChild(locDefaults);
-	}
-
-	if (gizmo.settings.showNotifications) {
-		appendEditorRule(panel);
-		const notifSection = document.createElement("div");
-		notifSection.className = "gizmo-text-settings";
-		const notifLede = document.createElement("p");
-		notifLede.className = "lede";
-		if (typeof setTranslatedText === "function") {
-			setTranslatedText(notifLede, "cog-feed-notifications", "Notifications", FEED_TYPE_ID);
-		} else {
-			notifLede.textContent = "Notifications";
-		}
-		notifSection.appendChild(notifLede);
-
-		const defaultsRow = document.createElement("div");
-		defaultsRow.className = "style-row";
-		const textColor = makeOptionalColorField(
-			"Colour",
-			gizmo.settings.textColor,
-			DEFAULT_GIZMO_GOLD,
-			(hex, live) => patchGizmo(gid, { textColor: hex }, false, live)
-		);
-		textColor.classList.add("compact");
-		tagFieldLabel(textColor, "cog-colour", "Colour");
-		defaultsRow.appendChild(textColor);
-
-		const notifIcon = makeIconControl({
-			label: "Icon",
-			value: gizmo.settings.notificationIcon || DEFAULT_FEED_NOTIFICATION_ICON,
-			showName: true,
-			clearLabel: typeof t === "function" ? t("cog-feed-use-default", "Use default", FEED_TYPE_ID) : "Use default",
-			onCommit: (icon) => {
-				patchGizmo(gid, {
-					notificationIcon: normalizeFeedNotificationIcon(icon || DEFAULT_FEED_NOTIFICATION_ICON)
-				});
-			}
-		});
-		tagFieldLabel(notifIcon, "cog-icon", "Icon");
-		defaultsRow.appendChild(notifIcon);
-
-		const iconsField = document.createElement("label");
-		iconsField.className = "check-row compact";
-		const iconsInput = document.createElement("input");
-		iconsInput.type = "checkbox";
-		iconsInput.dataset.role = "showNotificationIcons";
-		iconsInput.checked = gizmo.settings.showNotificationIcons !== false;
-		iconsField.appendChild(iconsInput);
-		iconsField.appendChild(document.createTextNode(" "));
-		const iconsSpan = document.createElement("span");
-		if (typeof setTranslatedText === "function") {
-			setTranslatedText(iconsSpan, "cog-feed-show-icons", "Show Icons", FEED_TYPE_ID);
-		} else {
-			iconsSpan.textContent = "Show Icons";
-		}
-		iconsField.appendChild(iconsSpan);
-		iconsInput.addEventListener("change", () => {
-			patchGizmo(gid, { showNotificationIcons: iconsInput.checked });
-		});
-		defaultsRow.appendChild(iconsField);
-		notifSection.appendChild(defaultsRow);
-
-		if (!gizmo.settings.showInventory) {
-			const suppressRow = document.createElement("div");
-			suppressRow.className = "style-row";
-			const suppressField = document.createElement("label");
-			suppressField.className = "check-row compact";
-			const suppressInput = document.createElement("input");
-			suppressInput.type = "checkbox";
-			suppressInput.dataset.role = "suppressInventory";
-			suppressInput.checked = gizmo.settings.suppressInventory !== false;
-			const suppressTitle = document.createElement("span");
-			suppressTitle.className = "field-title-row";
-			const suppressLabel = document.createElement("span");
-			if (typeof setTranslatedText === "function") {
-				setTranslatedText(suppressLabel, "cog-feed-suppress-inventory", "Suppress inventory", FEED_TYPE_ID);
-			} else {
-				suppressLabel.textContent = "Suppress inventory";
-			}
-			suppressTitle.appendChild(suppressLabel);
-			const suppressTip = makeInfoTip("When on, inventory-style notification toasts are suppressed (not shown on the vanilla HUD or in this Notifications feed) while Notifications are active. Many activators and containers fire those even when you are not looting — leave this on unless you want them on the vanilla HUD. The Inventory section tracks real item changes separately.", "cog-feed-suppress-inventory-tip", FEED_TYPE_ID);
-			suppressTitle.appendChild(suppressTip);
-			suppressField.appendChild(suppressInput);
-			suppressField.appendChild(suppressTitle);
-			suppressInput.addEventListener("change", () => {
-				patchGizmo(gid, { suppressInventory: suppressInput.checked });
-			});
-			suppressRow.appendChild(suppressField);
-			notifSection.appendChild(suppressRow);
-		}
-
-		const makeOverrideCheck = (role, tag, fallback, checked, tipTag, tipFallback, patchKey) => {
-			const row = document.createElement("div");
-			row.className = "style-row";
-			const field = document.createElement("label");
-			field.className = "check-row compact";
-			const input = document.createElement("input");
-			input.type = "checkbox";
-			input.dataset.role = role;
-			input.checked = checked;
-			const title = document.createElement("span");
-			title.className = "field-title-row";
-			const labelSpan = document.createElement("span");
-			if (typeof setTranslatedText === "function") {
-				setTranslatedText(labelSpan, tag, fallback, undefined, FEED_TYPE_ID);
-			} else {
-				labelSpan.textContent = fallback;
-			}
-			title.appendChild(labelSpan);
-			const tip = makeInfoTip(tipFallback, tipTag, FEED_TYPE_ID);
-			title.appendChild(tip);
-			field.appendChild(input);
-			field.appendChild(title);
-			input.addEventListener("change", () => {
-				patchGizmo(gid, { [patchKey]: input.checked });
-			});
-			row.appendChild(field);
-			return row;
-		};
-
-		notifSection.appendChild(
-			makeOverrideCheck(
-				"allowModNotificationIcon",
-				"cog-feed-allow-mods-choose-icon",
-				"Allow Mods to Choose Icon",
-				gizmo.settings.allowModNotificationIcon !== false,
-				"cog-feed-allow-mods-choose-icon-tip",
-				"When on, mods can use COG_Feed_API.Notify (or legacy COG_API.Notify) to supply a per-message icon path under assets/icons/. When off, every message uses the Notifications icon (if Show icons is on).",
-				"allowModNotificationIcon"
-			)
-		);
-		notifSection.appendChild(
-			makeOverrideCheck(
-				"allowModNotificationColor",
-				"cog-feed-allow-mods-choose-colour",
-				"Allow Mods to Choose Colour",
-				gizmo.settings.allowModNotificationColor !== false,
-				"cog-feed-allow-mods-choose-colour-tip",
-				"When on, message colour can come from SkyUILib (for compatibility) or COG_Feed_API.Notify / COG_API.Notify. When off, every message uses the Notifications colour.",
-				"allowModNotificationColor"
-			)
-		);
-		appendFeedSectionNotes(notifSection, "hud.notifications", `${feedStorage}/notifications/`, {
-			notificationsApi: true
-		});
-		panel.appendChild(notifSection);
-	}
-
-	if (gizmo.settings.showSkills) {
-		appendEditorRule(panel);
-		const skillsSection = document.createElement("div");
-		skillsSection.className = "gizmo-text-settings";
-		const skillsLede = document.createElement("p");
-		skillsLede.className = "lede";
-		if (typeof setTranslatedText === "function") {
-			setTranslatedText(skillsLede, "cog-feed-skills", "Skills", FEED_TYPE_ID);
-		} else {
-			skillsLede.textContent = "Skills";
-		}
-		skillsSection.appendChild(skillsLede);
-
-		const useDefaultLabel = typeof t === "function" ? t("cog-feed-use-default", "Use default", FEED_TYPE_ID) : "Use default";
-		const makeSkillIconRow = (colorValue, colorFallback, iconValue, normalizeIcon, patchColor, patchIcon) => {
-			const row = document.createElement("div");
-			row.className = "style-row feed-location-row is-nested";
-			const color = makeOptionalColorField(
-				"Colour",
-				colorValue,
-				colorFallback || DEFAULT_GIZMO_GOLD,
-				(hex, live) => patchGizmo(gid, { [patchColor]: hex }, false, live)
-			);
-			color.classList.add("compact");
-			tagFieldLabel(color, "cog-colour", "Colour");
-			row.appendChild(color);
-			const iconCtrl = makeIconControl({
-				label: "Icon",
-				value: iconValue,
-				showName: true,
-				clearLabel: useDefaultLabel,
-				onCommit: (icon) => {
-					patchGizmo(gid, { [patchIcon]: normalizeIcon(icon) });
-				}
-			});
-			tagFieldLabel(iconCtrl, "cog-icon", "Icon");
-			row.appendChild(iconCtrl);
-			return row;
-		};
-
-		const appendSkillType = (
-			role,
-			tag,
-			fallback,
-			checked,
-			patchCheck,
-			colorValue,
-			colorFallback,
-			iconValue,
-			normalizeIcon,
-			patchColor,
-			patchIcon
-		) => {
-			const block = document.createElement("div");
-			block.className = "feed-location-type";
-			const field = document.createElement("label");
-			field.className = "check-row compact";
-			const input = document.createElement("input");
-			input.type = "checkbox";
-			input.dataset.role = role;
-			input.checked = checked;
-			field.appendChild(input);
-			field.appendChild(document.createTextNode(" "));
-			const span = document.createElement("span");
-			if (typeof setTranslatedText === "function") {
-				setTranslatedText(span, tag, fallback, undefined, FEED_TYPE_ID);
-			} else {
-				span.textContent = fallback;
-			}
-			field.appendChild(span);
-			input.addEventListener("change", () => {
-				patchGizmo(gid, { [patchCheck]: input.checked });
-				renderEditor(true);
-			});
-			block.appendChild(field);
-			if (checked) {
-				block.appendChild(
-					makeSkillIconRow(
-						colorValue,
-						colorFallback,
-						iconValue,
-						normalizeIcon,
-						patchColor,
-						patchIcon
-					)
-				);
-			}
-			skillsSection.appendChild(block);
-		};
-
-		const skillColorFallback =
-			optionalHex(gizmo.settings.textColor) || DEFAULT_GIZMO_GOLD;
-		appendSkillType(
-			"showSkillProgress",
-			"cog-feed-skill-progress",
-			"Skill Progress",
-			gizmo.settings.showSkillProgress !== false,
-			"showSkillProgress",
-			gizmo.settings.skillProgressColor,
-			skillColorFallback,
-			gizmo.settings.skillProgressIcon || DEFAULT_FEED_SKILL_ICON,
-			normalizeFeedSkillIcon,
-			"skillProgressColor",
-			"skillProgressIcon"
-		);
-		appendSkillType(
-			"showLevelProgress",
-			"cog-feed-level-progress",
-			"Level Progress",
-			gizmo.settings.showLevelProgress !== false,
-			"showLevelProgress",
-			gizmo.settings.levelProgressColor,
-			skillColorFallback,
-			gizmo.settings.levelProgressIcon || DEFAULT_FEED_LEVEL_ICON,
-			normalizeFeedLevelIcon,
-			"levelProgressColor",
-			"levelProgressIcon"
-		);
-
-		const skillIconsField = document.createElement("label");
-		skillIconsField.className = "check-row compact";
-		const skillIconsInput = document.createElement("input");
-		skillIconsInput.type = "checkbox";
-		skillIconsInput.dataset.role = "showSkillIcons";
-		skillIconsInput.checked = gizmo.settings.showSkillIcons !== false;
-		skillIconsField.appendChild(skillIconsInput);
-		skillIconsField.appendChild(document.createTextNode(" "));
-		const skillIconsSpan = document.createElement("span");
-		if (typeof setTranslatedText === "function") {
-			setTranslatedText(skillIconsSpan, "cog-feed-show-icons", "Show Icons", FEED_TYPE_ID);
-		} else {
-			skillIconsSpan.textContent = "Show Icons";
-		}
-		skillIconsField.appendChild(skillIconsSpan);
-		skillIconsInput.addEventListener("change", () => {
-			patchGizmo(gid, { showSkillIcons: skillIconsInput.checked });
-			renderEditor(true);
-		});
-		skillsSection.appendChild(skillIconsField);
-		appendFeedSectionNotes(skillsSection, "", `${feedStorage}/skills/`, {
-			hideEntry: FEED_SECTION_HIDE_NOTES.skills
-		});
-		panel.appendChild(skillsSection);
-	}
-
-
-}
+window.CogFeedStoragePath = function CogFeedStoragePath() {
+	return typeof CogGizmoStorage === "function" ? CogGizmoStorage("cog-feed") : "gizmoTypes/cog-feed";
+};
 
 window.CogRegisterGizmoRenderer("cog-feed", {
 	create() {
@@ -3187,6 +2136,5 @@ window.CogRegisterGizmoRenderer("cog-feed", {
 	ensure: ensureFeedGizmo,
 	build: buildGizmoFeedEl,
 	layout: layoutGizmoFeed,
-	paint: paintGizmoFeed,
-	fillEditor: fillFeedGizmoEditor
+	paint: paintGizmoFeed
 });

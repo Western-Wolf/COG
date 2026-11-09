@@ -55,10 +55,10 @@ SendModEvent("COG_Example_Tick", IconFillPath, Remaining as Float)
 
 | Type | Demonstrates |
 |------|----------------|
-| `xmp-gearupdated` | `sourceFor("COG_Example_Gears","count")`, fill icon, `defaultVisibility` **hud**, soft-gated on Gears ESP |
-| `xmp-pushupdated` | `UpdateGizmo` payload, hollow icon, `defaultVisibility` **ui** |
+| `xmp-gearupdated` | `sourceFor("COG_Example_Gears","count")`, fill icon, `defaultVisibility` **hud**, soft-gated on Gears ESP; settings HTML from **primary** `PrismaUI/views/Example/gear_settings.html` |
+| `xmp-pushupdated` | `UpdateGizmo` payload, hollow icon, `defaultVisibility` **ui**; same markup imported from **secondary** `PrismaUI/views/Example/settings/gear_settings.html` |
 
-Both: schema colours + **Show Count** (digit beside icon, same size/colour). Schema `labelTag`s (`cog-zero-colour`, `cog-ten-colour`, `cog-show-count`) resolve from each type’s `SKSE/Plugins/COG/gizmoTypes/<typeId>/translations/_COG.json` (not the global COG catalog). Editor also exposes Visibility (same control as builtin gizmos).
+Both: colours + **Show Count** (digit beside icon) + opt-in Visibility (`cog-visibility`). COG copies each registered path into `gizmoTypes/<typeId>/settings.html`. Translation tags (`cog-zero-colour`, `cog-ten-colour`, `cog-show-count`) resolve from each type’s `SKSE/Plugins/COG/gizmoTypes/<typeId>/translations/_COG.json` (not the global COG catalog).
 
 ## Smoke
 
