@@ -1,0 +1,69 @@
+<div class="feed-location-type">
+	<label class="check-row compact">
+		<input type="checkbox" data-gizmo-value="showSkillProgress" data-gizmo-default="true" data-cog-feed-nested="skill-progress">
+		<span data-translation="cog-feed-skill-progress" data-translation-fallback="Skill Progress">Skill Progress</span>
+	</label>
+	<div class="style-row feed-location-row is-nested" data-cog-feed-nested-panel="skill-progress">
+		<input type="color" data-gizmo-field="color" data-gizmo-value="skillProgressColor" data-gizmo-default="#e8d2a0" data-translation="cog-colour" data-translation-fallback="Colour">
+		<input type="text" data-gizmo-field="icon" data-gizmo-value="skillProgressIcon" data-gizmo-default="Scribe/book-open.svg" data-translation="cog-icon" data-translation-fallback="Icon">
+	</div>
+</div>
+<div class="feed-location-type">
+	<label class="check-row compact">
+		<input type="checkbox" data-gizmo-value="showLevelProgress" data-gizmo-default="true" data-cog-feed-nested="level-progress">
+		<span data-translation="cog-feed-level-progress" data-translation-fallback="Level Progress">Level Progress</span>
+	</label>
+	<div class="style-row feed-location-row is-nested" data-cog-feed-nested-panel="level-progress">
+		<input type="color" data-gizmo-field="color" data-gizmo-value="levelProgressColor" data-gizmo-default="#e8d2a0" data-translation="cog-colour" data-translation-fallback="Colour">
+		<input type="text" data-gizmo-field="icon" data-gizmo-value="levelProgressIcon" data-gizmo-default="Celestial/star.svg" data-translation="cog-icon" data-translation-fallback="Icon">
+	</div>
+</div>
+<label class="check-row compact">
+	<input type="checkbox" data-gizmo-value="showSkillIcons" data-gizmo-default="true">
+	<span data-translation="cog-feed-show-icons" data-translation-fallback="Show Icons">Show Icons</span>
+</label>
+<div data-cog-feed-notes="skills"></div>
+<script>
+(function () {
+	var panel = document.currentScript && document.currentScript.parentElement;
+	if (!panel) return;
+	var sourceHost = panel.closest("[data-feed-source]");
+	var sourceId = sourceHost ? sourceHost.getAttribute("data-feed-source") : "cog-skills";
+	var root = panel.closest(".gizmo-html-settings");
+	if (!root) return;
+
+	function storagePath() {
+		if (typeof window.CogFeedSourceStorage === "function") {
+			return window.CogFeedSourceStorage(sourceId);
+		}
+		return "gizmoTypes/cog-feed/sources/" + sourceId;
+	}
+
+	function syncNested() {
+		panel.querySelectorAll("[data-cog-feed-nested]").forEach(function (input) {
+			var key = input.getAttribute("data-cog-feed-nested");
+			var nested = panel.querySelector('[data-cog-feed-nested-panel="' + key + '"]');
+			if (nested) nested.hidden = !input.checked;
+		});
+	}
+
+	function mountNotes() {
+		if (typeof window.CogAppendFeedSectionNotes !== "function") return;
+		var hide = typeof window.CogFeedHideNoteEntry === "function" ? window.CogFeedHideNoteEntry : function () { return null; };
+		var host = panel.querySelector('[data-cog-feed-notes="skills"]');
+		if (!host) return;
+		window.CogAppendFeedSectionNotes(host, "", storagePath() + "/", { hideEntry: hide("skills") });
+	}
+
+	function onBound() {
+		syncNested();
+		mountNotes();
+	}
+
+	root.addEventListener("cog-html-settings-bound", onBound);
+	panel.querySelectorAll("[data-cog-feed-nested]").forEach(function (el) {
+		el.addEventListener("change", syncNested);
+	});
+	onBound();
+})();
+</script>

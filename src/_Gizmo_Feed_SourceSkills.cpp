@@ -4,7 +4,7 @@
 #include "_Gizmo_Feed_API.h"
 #include "_Gizmo_Feed_Log.h"
 #include "_Gizmo_Feed_UtilityIconRegistry.h"
-#include "_Gizmo_Storage.h"
+#include "_Gizmo_Feed_Sources.h"
 #include "_Core_Registry.h"
 #include "_UI_CogUi.h"
 
@@ -36,7 +36,7 @@ namespace
 
 	std::filesystem::path SkillIconRulesDir()
 	{
-		return CogGizmoStorage::EnsureDir("cog-feed") / "skills";
+		return CogFeedSources::SourceStorageDir(CogFeedSources::kIdSkills);
 	}
 
 	std::string TranslateHudText(std::string text)
@@ -180,12 +180,12 @@ namespace
 			} else {
 				icon = ResolveSkillIconByText(text);
 			}
-			colorKey = "skillProgressColor";
+			colorKey = "cog-skills.skillProgressColor";
 			iconKey = "skillProgressIcon";
 			iconFallback = "Scribe/book-open.svg";
 		} else {
 			ClearPendingSkill();
-			colorKey = "levelProgressColor";
+			colorKey = "cog-skills.levelProgressColor";
 			iconKey = "levelProgressIcon";
 			iconFallback = "Celestial/star.svg";
 		}
@@ -303,7 +303,7 @@ void CogFeed::PushLevelProgressToUi()
 
 	g_levelProgressReceipt = Notify(
 		std::move(message),
-		"levelProgressColor",
+		"cog-skills.levelProgressColor",
 		{},
 		kSourceSkills,
 		xp,

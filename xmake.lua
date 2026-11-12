@@ -161,10 +161,8 @@ target("COG")
 		os.mkdir(path.join(cog_data, "gears"))
 		os.mkdir(path.join(cog_data, "gauges"))
 		os.mkdir(path.join(cog_data, "gizmos"))
-		os.mkdir(path.join(cog_data, "gizmoTypes", "cog-feed", "inventory"))
-		os.mkdir(path.join(cog_data, "gizmoTypes", "cog-feed", "effects"))
-		os.mkdir(path.join(cog_data, "gizmoTypes", "cog-feed", "skills"))
-		os.mkdir(path.join(cog_data, "gizmoTypes", "cog-feed", "location"))
+		local feed_sources_dir = path.join(cog_data, "gizmoTypes", "cog-feed", "sources")
+		os.mkdir(feed_sources_dir)
 		os.mkdir(path.join(cog_data, "translations"))
 		local translations_src = path.join(cog_dir, "plugin/translations/_COG.json")
 		if os.isfile(translations_src) then
@@ -195,31 +193,35 @@ target("COG")
 		if os.isdir(legacy_endcaps) then
 			os.rmdir(legacy_endcaps)
 		end
-		-- Always refresh shipped inventory icon defaults; never touch other *.txt overrides.
-		local inv_icons_src = path.join(cog_dir, "plugin/gizmoTypes/cog-feed/inventory/_COG.txt")
-		if os.isfile(inv_icons_src) then
-			os.cp(inv_icons_src, path.join(cog_data, "gizmoTypes", "cog-feed", "inventory", "_COG.txt"))
+		-- Feed source modules: icon rules under sources/cog-* plus settings HTML fragments.
+		local feed_sources_src = path.join(cog_dir, "plugin/gizmoTypes/cog-feed/sources")
+		local feed_source_ids = {
+			"cog-notifications",
+			"cog-inventory",
+			"cog-location",
+			"cog-skills",
+			"cog-quests",
+			"cog-effects"
+		}
+		for _, source_id in ipairs(feed_source_ids) do
+			os.mkdir(path.join(feed_sources_dir, source_id))
+			local cog_txt_src = path.join(feed_sources_src, source_id, "_COG.txt")
+			if os.isfile(cog_txt_src) then
+				os.cp(cog_txt_src, path.join(feed_sources_dir, source_id, "_COG.txt"))
+			end
 		end
-		-- Always refresh shipped active-effects icon defaults; never touch other *.txt overrides.
-		local fx_icons_src = path.join(cog_dir, "plugin/gizmoTypes/cog-feed/effects/_COG.txt")
-		if os.isfile(fx_icons_src) then
-			os.cp(fx_icons_src, path.join(cog_data, "gizmoTypes", "cog-feed", "effects", "_COG.txt"))
+		if os.isdir(feed_sources_src) then
+			for _, file in ipairs(os.files(path.join(feed_sources_src, "*.html"))) do
+				os.cp(file, path.join(feed_sources_dir, path.filename(file)))
+			end
 		end
-		-- Always refresh shipped skills icon defaults; never touch other *.txt overrides.
-		local skills_icons_src = path.join(cog_dir, "plugin/gizmoTypes/cog-feed/skills/_COG.txt")
-		if os.isfile(skills_icons_src) then
-			os.cp(skills_icons_src, path.join(cog_data, "gizmoTypes", "cog-feed", "skills", "_COG.txt"))
-		end
-		-- Always refresh shipped location icon defaults; never touch other *.txt overrides.
-		local loc_icons_src = path.join(cog_dir, "plugin/gizmoTypes/cog-feed/location/_COG.txt")
-		if os.isfile(loc_icons_src) then
-			os.cp(loc_icons_src, path.join(cog_data, "gizmoTypes", "cog-feed", "location", "_COG.txt"))
-		end
-		-- Always refresh shipped notification icon defaults; never touch other *.txt overrides.
-		local notif_icons_src = path.join(cog_dir, "plugin/gizmoTypes/cog-feed/notifications/_COG.txt")
-		if os.isfile(notif_icons_src) then
-			os.mkdir(path.join(cog_data, "gizmoTypes", "cog-feed", "notifications"))
-			os.cp(notif_icons_src, path.join(cog_data, "gizmoTypes", "cog-feed", "notifications", "_COG.txt"))
+		-- Drop stale stage leftovers from pre-sources layout (Migration Code moves player Data only).
+		local feed_root = path.join(cog_data, "gizmoTypes", "cog-feed")
+		for _, legacy in ipairs({ "notifications", "inventory", "location", "skills", "effects" }) do
+			local stale = path.join(feed_root, legacy)
+			if os.isdir(stale) then
+				os.rm(stale)
+			end
 		end
 		-- Do not leave legacy type-storage trees under gizmos/ (Migration Code moves player data at load).
 		for _, stale in ipairs({

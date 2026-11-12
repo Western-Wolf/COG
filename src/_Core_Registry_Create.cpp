@@ -8,6 +8,7 @@
 #include "_Gears_LiveStats.h"
 #include "_Gears_Inventory.h"
 #include "_Gizmo_Feed.h"
+#include "_Gizmo_Feed_Sources.h"
 #include "_Gizmo_Storage.h"
 #include "_API_Core.h"
 
@@ -720,12 +721,20 @@ void CogRegistry::OnViewReady()
 			std::ostringstream one;
 			one << "id=\"" << g.id << "\" displayName=\"" << CogRegistryJson::GizmoDisplayName(g)
 				<< "\" visibility=" << g.visibility
-				<< " notif=" << (GizmoSettingsBool(g, "showNotifications", false) ? 1 : 0)
-				<< " inv=" << (GizmoSettingsBool(g, "showInventory", false) ? 1 : 0)
-				<< " loc=" << (GizmoSettingsBool(g, "showLocation", false) ? 1 : 0)
-				<< " discovery=" << (GizmoSettingsBool(g, "showLocationDiscovery", true) ? 1 : 0)
-				<< " current=" << (GizmoSettingsBool(g, "showCurrentLocation", true) ? 1 : 0)
-				<< " icons=" << (GizmoSettingsBool(g, "showLocationIcons", true) ? 1 : 0)
+				<< " notif="
+				<< (CogFeedSources::SourceEnabled(g, CogFeedSources::kIdNotifications) ? 1 : 0)
+				<< " inv=" << (CogFeedSources::SourceEnabled(g, CogFeedSources::kIdInventory) ? 1 : 0)
+				<< " loc=" << (CogFeedSources::SourceEnabled(g, CogFeedSources::kIdLocation) ? 1 : 0)
+				<< " discovery="
+				<< (CogFeedSources::SourceFieldBool(g, CogFeedSources::kIdLocation, "showLocationDiscovery", true)
+						? 1
+						: 0)
+				<< " current="
+				<< (CogFeedSources::SourceFieldBool(g, CogFeedSources::kIdLocation, "showCurrentLocation", true) ? 1
+																												 : 0)
+				<< " icons="
+				<< (CogFeedSources::SourceFieldBool(g, CogFeedSources::kIdLocation, "showLocationIcons", true) ? 1
+																											   : 0)
 				<< " x=" << std::fixed << std::setprecision(3) << g.display.x << " y=" << g.display.y;
 			visibleDetail += one.str();
 		}
@@ -740,14 +749,16 @@ void CogRegistry::OnViewReady()
 			visibleDetail);
 	}
 	logger::info(
-		"Feed: divert armed — notifications={} inventory={} locationDiscovery={} currentLocation={} skillsSection={} skillProgress={} levelProgress={}",
+		"Feed: divert armed — notifications={} inventory={} locationDiscovery={} currentLocation={} skillsSection={} skillProgress={} levelProgress={} questStatus={} questObjectives={}",
 		HasVisibleFeedShowingNotifications(),
 		HasVisibleFeedShowingInventory(),
 		HasVisibleFeedDivertingLocationDiscovery(),
 		HasVisibleFeedDivertingCurrentLocation(),
 		HasVisibleFeedShowingSkills(),
 		HasVisibleFeedShowingSkillProgress(),
-		HasVisibleFeedShowingLevelProgress());
+		HasVisibleFeedShowingLevelProgress(),
+		HasVisibleFeedDivertingQuestStatus(),
+		HasVisibleFeedDivertingQuestObjectives());
 	MarkCatalogDirty();
 	CogFeed::PushPendingFeedEventsToUi();
 }

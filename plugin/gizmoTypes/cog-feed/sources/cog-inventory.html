@@ -1,0 +1,45 @@
+<div class="style-row">
+	<input type="color" data-gizmo-field="color" data-gizmo-value="addColor" data-gizmo-default="#e8d2a0" data-translation="cog-add" data-translation-fallback="Add">
+	<input type="color" data-gizmo-field="color" data-gizmo-value="removeColor" data-gizmo-default="#e8d2a0" data-translation="cog-remove" data-translation-fallback="Remove">
+	<input type="color" data-gizmo-field="color" data-gizmo-value="stolenColor" data-gizmo-default="#e8d2a0" data-translation="cog-feed-stolen" data-translation-fallback="Stolen">
+</div>
+<div class="style-row">
+	<input type="text" data-gizmo-field="icon" data-gizmo-value="icon" data-gizmo-default="Treasure/bag.svg" data-translation="cog-feed-default-icon" data-translation-fallback="Default Icon">
+	<label class="check-row compact">
+		<input type="checkbox" data-gizmo-value="showInventoryIcons" data-gizmo-default="true">
+		<span data-translation="cog-feed-show-icons" data-translation-fallback="Show Icons">Show Icons</span>
+	</label>
+</div>
+<div data-cog-feed-notes="inventory"></div>
+<script>
+(function () {
+	var panel = document.currentScript && document.currentScript.parentElement;
+	if (!panel) return;
+	var sourceHost = panel.closest("[data-feed-source]");
+	var sourceId = sourceHost ? sourceHost.getAttribute("data-feed-source") : "cog-inventory";
+	var root = panel.closest(".gizmo-html-settings");
+	if (!root) return;
+
+	function storagePath() {
+		if (typeof window.CogFeedSourceStorage === "function") {
+			return window.CogFeedSourceStorage(sourceId);
+		}
+		return "gizmoTypes/cog-feed/sources/" + sourceId;
+	}
+
+	function mountNotes() {
+		if (typeof window.CogAppendFeedSectionNotes !== "function") return;
+		var hide = typeof window.CogFeedHideNoteEntry === "function" ? window.CogFeedHideNoteEntry : function () { return null; };
+		var host = panel.querySelector('[data-cog-feed-notes="inventory"]');
+		if (!host) return;
+		window.CogAppendFeedSectionNotes(host, "", storagePath() + "/", { hideEntry: hide("inventory") });
+	}
+
+	function onBound() {
+		mountNotes();
+	}
+
+	root.addEventListener("cog-html-settings-bound", onBound);
+	onBound();
+})();
+</script>

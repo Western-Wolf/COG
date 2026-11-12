@@ -1,0 +1,86 @@
+<div class="feed-location-type">
+	<label class="check-row compact">
+		<input type="checkbox" data-gizmo-value="showLocationDiscovery" data-gizmo-default="true" data-cog-feed-nested="loc-discovery">
+		<span data-translation="cog-feed-location-discovery" data-translation-fallback="Location Discovery">Location Discovery</span>
+	</label>
+	<div class="style-row feed-location-row is-nested" data-cog-feed-nested-panel="loc-discovery">
+		<input type="color" data-gizmo-field="color" data-gizmo-value="locationDiscoveryColor" data-gizmo-default="#e8d2a0" data-translation="cog-colour" data-translation-fallback="Colour">
+		<input type="text" data-gizmo-field="icon" data-gizmo-value="locationDiscoveryIcon" data-gizmo-default="Camping/map.svg" data-translation="cog-icon" data-translation-fallback="Icon">
+	</div>
+</div>
+<div class="feed-location-type">
+	<label class="check-row compact">
+		<input type="checkbox" data-gizmo-value="showCurrentLocation" data-gizmo-default="true" data-cog-feed-nested="loc-current">
+		<span data-translation="cog-feed-current-location" data-translation-fallback="Current Location">Current Location</span>
+	</label>
+	<div class="style-row feed-location-row is-nested" data-cog-feed-nested-panel="loc-current">
+		<input type="color" data-gizmo-field="color" data-gizmo-value="currentLocationColor" data-gizmo-default="#e8d2a0" data-translation="cog-colour" data-translation-fallback="Colour">
+		<input type="text" data-gizmo-field="icon" data-gizmo-value="currentLocationIcon" data-gizmo-default="Camping/compass.svg" data-translation="cog-icon" data-translation-fallback="Icon">
+	</div>
+</div>
+<label class="check-row compact">
+	<input type="checkbox" data-gizmo-value="showLocationIcons" data-gizmo-default="true">
+	<span data-translation="cog-feed-show-icons" data-translation-fallback="Show Icons">Show Icons</span>
+</label>
+<div data-cog-feed-notes="location"></div>
+<script>
+(function () {
+	var panel = document.currentScript && document.currentScript.parentElement;
+	if (!panel) return;
+	var sourceHost = panel.closest("[data-feed-source]");
+	var sourceId = sourceHost ? sourceHost.getAttribute("data-feed-source") : "cog-location";
+	var root = panel.closest(".gizmo-html-settings");
+	if (!root) return;
+
+	function storagePath() {
+		if (typeof window.CogFeedSourceStorage === "function") {
+			return window.CogFeedSourceStorage(sourceId);
+		}
+		return "gizmoTypes/cog-feed/sources/" + sourceId;
+	}
+
+	function isOn(sel) {
+		var el = panel.querySelector(sel);
+		if (!el) {
+			el = root.querySelector(sel);
+		}
+		return !!(el && el.checked);
+	}
+
+	function syncNested() {
+		panel.querySelectorAll("[data-cog-feed-nested]").forEach(function (input) {
+			var key = input.getAttribute("data-cog-feed-nested");
+			var nested = panel.querySelector('[data-cog-feed-nested-panel="' + key + '"]');
+			if (nested) nested.hidden = !input.checked;
+		});
+	}
+
+	function mountNotes() {
+		if (typeof window.CogAppendFeedSectionNotes !== "function") return;
+		var hide = typeof window.CogFeedHideNoteEntry === "function" ? window.CogFeedHideNoteEntry : function () { return null; };
+		var host = panel.querySelector('[data-cog-feed-notes="location"]');
+		if (!host) return;
+		var showCurrent = isOn('[data-gizmo-value="showCurrentLocation"]');
+		var showDiscovery = isOn('[data-gizmo-value="showLocationDiscovery"]');
+		var entryName = "locationBoth";
+		if (showCurrent && showDiscovery) entryName = "locationBoth";
+		else if (showCurrent) entryName = "locationCurrent";
+		else if (showDiscovery) entryName = "locationDiscovery";
+		window.CogAppendFeedSectionNotes(host, "", storagePath() + "/", { hideEntry: hide(entryName) });
+	}
+
+	function onBound() {
+		syncNested();
+		mountNotes();
+	}
+
+	root.addEventListener("cog-html-settings-bound", onBound);
+	panel.querySelectorAll("[data-cog-feed-nested], [data-gizmo-value='showCurrentLocation'], [data-gizmo-value='showLocationDiscovery']").forEach(function (el) {
+		el.addEventListener("change", function () {
+			syncNested();
+			mountNotes();
+		});
+	});
+	onBound();
+})();
+</script>

@@ -2,6 +2,7 @@
 #include "_Gizmo_Feed_API.h"
 #include "_Gizmo_Feed.h"
 #include "_Gizmo_Feed_Log.h"
+#include "_Gizmo_Feed_Sources.h"
 #include "_Core_Registry.h"
 #include "_UI_CogUi.h"
 
@@ -77,27 +78,30 @@ namespace
 		return s;
 	}
 
-	std::string NormalizeSource(std::string source)
+	std::string WarnReservedCogPrefix(std::string source)
 	{
 		source = TrimCopy(std::move(source));
-		if (source.empty()) {
-			return CogFeed::kSourceGeneral;
+		if (source.size() < 4) {
+			return source;
 		}
-		if (source.size() >= 4) {
-			const auto prefix = source.substr(0, 4);
-			bool cog = true;
-			for (std::size_t i = 0; i < 4; ++i) {
-				const char expect[] = { 'c', 'o', 'g', '-' };
-				if (std::tolower(static_cast<unsigned char>(prefix[i])) != expect[i]) {
-					cog = false;
-					break;
-				}
+		const auto prefix = source.substr(0, 4);
+		bool cog = true;
+		for (std::size_t i = 0; i < 4; ++i) {
+			const char expect[] = { 'c', 'o', 'g', '-' };
+			if (std::tolower(static_cast<unsigned char>(prefix[i])) != expect[i]) {
+				cog = false;
+				break;
 			}
-			if (cog && source != CogFeed::kSourceNotifications && source != CogFeed::kSourceInventory &&
-				source != CogFeed::kSourceLocation && source != CogFeed::kSourceSkills &&
-				source != CogFeed::kSourceEffects && !source.starts_with("cog-feed")) {
-				CogFeedLog::warn("Notify source '{}' uses reserved cog- prefix (non-builtin)", source);
-			}
+		}
+		if (!cog) {
+			return source;
+		}
+		const auto canon = CogFeedSources::CanonicalSourceId(source);
+		const bool builtin = canon == CogFeed::kSourceNotifications || canon == CogFeed::kSourceInventory ||
+			canon == CogFeed::kSourceLocation || canon == CogFeed::kSourceSkills ||
+			canon == CogFeed::kSourceQuests || canon == CogFeed::kSourceEffects;
+		if (!builtin && !source.starts_with("cog-feed")) {
+			CogFeedLog::warn("Notify source '{}' uses reserved cog- prefix (non-builtin)", source);
 		}
 		return source;
 	}
@@ -150,21 +154,27 @@ namespace
 
 bool CogFeed::SourceSectionVisible(std::string_view source)
 {
+	const auto route = CogFeedSources::RouteSourceId(source);
 	auto& reg = CogRegistry::Get();
-	if (source == kSourceInventory) {
+	if (route == kSourceInventory) {
 		return reg.HasVisibleFeedShowingInventory();
 	}
-	if (source == kSourceLocation) {
+	if (route == kSourceLocation) {
 		return reg.HasVisibleFeedDivertingLocationDiscovery() || reg.HasVisibleFeedDivertingCurrentLocation();
 	}
-	if (source == kSourceSkills) {
+	if (route == kSourceSkills) {
 		return reg.HasVisibleFeedShowingSkills();
 	}
-	if (source == kSourceEffects) {
+	if (route == kSourceQuests) {
+		return reg.HasVisibleFeedDivertingQuestStatus() || reg.HasVisibleFeedDivertingQuestObjectives();
+	}
+	if (route == kSourceEffects) {
 		return reg.AnyVisibleFeedShowsActiveEffects();
 	}
-	// notifications, general, unknown mod ids
-	return reg.HasVisibleFeedShowingNotifications();
+	if (route == kSourceNotifications) {
+		return reg.HasVisibleFeedShowingNotifications();
+	}
+	return reg.HasVisibleFeedShowingSource(route);
 }
 
 std::int32_t CogFeed::Notify(
@@ -177,7 +187,9 @@ std::int32_t CogFeed::Notify(
 	std::string type,
 	std::int32_t receipt)
 {
-	source = NormalizeSource(std::move(source));
+	const std::string provided = WarnReservedCogPrefix(std::move(source));
+	const std::string logSource = CogFeedSources::LogSourceLabel(provided);
+	const std::string routeSource = CogFeedSources::RouteSourceId(provided);
 	while (!message.empty() && (message.back() == '\n' || message.back() == '\r')) {
 		message.pop_back();
 	}
@@ -204,17 +216,17 @@ std::int32_t CogFeed::Notify(
 	}
 
 	if (message.empty() && !meter) {
-		CogFeedLog::debug("Notify dropped empty message source={}", source);
+		CogFeedLog::debug("Notify dropped empty message source={}", logSource);
 		return 0;
 	}
 
-	if (!SourceSectionVisible(source)) {
+	if (!SourceSectionVisible(provided)) {
 		static std::uint64_t s_drop = 0;
 		const auto n = ++s_drop;
 		if (n <= 8 || (n % 50) == 0) {
 			CogFeedLog::info(
 				"COG_Feed_API.Notify dropped source={} \"{}\"; dropCount={}",
-				source,
+				logSource,
 				message,
 				n);
 		}
@@ -246,10 +258,10 @@ std::int32_t CogFeed::Notify(
 					"Notify expired/unknown receipt={} → new id={} source={}",
 					receipt,
 					outReceipt,
-					source);
+					logSource);
 			}
 		}
-		line->source = std::move(source);
+		line->source = routeSource;
 		line->message = std::move(message);
 		line->color = std::move(color);
 		line->icon = std::move(icon);
@@ -262,8 +274,9 @@ std::int32_t CogFeed::Notify(
 		line->visible = true;
 		QueuePending(outReceipt);
 		CogFeedLog::debug(
-			"Notify queued id={} source={} meter={} \"{}\"",
+			"Notify queued id={} source={} route={} meter={} \"{}\"",
 			outReceipt,
+			logSource,
 			line->source,
 			line->meter ? 1 : 0,
 			line->message);
@@ -375,7 +388,7 @@ namespace
 	void LegacyNotify(RE::StaticFunctionTag*, std::string message, std::string color, std::string icon)
 	{
 		// Migration Code for Transition from v1.01 or earlier to v1.1:
-		// COG_API.Notify → COG_Feed_API.Notify (source omitted → general).
+		// COG_API.Notify → COG_Feed_API.Notify (source omitted → Notifications / log empty).
 		PapyrusNotify(
 			nullptr,
 			std::move(message),

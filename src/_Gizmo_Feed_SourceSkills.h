@@ -10,7 +10,7 @@ namespace CogFeed
 	/**
 	 * Classify a kSkillIncrease banner (skill vs level via pending SkillIncrease::Event),
 	 * enqueue into Feed only when that subtype's checkbox is on, and refresh the XP meter
-	 * when Level Progress is showing. Vanilla HUD is soft-hidden via hud.questUpdates when
+	 * when Level Progress is showing. Vanilla skill/level banners are diverted (kIgnore) when
 	 * the Skills section is on; caller always kIgnores when the section is visible.
 	 * @return true (always) — kept for call-site clarity / future gating.
 	 */

@@ -43,7 +43,475 @@ const DEFAULT_FEED_PROGRESS_BAR_WIDTH = 20;
 const DEFAULT_FEED_NUMBER_FORMAT = "barTotal";
 const DEFAULT_FEED_SKILL_ICON = "Scribe/book-open.svg";
 const DEFAULT_FEED_LEVEL_ICON = "Celestial/star.svg";
+const DEFAULT_FEED_QUEST_STATUS_ICON = "Scribe/scroll.svg";
+const DEFAULT_FEED_QUEST_OBJECTIVE_ICON = "Scribe/list.svg";
 const DEFAULT_FEED_ICON_PLACEMENT = "left";
+
+/** Canonical Feed source ids (builtins). */
+const FEED_SOURCE_NOTIFICATIONS = "cog-notifications";
+const FEED_SOURCE_INVENTORY = "cog-inventory";
+const FEED_SOURCE_LOCATION = "cog-location";
+const FEED_SOURCE_SKILLS = "cog-skills";
+const FEED_SOURCE_QUESTS = "cog-quests";
+const FEED_SOURCE_EFFECTS = "cog-effects";
+
+const FEED_SOURCE_LEGACY_ALIAS = {
+	"cog-feednotifications": FEED_SOURCE_NOTIFICATIONS,
+	"cog-feedinventory": FEED_SOURCE_INVENTORY,
+	"cog-feedlocation": FEED_SOURCE_LOCATION,
+	"cog-feedskills": FEED_SOURCE_SKILLS,
+	"cog-feedquests": FEED_SOURCE_QUESTS,
+	"cog-feedeffects": FEED_SOURCE_EFFECTS,
+	general: FEED_SOURCE_NOTIFICATIONS,
+	empty: FEED_SOURCE_NOTIFICATIONS
+};
+
+const FEED_SOURCE_LEGACY_SHOW = {
+	[FEED_SOURCE_NOTIFICATIONS]: "showNotifications",
+	[FEED_SOURCE_INVENTORY]: "showInventory",
+	[FEED_SOURCE_LOCATION]: "showLocation",
+	[FEED_SOURCE_SKILLS]: "showSkills",
+	[FEED_SOURCE_QUESTS]: "showQuests",
+	[FEED_SOURCE_EFFECTS]: "showActiveEffects"
+};
+
+/** Mod / generic Notify lines keyed by canonical source id. */
+const feedSourceLineBuffers = new Map();
+
+/** Builtin catalog fallback when C++ catalog has not arrived yet (checkboxes still work). */
+const FEED_BUILTIN_SOURCE_FALLBACK = [
+	{
+		id: FEED_SOURCE_EFFECTS,
+		sourceMod: "COG",
+		displayName: "Active Effects",
+		hudSuppress: ["hud.activeEffects"],
+		colourVars: ["effectsColor"],
+		settingsHtml: ""
+	},
+	{
+		id: FEED_SOURCE_INVENTORY,
+		sourceMod: "COG",
+		displayName: "Inventory",
+		hudSuppress: ["hud.inventory"],
+		colourVars: ["addColor", "removeColor", "stolenColor"],
+		settingsHtml: ""
+	},
+	{
+		id: FEED_SOURCE_LOCATION,
+		sourceMod: "COG",
+		displayName: "Location",
+		hudSuppress: ["hud.currentLocation"],
+		colourVars: ["locationDiscoveryColor", "currentLocationColor"],
+		settingsHtml: ""
+	},
+	{
+		id: FEED_SOURCE_NOTIFICATIONS,
+		sourceMod: "COG",
+		displayName: "Notifications",
+		hudSuppress: ["hud.notifications"],
+		colourVars: ["textColor"],
+		settingsHtml: ""
+	},
+	{
+		id: FEED_SOURCE_SKILLS,
+		sourceMod: "COG",
+		displayName: "Skills",
+		hudSuppress: [],
+		colourVars: ["skillProgressColor", "levelProgressColor"],
+		settingsHtml: ""
+	},
+	{
+		id: FEED_SOURCE_QUESTS,
+		sourceMod: "COG",
+		displayName: "Quests",
+		hudSuppress: [],
+		colourVars: ["questStatusColor", "questObjectiveColor"],
+		settingsHtml: ""
+	}
+];
+
+window.CogFeedSourceCatalog = window.CogFeedSourceCatalog || [];
+
+/** Merged catalog for Sources UI / suppress / paint extras (prefers live C++ catalog). */
+window.CogFeedSourceCatalogResolved = function CogFeedSourceCatalogResolved() {
+	const live = window.CogFeedSourceCatalog;
+	if (Array.isArray(live) && live.length) {
+		return live.slice();
+	}
+	if (typeof snapshot !== "undefined" && Array.isArray(snapshot.feedSources) && snapshot.feedSources.length) {
+		return snapshot.feedSources.slice();
+	}
+	return FEED_BUILTIN_SOURCE_FALLBACK.slice();
+};
+
+window.CogFeedSourceStorage = function CogFeedSourceStorage(sourceId) {
+	const id = String(sourceId || "").trim();
+	if (!id) {
+		return "";
+	}
+	const base =
+		typeof window.CogFeedStoragePath === "function"
+			? window.CogFeedStoragePath()
+			: "gizmoTypes/cog-feed";
+	return `${base}/sources/${id}`;
+};
+
+function feedCanonicalSourceId(raw) {
+	const s = String(raw == null ? "" : raw).trim();
+	if (!s) {
+		return "";
+	}
+	const lower = s.toLowerCase();
+	if (Object.prototype.hasOwnProperty.call(FEED_SOURCE_LEGACY_ALIAS, lower)) {
+		return FEED_SOURCE_LEGACY_ALIAS[lower];
+	}
+	if (
+		lower === FEED_SOURCE_NOTIFICATIONS ||
+		lower === FEED_SOURCE_INVENTORY ||
+		lower === FEED_SOURCE_LOCATION ||
+		lower === FEED_SOURCE_SKILLS ||
+		lower === FEED_SOURCE_QUESTS ||
+		lower === FEED_SOURCE_EFFECTS
+	) {
+		return lower;
+	}
+	return s;
+}
+
+function feedRouteSourceId(raw) {
+	const canon = feedCanonicalSourceId(raw);
+	if (!canon) {
+		return FEED_SOURCE_NOTIFICATIONS;
+	}
+	const catalog = window.CogFeedSourceCatalog || [];
+	if (catalog.some((e) => e && e.id === canon)) {
+		return canon;
+	}
+	if (
+		canon === FEED_SOURCE_NOTIFICATIONS ||
+		canon === FEED_SOURCE_INVENTORY ||
+		canon === FEED_SOURCE_LOCATION ||
+		canon === FEED_SOURCE_SKILLS ||
+		canon === FEED_SOURCE_QUESTS ||
+		canon === FEED_SOURCE_EFFECTS
+	) {
+		return canon;
+	}
+	return FEED_SOURCE_NOTIFICATIONS;
+}
+
+function feedSourceBag(settings, sourceId) {
+	const s = settings && typeof settings === "object" ? settings : {};
+	if (!s.sources || typeof s.sources !== "object") {
+		s.sources = {};
+	}
+	if (!s.sources[sourceId] || typeof s.sources[sourceId] !== "object") {
+		s.sources[sourceId] = {};
+	}
+	return s.sources[sourceId];
+}
+
+function feedTruthyFlag(value) {
+	return value === true || value === "true" || value === 1 || value === "1";
+}
+
+function feedSourceEnabled(settings, sourceId) {
+	const id = feedCanonicalSourceId(sourceId) || sourceId;
+	const s = settings || {};
+	const block = s.sources && s.sources[id];
+	if (block && typeof block === "object" && Object.prototype.hasOwnProperty.call(block, "enabled")) {
+		return feedTruthyFlag(block.enabled);
+	}
+	const legacy = FEED_SOURCE_LEGACY_SHOW[id];
+	if (legacy) {
+		return feedTruthyFlag(s[legacy]);
+	}
+	return false;
+}
+
+function feedSourceField(settings, sourceId, key, fallback) {
+	const id = feedCanonicalSourceId(sourceId) || sourceId;
+	const s = settings || {};
+	const block = s.sources && s.sources[id];
+	if (block && typeof block === "object" && Object.prototype.hasOwnProperty.call(block, key)) {
+		const v = block[key];
+		return v == null ? fallback : v;
+	}
+	if (Object.prototype.hasOwnProperty.call(s, key)) {
+		const v = s[key];
+		return v == null ? fallback : v;
+	}
+	return fallback;
+}
+
+function feedSourceFieldBool(settings, sourceId, key, fallback) {
+	const v = feedSourceField(settings, sourceId, key, fallback);
+	if (v === true || v === "true") {
+		return true;
+	}
+	if (v === false || v === "false") {
+		return false;
+	}
+	return !!fallback;
+}
+
+function defaultFeedSourceBlocks() {
+	return {
+		[FEED_SOURCE_NOTIFICATIONS]: {
+			enabled: false,
+			textColor: DEFAULT_GIZMO_GOLD,
+			notificationIcon: DEFAULT_FEED_NOTIFICATION_ICON,
+			showNotificationIcons: true,
+			allowModNotificationIcon: true,
+			allowModNotificationColor: true,
+			suppressInventory: true
+		},
+		[FEED_SOURCE_INVENTORY]: {
+			enabled: false,
+			addColor: DEFAULT_GIZMO_GOLD,
+			removeColor: DEFAULT_GIZMO_GOLD,
+			stolenColor: DEFAULT_GIZMO_GOLD,
+			icon: DEFAULT_FEED_INVENTORY_ICON,
+			showInventoryIcons: true
+		},
+		[FEED_SOURCE_LOCATION]: {
+			enabled: false,
+			showLocationDiscovery: true,
+			showCurrentLocation: true,
+			locationDiscoveryIcon: DEFAULT_FEED_LOCATION_DISCOVERY_ICON,
+			currentLocationIcon: DEFAULT_FEED_CURRENT_LOCATION_ICON,
+			locationDiscoveryColor: DEFAULT_GIZMO_GOLD,
+			currentLocationColor: DEFAULT_GIZMO_GOLD,
+			showLocationIcons: true
+		},
+		[FEED_SOURCE_SKILLS]: {
+			enabled: false,
+			showSkillProgress: true,
+			showLevelProgress: true,
+			skillProgressIcon: DEFAULT_FEED_SKILL_ICON,
+			levelProgressIcon: DEFAULT_FEED_LEVEL_ICON,
+			skillProgressColor: DEFAULT_GIZMO_GOLD,
+			levelProgressColor: DEFAULT_GIZMO_GOLD,
+			showSkillIcons: true
+		},
+		[FEED_SOURCE_QUESTS]: {
+			enabled: false,
+			showQuestStatus: true,
+			showQuestObjectives: true,
+			questStatusIcon: DEFAULT_FEED_QUEST_STATUS_ICON,
+			questObjectiveIcon: DEFAULT_FEED_QUEST_OBJECTIVE_ICON,
+			questStatusColor: DEFAULT_GIZMO_GOLD,
+			questObjectiveColor: DEFAULT_GIZMO_GOLD,
+			showQuestIcons: true
+		},
+		[FEED_SOURCE_EFFECTS]: {
+			enabled: false,
+			effectsColor: DEFAULT_GIZMO_GOLD,
+			effectIcon: DEFAULT_FEED_EFFECT_ICON,
+			showEffectIcons: true,
+			showEffectText: true,
+			showEffectTimer: true,
+			suppressTransformEffects: true
+		}
+	};
+}
+
+/** hudSuppress alias → builtin source id (recover enables after a bad flat→nested pass). */
+const FEED_SUPPRESS_ALIAS_TO_SOURCE = {
+	"hud.notifications": FEED_SOURCE_NOTIFICATIONS,
+	"hud.inventory": FEED_SOURCE_INVENTORY,
+	"hud.currentLocation": FEED_SOURCE_LOCATION,
+	"hud.questUpdates": FEED_SOURCE_SKILLS,
+	"hud.activeEffects": FEED_SOURCE_EFFECTS
+};
+
+/** Bump when heal rules change so one-shot recovery can re-run on older bags. */
+const FEED_SOURCES_VERSION = 3;
+
+function feedSourcesBagLooksValid(sources) {
+	if (!sources || typeof sources !== "object" || Array.isArray(sources)) {
+		return false;
+	}
+	const defaults = defaultFeedSourceBlocks();
+	for (const id of Object.keys(defaults)) {
+		const block = sources[id];
+		if (!block || typeof block !== "object" || Array.isArray(block)) {
+			return false;
+		}
+		if (!Object.prototype.hasOwnProperty.call(block, "enabled")) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/**
+ * Migration / heal: flat show* + colours → settings.sources.<id>.
+ * Always rewrites when bag/blocks/flat keys are malformed (not a one-shot flag-only gate).
+ */
+function migrateFeedFlatSources(s, gizmo) {
+	if (!s || typeof s !== "object") {
+		return false;
+	}
+	let migrated = false;
+	const movedKeys = [
+		"textColor",
+		"addColor",
+		"removeColor",
+		"stolenColor",
+		"effectsColor",
+		"effectIcon",
+		"notificationIcon",
+		"icon",
+		"showEffectIcons",
+		"showEffectText",
+		"showEffectTimer",
+		"suppressTransformEffects",
+		"showNotificationIcons",
+		"showInventoryIcons",
+		"showLocationIcons",
+		"showSkillIcons",
+		"allowModNotificationIcon",
+		"allowModNotificationColor",
+		"suppressInventory",
+		"showLocationDiscovery",
+		"showCurrentLocation",
+		"locationDiscoveryIcon",
+		"currentLocationIcon",
+		"locationDiscoveryColor",
+		"currentLocationColor",
+		"showSkillProgress",
+		"showLevelProgress",
+		"skillProgressIcon",
+		"levelProgressIcon",
+		"skillProgressColor",
+		"levelProgressColor",
+		"questStatusIcon",
+		"questObjectiveIcon",
+		"questStatusColor",
+		"questObjectiveColor",
+		"showQuestStatus",
+		"showQuestObjectives",
+		"showQuestIcons"
+	];
+	const hadNoSourcesBag = !s.sources || typeof s.sources !== "object" || Array.isArray(s.sources);
+	const legacyShowPresent = Object.values(FEED_SOURCE_LEGACY_SHOW).some((k) =>
+		Object.prototype.hasOwnProperty.call(s, k)
+	);
+	const legacyFlatPresent = movedKeys.some((k) => Object.prototype.hasOwnProperty.call(s, k));
+	const haveVersion = Number(s.feedSourcesVersion);
+	const versionOk = Number.isFinite(haveVersion) && haveVersion >= FEED_SOURCES_VERSION;
+	const bagOk = !hadNoSourcesBag && feedSourcesBagLooksValid(s.sources);
+	const needsHeal = !bagOk || legacyShowPresent || legacyFlatPresent || !versionOk;
+	const needsSuppressRecover =
+		(!versionOk || s.feedSourcesMigrated === true || s.feedSourcesMigrated === 1) &&
+		!legacyShowPresent;
+	if (hadNoSourcesBag) {
+		s.sources = {};
+		migrated = true;
+	}
+	const defaults = defaultFeedSourceBlocks();
+	const catalog =
+		typeof window.CogFeedSourceCatalogResolved === "function"
+			? window.CogFeedSourceCatalogResolved()
+			: Array.isArray(window.CogFeedSourceCatalog)
+				? window.CogFeedSourceCatalog
+				: [];
+	const ids = new Set(Object.keys(defaults));
+	for (const entry of catalog) {
+		if (entry && entry.id) {
+			ids.add(String(entry.id));
+		}
+	}
+	// 1) Ensure every available source block exists (builtins + catalog).
+	for (const id of ids) {
+		const def = defaults[id] || { enabled: false };
+		const prev = s.sources[id] && typeof s.sources[id] === "object" && !Array.isArray(s.sources[id])
+			? s.sources[id]
+			: null;
+		if (!prev) {
+			migrated = true;
+		}
+		const block = { ...def, ...(prev || {}) };
+		for (const key of Object.keys(def)) {
+			if (key === "enabled") {
+				continue;
+			}
+			if (Object.prototype.hasOwnProperty.call(s, key) && s[key] != null) {
+				block[key] = s[key];
+				migrated = true;
+			}
+		}
+		if (!Object.prototype.hasOwnProperty.call(block, "enabled")) {
+			block.enabled = false;
+			migrated = true;
+		}
+		s.sources[id] = block;
+	}
+	// 2) Flat show* → nested enabled (legacy shape or heal pass).
+	if (needsHeal || legacyShowPresent) {
+		for (const [id, showKey] of Object.entries(FEED_SOURCE_LEGACY_SHOW)) {
+			if (!Object.prototype.hasOwnProperty.call(s, showKey)) {
+				continue;
+			}
+			const block = feedSourceBag(s, id);
+			const next = feedTruthyFlag(s[showKey]);
+			if (block.enabled !== next) {
+				block.enabled = next;
+				migrated = true;
+			}
+		}
+	}
+	const anyEnabled = [...ids].some((id) => feedSourceEnabled(s, id));
+	// Recover enables from soft-hide list when flat show* were already wiped but bag was bad.
+	if (
+		needsHeal &&
+		needsSuppressRecover &&
+		!anyEnabled &&
+		gizmo &&
+		Array.isArray(gizmo.hudSuppress) &&
+		gizmo.hudSuppress.length
+	) {
+		for (const alias of gizmo.hudSuppress) {
+			const sourceId = FEED_SUPPRESS_ALIAS_TO_SOURCE[String(alias || "")];
+			if (!sourceId || !s.sources[sourceId]) {
+				continue;
+			}
+			if (!feedTruthyFlag(s.sources[sourceId].enabled)) {
+				s.sources[sourceId].enabled = true;
+				migrated = true;
+			}
+		}
+	}
+	for (const showKey of Object.values(FEED_SOURCE_LEGACY_SHOW)) {
+		if (Object.prototype.hasOwnProperty.call(s, showKey)) {
+			delete s[showKey];
+			migrated = true;
+		}
+	}
+	for (const key of movedKeys) {
+		if (Object.prototype.hasOwnProperty.call(s, key)) {
+			delete s[key];
+			migrated = true;
+		}
+	}
+	if (s.feedSourcesVersion !== FEED_SOURCES_VERSION) {
+		s.feedSourcesVersion = FEED_SOURCES_VERSION;
+		migrated = true;
+	}
+	if (Object.prototype.hasOwnProperty.call(s, "feedSourcesMigrated")) {
+		delete s.feedSourcesMigrated;
+		migrated = true;
+	}
+	return migrated || needsHeal;
+}
+
+function scheduleFeedSettingsPersist() {
+	if (!layoutHydrated || typeof scheduleSave !== "function") {
+		return;
+	}
+	scheduleSave(false);
+}
 
 function normalizeStackOrigin(value) {
 	return String(value || "").toLowerCase() === "top" ? "top" : "bottom";
@@ -210,6 +678,18 @@ function normalizeFeedLevelIcon(value) {
 	return normalizeFeedIcon(value, DEFAULT_FEED_LEVEL_ICON);
 }
 
+function normalizeFeedQuestStatusIcon(value) {
+	return normalizeFeedIcon(value, DEFAULT_FEED_QUEST_STATUS_ICON);
+}
+
+function normalizeFeedQuestObjectiveIcon(value) {
+	return normalizeFeedIcon(value, DEFAULT_FEED_QUEST_OBJECTIVE_ICON);
+}
+
+function normalizeQuestKind(value) {
+	return String(value || "").toLowerCase() === "objective" ? "objective" : "status";
+}
+
 function normalizeFeedEffectIcon(value) {
 	return normalizeFeedIcon(value, DEFAULT_FEED_EFFECT_ICON);
 }
@@ -227,54 +707,19 @@ function defaultFeedGizmo(n) {
 		fontSize: DEFAULT_GIZMO_FONT_SIZE,
 		textAlign: DEFAULT_FEED_TEXT_ALIGN,
 		iconPlacement: DEFAULT_FEED_ICON_PLACEMENT,
-		textColor: DEFAULT_GIZMO_GOLD,
-		addColor: DEFAULT_GIZMO_GOLD,
-		removeColor: DEFAULT_GIZMO_GOLD,
-		stolenColor: DEFAULT_GIZMO_GOLD,
 		maxVisible: DEFAULT_FEED_MAX,
 		stackOrigin: DEFAULT_FEED_STACK_ORIGIN,
 		duration: DEFAULT_FEED_DURATION,
 		fade: DEFAULT_FEED_FADE,
-		showNotifications: false,
-		showInventory: false,
-		showLocation: false,
-		showActiveEffects: false,
-		showSkills: false,
 		timerMinSec: 1,
 		timerMaxSec: 180,
-		showEffectIcons: true,
-		showEffectText: true,
-		showEffectTimer: true,
 		progressBarWidth: DEFAULT_FEED_PROGRESS_BAR_WIDTH,
 		numberFormat: DEFAULT_FEED_NUMBER_FORMAT,
 		barColor: typeof defaultFillColor === "function" ? defaultFillColor() : "#c4a35a",
-		effectIcon: DEFAULT_FEED_EFFECT_ICON,
-		effectsColor: DEFAULT_GIZMO_GOLD,
-		suppressTransformEffects: true,
-		showNotificationIcons: true,
-		showInventoryIcons: true,
-		showLocationIcons: true,
-		showSkillIcons: true,
-		notificationIcon: DEFAULT_FEED_NOTIFICATION_ICON,
-		allowModNotificationIcon: true,
-		allowModNotificationColor: true,
-		suppressInventory: true,
-		showLocationDiscovery: true,
-		showCurrentLocation: true,
-		locationDiscoveryIcon: DEFAULT_FEED_LOCATION_DISCOVERY_ICON,
-		currentLocationIcon: DEFAULT_FEED_CURRENT_LOCATION_ICON,
-		locationDiscoveryColor: DEFAULT_GIZMO_GOLD,
-		currentLocationColor: DEFAULT_GIZMO_GOLD,
-		showSkillProgress: true,
-		showLevelProgress: true,
-		skillProgressIcon: DEFAULT_FEED_SKILL_ICON,
-		levelProgressIcon: DEFAULT_FEED_LEVEL_ICON,
-		skillProgressColor: DEFAULT_GIZMO_GOLD,
-		levelProgressColor: DEFAULT_GIZMO_GOLD,
 		backdropColor: DEFAULT_FEED_BACKDROP_COLOR,
 		backdropOpacity: DEFAULT_FEED_BACKDROP_OPACITY,
 		backdropDirection: DEFAULT_FEED_BACKDROP_DIRECTION,
-		icon: DEFAULT_FEED_INVENTORY_ICON
+		sources: defaultFeedSourceBlocks()
 	};
 	settings.displayName =
 		typeof formatStockName === "function"
@@ -298,30 +743,26 @@ function defaultFeedGizmo(n) {
 	};
 }
 
-/** Soft-hide aliases derived from Feed section / nested toggles (root hudSuppress). */
+/** Soft-hide aliases: union of registered hudSuppress for enabled sources (flat). */
 function feedHudSuppressKeysFromSettings(s) {
 	const keys = [];
-	if (!s || typeof s !== "object") {
-		return keys;
-	}
-	if (s.showNotifications === true || s.showNotifications === "true") {
-		keys.push("hud.notifications");
-	}
-	if (s.showInventory === true || s.showInventory === "true") {
-		keys.push("hud.inventory");
-	}
-	if (
-		(s.showLocation === true || s.showLocation === "true") &&
-		s.showCurrentLocation !== false &&
-		s.showCurrentLocation !== "false"
-	) {
-		keys.push("hud.currentLocation");
-	}
-	if (s.showActiveEffects === true || s.showActiveEffects === "true") {
-		keys.push("hud.activeEffects");
-	}
-	if (s.showSkills === true || s.showSkills === "true") {
-		keys.push("hud.questUpdates");
+	const seen = Object.create(null);
+	const catalog =
+		typeof window.CogFeedSourceCatalogResolved === "function"
+			? window.CogFeedSourceCatalogResolved()
+			: window.CogFeedSourceCatalog || [];
+	for (const entry of catalog) {
+		if (!entry || !entry.id || !feedSourceEnabled(s, entry.id)) {
+			continue;
+		}
+		const list = Array.isArray(entry.hudSuppress) ? entry.hudSuppress : [];
+		for (const alias of list) {
+			if (!alias || seen[alias]) {
+				continue;
+			}
+			seen[alias] = true;
+			keys.push(alias);
+		}
 	}
 	return typeof normalizeGizmoHudSuppressList === "function"
 		? normalizeGizmoHudSuppressList(keys)
@@ -379,10 +820,6 @@ function ensureFeedGizmo(gizmo) {
 	s.fontSize = Math.max(0, Number(s.fontSize) || DEFAULT_GIZMO_FONT_SIZE);
 	s.textAlign = normalizeClockTextAlign(s.textAlign || DEFAULT_FEED_TEXT_ALIGN);
 	s.iconPlacement = normalizeFeedIconPlacement(s.iconPlacement || DEFAULT_FEED_ICON_PLACEMENT);
-	s.textColor = optionalHex(s.textColor);
-	s.addColor = optionalHex(s.addColor);
-	s.removeColor = optionalHex(s.removeColor);
-	s.stolenColor = optionalHex(s.stolenColor);
 	s.maxVisible = Math.max(1, Math.min(20, Math.round(Number(s.maxVisible) || DEFAULT_FEED_MAX)));
 	s.stackOrigin = normalizeStackOrigin(s.stackOrigin || DEFAULT_FEED_STACK_ORIGIN);
 	// Migration Code for Transition from v1.11 or earlier to v1.2: durationMs/fadeMs → duration/fade (seconds).
@@ -405,11 +842,6 @@ function ensureFeedGizmo(gizmo) {
 		const n = Number(s.fade);
 		s.fade = Math.max(0, Math.min(2, Number.isFinite(n) ? n : DEFAULT_FEED_FADE));
 	}
-	s.showNotifications = s.showNotifications === true || s.showNotifications === "true";
-	s.showInventory = s.showInventory === true || s.showInventory === "true";
-	s.showLocation = s.showLocation === true || s.showLocation === "true";
-	s.showActiveEffects = s.showActiveEffects === true || s.showActiveEffects === "true";
-	s.showSkills = s.showSkills === true || s.showSkills === "true";
 	// Migration Code for Transition from v1.01 or earlier to v1.1:
 	// effectsMinSec/effectsMaxSec → timerMinSec/timerMaxSec (shared Progress Bar window).
 	if (Object.prototype.hasOwnProperty.call(s, "effectsMinSec")) {
@@ -439,38 +871,9 @@ function ensureFeedGizmo(gizmo) {
 	if (s.timerMaxSec > 0 && s.timerMinSec > s.timerMaxSec) {
 		s.timerMinSec = s.timerMaxSec;
 	}
-	s.showEffectIcons = s.showEffectIcons !== false;
-	s.showEffectText = s.showEffectText !== false;
-	s.showEffectTimer = s.showEffectTimer !== false;
 	s.numberFormat = normalizeNumberFormat(s.numberFormat, DEFAULT_FEED_NUMBER_FORMAT);
 	s.progressBarWidth = feedProgressBarWidth(s);
 	s.barColor = optionalHex(s.barColor);
-	s.effectIcon = normalizeFeedEffectIcon(s.effectIcon);
-	s.effectsColor = optionalHex(s.effectsColor);
-	s.suppressTransformEffects = s.suppressTransformEffects !== false;
-	if (!s.showEffectIcons && !s.showEffectText && !s.showEffectTimer) {
-		s.showEffectText = true;
-	}
-	s.showNotificationIcons = s.showNotificationIcons !== false;
-	s.showInventoryIcons = s.showInventoryIcons !== false;
-	s.showLocationIcons = s.showLocationIcons !== false;
-	s.showSkillIcons = s.showSkillIcons !== false;
-	s.notificationIcon = normalizeFeedNotificationIcon(s.notificationIcon);
-	s.allowModNotificationIcon = s.allowModNotificationIcon !== false;
-	s.allowModNotificationColor = s.allowModNotificationColor !== false;
-	s.suppressInventory = s.suppressInventory !== false;
-	s.showLocationDiscovery = s.showLocationDiscovery !== false;
-	s.showCurrentLocation = s.showCurrentLocation !== false;
-	s.locationDiscoveryIcon = normalizeFeedLocationDiscoveryIcon(s.locationDiscoveryIcon);
-	s.currentLocationIcon = normalizeFeedCurrentLocationIcon(s.currentLocationIcon);
-	s.locationDiscoveryColor = optionalHex(s.locationDiscoveryColor);
-	s.currentLocationColor = optionalHex(s.currentLocationColor);
-	s.showSkillProgress = s.showSkillProgress !== false;
-	s.showLevelProgress = s.showLevelProgress !== false;
-	s.skillProgressIcon = normalizeFeedSkillIcon(s.skillProgressIcon);
-	s.levelProgressIcon = normalizeFeedLevelIcon(s.levelProgressIcon);
-	s.skillProgressColor = optionalHex(s.skillProgressColor);
-	s.levelProgressColor = optionalHex(s.levelProgressColor);
 	s.backdropColor = optionalHex(s.backdropColor);
 	s.backdropOpacity = quantizePct(
 		Math.max(
@@ -482,13 +885,96 @@ function ensureFeedGizmo(gizmo) {
 		)
 	);
 	s.backdropDirection = normalizeFeedBackdropDirection(s.backdropDirection || DEFAULT_FEED_BACKDROP_DIRECTION);
-	s.icon = normalizeFeedInventoryIcon(s.icon);
+	// Nested sources bag (flat show* keys / colours migrate in; hudSuppress recovers enables).
+	const sourcesMigrated = migrateFeedFlatSources(s, gizmo);
+	{
+		const n = feedSourceBag(s, FEED_SOURCE_NOTIFICATIONS);
+		n.enabled = feedTruthyFlag(n.enabled);
+		n.textColor = optionalHex(n.textColor);
+		n.notificationIcon = normalizeFeedNotificationIcon(n.notificationIcon);
+		n.showNotificationIcons = n.showNotificationIcons !== false;
+		n.allowModNotificationIcon = n.allowModNotificationIcon !== false;
+		n.allowModNotificationColor = n.allowModNotificationColor !== false;
+		n.suppressInventory = n.suppressInventory !== false;
+	}
+	{
+		const inv = feedSourceBag(s, FEED_SOURCE_INVENTORY);
+		inv.enabled = feedTruthyFlag(inv.enabled);
+		inv.addColor = optionalHex(inv.addColor);
+		inv.removeColor = optionalHex(inv.removeColor);
+		inv.stolenColor = optionalHex(inv.stolenColor);
+		inv.icon = normalizeFeedInventoryIcon(inv.icon);
+		inv.showInventoryIcons = inv.showInventoryIcons !== false;
+	}
+	{
+		const loc = feedSourceBag(s, FEED_SOURCE_LOCATION);
+		loc.enabled = feedTruthyFlag(loc.enabled);
+		loc.showLocationDiscovery = loc.showLocationDiscovery !== false;
+		loc.showCurrentLocation = loc.showCurrentLocation !== false;
+		loc.locationDiscoveryIcon = normalizeFeedLocationDiscoveryIcon(loc.locationDiscoveryIcon);
+		loc.currentLocationIcon = normalizeFeedCurrentLocationIcon(loc.currentLocationIcon);
+		loc.locationDiscoveryColor = optionalHex(loc.locationDiscoveryColor);
+		loc.currentLocationColor = optionalHex(loc.currentLocationColor);
+		loc.showLocationIcons = loc.showLocationIcons !== false;
+	}
+	{
+		const sk = feedSourceBag(s, FEED_SOURCE_SKILLS);
+		sk.enabled = feedTruthyFlag(sk.enabled);
+		sk.showSkillProgress = sk.showSkillProgress !== false;
+		sk.showLevelProgress = sk.showLevelProgress !== false;
+		sk.skillProgressIcon = normalizeFeedSkillIcon(sk.skillProgressIcon);
+		sk.levelProgressIcon = normalizeFeedLevelIcon(sk.levelProgressIcon);
+		sk.skillProgressColor = optionalHex(sk.skillProgressColor);
+		sk.levelProgressColor = optionalHex(sk.levelProgressColor);
+		sk.showSkillIcons = sk.showSkillIcons !== false;
+	}
+	{
+		const q = feedSourceBag(s, FEED_SOURCE_QUESTS);
+		q.enabled = feedTruthyFlag(q.enabled);
+		q.showQuestStatus = q.showQuestStatus !== false;
+		q.showQuestObjectives = q.showQuestObjectives !== false;
+		q.questStatusIcon = normalizeFeedQuestStatusIcon(q.questStatusIcon);
+		q.questObjectiveIcon = normalizeFeedQuestObjectiveIcon(q.questObjectiveIcon);
+		q.questStatusColor = optionalHex(q.questStatusColor);
+		q.questObjectiveColor = optionalHex(q.questObjectiveColor);
+		q.showQuestIcons = q.showQuestIcons !== false;
+	}
+	{
+		const fx = feedSourceBag(s, FEED_SOURCE_EFFECTS);
+		fx.enabled = feedTruthyFlag(fx.enabled);
+		fx.effectsColor = optionalHex(fx.effectsColor);
+		fx.effectIcon = normalizeFeedEffectIcon(fx.effectIcon);
+		fx.showEffectIcons = fx.showEffectIcons !== false;
+		fx.showEffectText = fx.showEffectText !== false;
+		fx.showEffectTimer = fx.showEffectTimer !== false;
+		fx.suppressTransformEffects = fx.suppressTransformEffects !== false;
+		if (!fx.showEffectIcons && !fx.showEffectText && !fx.showEffectTimer) {
+			fx.showEffectText = true;
+		}
+	}
+	// Normalize enabled on any extra (mod) catalog sources pushed above.
+	if (s.sources && typeof s.sources === "object") {
+		for (const block of Object.values(s.sources)) {
+			if (block && typeof block === "object" && Object.prototype.hasOwnProperty.call(block, "enabled")) {
+				block.enabled = feedTruthyFlag(block.enabled);
+			}
+		}
+	}
+	// Drop leftover flat textColor from pre-migration ensureGizmoSettings merges.
+	delete s.textColor;
+	delete s.addColor;
+	delete s.removeColor;
+	delete s.stolenColor;
+	delete s.icon;
 	gizmo.typeId = "cog-feed";
 	// Missing visibility → type default (cog-feed→ui), not a hard-coded coerce of "hud".
 	gizmo.visibility = coalesceGizmoVisibility(gizmo, "cog-feed");
 	gizmo.hudSuppress = feedHudSuppressKeysFromSettings(s);
 	gizmo.settings = s;
 	gizmo.settingsJson = JSON.stringify(s);
+	if (sourcesMigrated) {
+		scheduleFeedSettingsPersist();
+	}
 	return gizmo;
 }
 
@@ -505,6 +991,8 @@ let locationFeedLines = [];
 let locationFeedSeq = 1;
 let skillFeedLines = [];
 let skillFeedSeq = 1;
+let questFeedLines = [];
+let questFeedSeq = 1;
 /** Live character level progress for Skills section (values from Notify meter). */
 let levelProgressLive = null;
 /** When the meter last received an update — used to flash it without a skill toast. */
@@ -586,7 +1074,8 @@ function feedExpireReceipt(id) {
 function applyNotifyFeedEvent(incoming, noPaint) {
 	const op = String(incoming.op || "upsert").toLowerCase();
 	const id = incoming.id != null ? Number(incoming.id) : null;
-	const source = String(incoming.source || "general").toLowerCase();
+	const sourceRaw = String(incoming.source == null ? "" : incoming.source).trim();
+	const source = feedRouteSourceId(sourceRaw);
 	if (op === "dismiss") {
 		if (id != null && activeEffectLive.has(String(id))) {
 			const prev = activeEffectLive.get(String(id));
@@ -630,7 +1119,7 @@ function applyNotifyFeedEvent(incoming, noPaint) {
 		activeEffectFading.delete(key);
 		return;
 	}
-	if (hasMeter && (source === "cog-feedskills" || source.indexOf("skill") >= 0)) {
+	if (hasMeter && (source === FEED_SOURCE_SKILLS || source.indexOf("skill") >= 0)) {
 		const xp = Number(incoming.current) || 0;
 		const threshold = Number(incoming.max) || 1;
 		const progress = threshold > 0 ? Math.max(0, Math.min(1, xp / threshold)) : 0;
@@ -663,14 +1152,14 @@ function applyNotifyFeedEvent(incoming, noPaint) {
 		return;
 	}
 
-	if (source === "cog-feedinventory") {
+	if (source === FEED_SOURCE_INVENTORY) {
 		enqueueInventoryFeedLine(text, 0, true, icon, id, false, {
 			...noPaint,
 			color: color || ""
 		});
 		return;
 	}
-	if (source === "cog-feedlocation") {
+	if (source === FEED_SOURCE_LOCATION) {
 		// Icon/colour are fully resolved by the location source; kind only affects demo filters.
 		enqueueLocationFeedLine(text, "discovery", id, icon, {
 			...noPaint,
@@ -678,23 +1167,59 @@ function applyNotifyFeedEvent(incoming, noPaint) {
 		});
 		return;
 	}
-	if (source === "cog-feedskills") {
+	if (source === FEED_SOURCE_SKILLS) {
 		enqueueSkillFeedLine(text, "skill", icon, "", id, {
 			...noPaint,
 			color: color || ""
 		});
 		return;
 	}
-	enqueueNotificationFeedLine(text, color, id, icon, noPaint);
+	if (source === FEED_SOURCE_QUESTS) {
+		// Colour token owner distinguishes status vs objective; default status.
+		const questKind =
+			String(color || "").indexOf("questObjective") >= 0 ? "objective" : "status";
+		enqueueQuestFeedLine(text, questKind, icon, id, {
+			...noPaint,
+			color: color || ""
+		});
+		return;
+	}
+	if (source === FEED_SOURCE_NOTIFICATIONS || source === FEED_SOURCE_EFFECTS) {
+		enqueueNotificationFeedLine(text, color, id, icon, noPaint);
+		return;
+	}
+	// Mod / generic registered sources — Notifications-style toast chrome in that source's buffer.
+	enqueueGenericSourceFeedLine(source, text, color, id, icon, noPaint);
+}
+
+function enqueueGenericSourceFeedLine(sourceId, text, color, id, icon, opts) {
+	const now = performance.now();
+	const entry = {
+		id: id != null ? id : notificationFeedSeq++,
+		text: String(text || ""),
+		color: color || "",
+		icon: normalizeIconRelPath(icon) || "",
+		addedAt: now
+	};
+	let list = feedSourceLineBuffers.get(sourceId);
+	if (!list) {
+		list = [];
+		feedSourceLineBuffers.set(sourceId, list);
+	}
+	list.push(entry);
+	feedSourceLineBuffers.set(sourceId, pruneFeedLineRing(list, now));
+	if (!(opts && opts.noPaint) && typeof paintAllGizmos === "function") {
+		paintAllGizmos();
+	}
 }
 
 const NOTIFICATION_FEED_PREVIEW_DEMO_COLOR = "#c4a35a";
 const NOTIFICATION_FEED_PREVIEW_DEMO_ICON = "Actions/shout.svg";
 
 function notificationFeedPreviewSamples(gizmo) {
-	const allowIcon = gizmo.settings.allowModNotificationIcon !== false;
-	const allowColor = gizmo.settings.allowModNotificationColor !== false;
-	const showIcons = gizmo.settings.showNotificationIcons !== false;
+	const allowIcon = feedSourceFieldBool(gizmo.settings, FEED_SOURCE_NOTIFICATIONS, 'allowModNotificationIcon', true) !== false;
+	const allowColor = feedSourceFieldBool(gizmo.settings, FEED_SOURCE_NOTIFICATIONS, 'allowModNotificationColor', true) !== false;
+	const showIcons = feedSourceFieldBool(gizmo.settings, FEED_SOURCE_NOTIFICATIONS, 'showNotificationIcons', true) !== false;
 
 	const samples = [
 	{ text: "Something happened.", color: "", icon: "" },
@@ -904,6 +1429,26 @@ function enqueueSkillFeedLine(text, kind, icon, skillName, id, opts) {
 	}
 }
 
+function enqueueQuestFeedLine(text, kind, icon, id, opts) {
+	const now = performance.now();
+	const entry = {
+		id: id != null ? Number(id) : questFeedSeq++,
+		text: String(text || "").trim(),
+		kind: normalizeQuestKind(kind),
+		icon: normalizeIconRelPath(icon) || "",
+		color: opts && opts.color ? String(opts.color) : "",
+		addedAt: now
+	};
+	if (!entry.text) {
+		return;
+	}
+	questFeedLines.push(entry);
+	questFeedLines = pruneFeedLineRing(questFeedLines, now);
+	if (!opts || opts.paint !== false) {
+		paintAllFeeds();
+	}
+}
+
 window.applyFeedEvents = (jsonStr) => {
 	try {
 		const list = typeof jsonStr === "string" ? JSON.parse(jsonStr || "[]") : jsonStr;
@@ -949,6 +1494,14 @@ window.applyFeedEvents = (jsonStr) => {
 						incoming.kind,
 						incoming.icon,
 						incoming.skillName,
+						incoming.id,
+						noPaint
+					);
+				} else if (channel === "quest" || channel === "quests") {
+					enqueueQuestFeedLine(
+						incoming.text,
+						incoming.kind,
+						incoming.icon,
 						incoming.id,
 						noPaint
 					);
@@ -1058,7 +1611,7 @@ function feedVisibleLines(gizmo, now, preview) {
 	const merged = [];
 
 
-	if (gizmo.settings.showNotifications) {
+	if (feedSourceEnabled(gizmo.settings, FEED_SOURCE_NOTIFICATIONS)) {
 		let source = notificationFeedLines;
 		if (editorOpen) {
 			const aliveReal = notificationFeedLines.filter((line) => now - line.addedAt < life);
@@ -1093,7 +1646,7 @@ function feedVisibleLines(gizmo, now, preview) {
 	}
 
 
-	if (gizmo.settings.showInventory) {
+	if (feedSourceEnabled(gizmo.settings, FEED_SOURCE_INVENTORY)) {
 		let source = inventoryFeedLines;
 		if (editorOpen) {
 			const aliveReal = inventoryFeedLines.filter((line) => now - line.addedAt < life);
@@ -1133,16 +1686,16 @@ function feedVisibleLines(gizmo, now, preview) {
 	}
 
 
-	if (gizmo.settings.showLocation) {
+	if (feedSourceEnabled(gizmo.settings, FEED_SOURCE_LOCATION)) {
 		let source = locationFeedLines;
 		if (editorOpen) {
 			const aliveReal = locationFeedLines.filter((line) => now - line.addedAt < life);
 			if (!aliveReal.length) {
 				source = LOCATION_FEED_PREVIEW.filter((sample) => {
 					if (sample.kind === "discovery") {
-						return gizmo.settings.showLocationDiscovery !== false;
+						return feedSourceFieldBool(gizmo.settings, FEED_SOURCE_LOCATION, 'showLocationDiscovery', true) !== false;
 					}
-					return gizmo.settings.showCurrentLocation !== false;
+					return feedSourceFieldBool(gizmo.settings, FEED_SOURCE_LOCATION, 'showCurrentLocation', true) !== false;
 				}).map((sample, i) => ({
 					id: `preview-l-${i}`,
 					text: sample.text,
@@ -1162,10 +1715,10 @@ function feedVisibleLines(gizmo, now, preview) {
 			// Live lines are gated in C++ before Notify; kind on the toast may be omitted.
 			// Demo previews still honour discovery / current checkboxes.
 			if (line.demo) {
-				if (locKind === "discovery" && gizmo.settings.showLocationDiscovery === false) {
+				if (locKind === "discovery" && feedSourceFieldBool(gizmo.settings, FEED_SOURCE_LOCATION, 'showLocationDiscovery', true) === false) {
 					continue;
 				}
-				if (locKind === "current" && gizmo.settings.showCurrentLocation === false) {
+				if (locKind === "current" && feedSourceFieldBool(gizmo.settings, FEED_SOURCE_LOCATION, 'showCurrentLocation', true) === false) {
 					continue;
 				}
 			}
@@ -1184,7 +1737,7 @@ function feedVisibleLines(gizmo, now, preview) {
 	}
 
 
-	if (gizmo.settings.showActiveEffects) {
+	if (feedSourceEnabled(gizmo.settings, FEED_SOURCE_EFFECTS)) {
 		const effectFade = Math.max(1, fade);
 		const pushEffect = (effect, active) => {
 			const isDemo = effect && effect.demo === true;
@@ -1194,7 +1747,7 @@ function feedVisibleLines(gizmo, now, preview) {
 				if (!effectPassesTimeWindow(effect, gizmo, { fading: !active })) {
 					return;
 				}
-				if (gizmo.settings.suppressTransformEffects !== false && effect.transform) {
+				if (feedSourceFieldBool(gizmo.settings, FEED_SOURCE_EFFECTS, 'suppressTransformEffects', true) !== false && effect.transform) {
 					return;
 				}
 			}
@@ -1222,7 +1775,7 @@ function feedVisibleLines(gizmo, now, preview) {
 			// C++ may push short/transform effects that all fail the display filters.
 			// Treat "nothing displayable" like empty so editor demos stick (GOG-heavy saves).
 			const displayable = liveSource.filter((e) => {
-				if (gizmo.settings.suppressTransformEffects !== false && e.transform) {
+				if (feedSourceFieldBool(gizmo.settings, FEED_SOURCE_EFFECTS, 'suppressTransformEffects', true) !== false && e.transform) {
 					return false;
 				}
 				return effectPassesTimeWindow(e, gizmo);
@@ -1250,9 +1803,9 @@ function feedVisibleLines(gizmo, now, preview) {
 		}
 	}
 
-	if (gizmo.settings.showSkills) {
-		const showSkillProg = gizmo.settings.showSkillProgress !== false;
-		const showLevelProg = gizmo.settings.showLevelProgress !== false;
+	if (feedSourceEnabled(gizmo.settings, FEED_SOURCE_SKILLS)) {
+		const showSkillProg = feedSourceFieldBool(gizmo.settings, FEED_SOURCE_SKILLS, 'showSkillProgress', true) !== false;
+		const showLevelProg = feedSourceFieldBool(gizmo.settings, FEED_SOURCE_SKILLS, 'showLevelProgress', true) !== false;
 		let source = skillFeedLines;
 		if (editorOpen) {
 			const aliveReal = skillFeedLines.filter((line) => now - line.addedAt < life);
@@ -1301,13 +1854,81 @@ function feedVisibleLines(gizmo, now, preview) {
 		}
 	}
 
+	if (feedSourceEnabled(gizmo.settings, FEED_SOURCE_QUESTS)) {
+		const showStatus =
+			feedSourceFieldBool(gizmo.settings, FEED_SOURCE_QUESTS, "showQuestStatus", true) !== false;
+		const showObjectives =
+			feedSourceFieldBool(gizmo.settings, FEED_SOURCE_QUESTS, "showQuestObjectives", true) !== false;
+		for (const line of questFeedLines) {
+			if (now - line.addedAt >= life) {
+				continue;
+			}
+			const questKind = normalizeQuestKind(line.kind);
+			if (questKind === "objective" && !showObjectives) {
+				continue;
+			}
+			if (questKind !== "objective" && !showStatus) {
+				continue;
+			}
+			merged.push({
+				kind: "quest",
+				key: `q-${line.id}`,
+				id: line.id,
+				text: line.text,
+				questKind,
+				icon: line.icon || "",
+				color: line.color || "",
+				addedAt: line.addedAt
+			});
+		}
+	}
+
+	// Mod / generic registered sources — Notifications-style toast chrome.
+	{
+		const catalog =
+			typeof window.CogFeedSourceCatalogResolved === "function"
+				? window.CogFeedSourceCatalogResolved()
+				: window.CogFeedSourceCatalog || [];
+		const builtins = new Set([
+			FEED_SOURCE_NOTIFICATIONS,
+			FEED_SOURCE_INVENTORY,
+			FEED_SOURCE_LOCATION,
+			FEED_SOURCE_SKILLS,
+			FEED_SOURCE_QUESTS,
+			FEED_SOURCE_EFFECTS
+		]);
+		const extras = catalog
+			.filter((e) => e && e.id && !builtins.has(e.id) && feedSourceEnabled(gizmo.settings, e.id))
+			.slice()
+			.sort((a, b) => String(a.displayName || a.id).localeCompare(String(b.displayName || b.id)));
+		for (const entry of extras) {
+			const list = feedSourceLineBuffers.get(entry.id) || [];
+			for (const line of list) {
+				if (now - line.addedAt >= life) {
+					continue;
+				}
+				merged.push({
+					kind: "notification",
+					key: `src-${entry.id}-${line.id}`,
+					id: line.id,
+					text: line.text,
+					color: line.color,
+					icon: line.icon || "",
+					demo: false,
+					addedAt: line.addedAt,
+					sourceId: entry.id
+				});
+			}
+		}
+	}
+
 	merged.sort((a, b) => a.addedAt - b.addedAt || String(a.key).localeCompare(String(b.key)));
 
 	// Level XP meter is divert-driven (pushed with kSkillIncrease). It rides the newest
 	// skill toast's lifetime; with Skill Progress off, pulseAlive still flashes one duration.
 	if (
-		gizmo.settings.showSkills &&
-		gizmo.settings.showLevelProgress !== false
+		feedSourceEnabled(gizmo.settings, FEED_SOURCE_SKILLS) &&
+		feedSourceFieldBool(gizmo.settings, FEED_SOURCE_SKILLS, 'showLevelProgress', true) !== false
 	) {
 		let newestSkillIdx = -1;
 		let newestAt = -Infinity;
@@ -1506,9 +2127,9 @@ function rebuildFeedMeterLineContent(row, gizmo, opts) {
 }
 
 function rebuildEffectLineContent(row, gizmo) {
-	const showIcons = gizmo.settings.showEffectIcons === true;
-	const showText = gizmo.settings.showEffectText !== false;
-	const showTimer = gizmo.settings.showEffectTimer !== false;
+	const showIcons = feedSourceFieldBool(gizmo.settings, FEED_SOURCE_EFFECTS, "showEffectIcons", true);
+	const showText = feedSourceFieldBool(gizmo.settings, FEED_SOURCE_EFFECTS, "showEffectText", true);
+	const showTimer = feedSourceFieldBool(gizmo.settings, FEED_SOURCE_EFFECTS, "showEffectTimer", true);
 	rebuildFeedMeterLineContent(row, gizmo, {
 		showIcons,
 		showText,
@@ -1518,7 +2139,7 @@ function rebuildEffectLineContent(row, gizmo) {
 }
 
 function rebuildLevelProgressLineContent(row, gizmo) {
-	const showIcons = gizmo.settings.showSkillIcons !== false;
+	const showIcons = feedSourceFieldBool(gizmo.settings, FEED_SOURCE_SKILLS, "showSkillIcons", true);
 	const numberFormat = normalizeNumberFormat(gizmo.settings.numberFormat, DEFAULT_FEED_NUMBER_FORMAT);
 	const showBar = numberFormatShowsBar(numberFormat);
 	rebuildFeedMeterLineContent(row, gizmo, {
@@ -1546,7 +2167,10 @@ function layoutGizmoFeed(el, gizmo) {
 	el.style.setProperty("--feed-font", `${font}px`);
 	el.style.setProperty(
 		"--feed-default-color",
-		normalizeHexColor(gizmo.settings && gizmo.settings.textColor, DEFAULT_GIZMO_GOLD)
+		normalizeHexColor(
+			feedSourceField(gizmo.settings, FEED_SOURCE_NOTIFICATIONS, "textColor", DEFAULT_GIZMO_GOLD),
+			DEFAULT_GIZMO_GOLD
+		)
 	);
 	const align = normalizeClockTextAlign((gizmo.settings && gizmo.settings.textAlign) || DEFAULT_FEED_TEXT_ALIGN);
 	el.classList.toggle("is-align-left", align === "left");
@@ -1565,44 +2189,47 @@ function feedColourVarFallback() {
 	return typeof defaultBorderColor === "function" ? defaultBorderColor() : DEFAULT_GIZMO_GOLD;
 }
 
-/**
- * Section-gated colour-var registry for one Feed instance.
- * Builtin Notify passes these names; each Feed resolves to its own hex.
- */
-function feedColourVarsForGizmo(gizmo) {
-	const s = (gizmo && gizmo.settings) || {};
-	const vars = Object.create(null);
-	if (s.showNotifications) {
-		vars.textColor = optionalHex(s.textColor);
+/** Legacy bare colour-var names → owning builtin source (migration only). */
+const FEED_LEGACY_COLOUR_OWNER = {
+	textColor: FEED_SOURCE_NOTIFICATIONS,
+	addColor: FEED_SOURCE_INVENTORY,
+	removeColor: FEED_SOURCE_INVENTORY,
+	stolenColor: FEED_SOURCE_INVENTORY,
+	locationDiscoveryColor: FEED_SOURCE_LOCATION,
+	currentLocationColor: FEED_SOURCE_LOCATION,
+	effectsColor: FEED_SOURCE_EFFECTS,
+	skillProgressColor: FEED_SOURCE_SKILLS,
+	levelProgressColor: FEED_SOURCE_SKILLS,
+	questStatusColor: FEED_SOURCE_QUESTS,
+	questObjectiveColor: FEED_SOURCE_QUESTS
+};
+
+/** Default colour for a registered mod source (colourVars[0], else textColor). */
+function resolveModSourceDefaultColor(gizmo, sourceId, fallback) {
+	const id = String(sourceId || "").trim();
+	if (!id) {
+		return fallback;
 	}
-	if (s.showInventory) {
-		vars.addColor = optionalHex(s.addColor);
-		vars.removeColor = optionalHex(s.removeColor);
-		vars.stolenColor = optionalHex(s.stolenColor);
-	}
-	if (s.showLocation) {
-		if (s.showLocationDiscovery !== false) {
-			vars.locationDiscoveryColor = optionalHex(s.locationDiscoveryColor);
+	const catalog =
+		typeof window.CogFeedSourceCatalogResolved === "function"
+			? window.CogFeedSourceCatalogResolved()
+			: window.CogFeedSourceCatalog || [];
+	const entry = catalog.find((e) => e && e.id === id);
+	const vars = entry && Array.isArray(entry.colourVars) ? entry.colourVars : [];
+	for (const name of vars) {
+		const hex = optionalHex(feedSourceField((gizmo && gizmo.settings) || {}, id, name, ""));
+		if (hex) {
+			return normalizeHexColor(hex, fallback);
 		}
-		if (s.showCurrentLocation !== false) {
-			vars.currentLocationColor = optionalHex(s.currentLocationColor);
-		}
 	}
-	if (s.showActiveEffects) {
-		vars.effectsColor = optionalHex(s.effectsColor);
+	const text = optionalHex(feedSourceField((gizmo && gizmo.settings) || {}, id, "textColor", ""));
+	if (text) {
+		return normalizeHexColor(text, fallback);
 	}
-	if (s.showSkills) {
-		if (s.showSkillProgress !== false) {
-			vars.skillProgressColor = optionalHex(s.skillProgressColor);
-		}
-		if (s.showLevelProgress !== false) {
-			vars.levelProgressColor = optionalHex(s.levelProgressColor);
-		}
-	}
-	return vars;
+	return fallback;
 }
 
-/** Resolve Notify asColor: hex pass-through, registered var → settings hex, else backup border. */
+/** Resolve Notify asColor: #hex or sourceId.varName against instance settings. */
 function resolveFeedColorToken(gizmo, token) {
 	const raw = String(token == null ? "" : token).trim();
 	if (!raw) {
@@ -1612,9 +2239,21 @@ function resolveFeedColorToken(gizmo, token) {
 	if (hex) {
 		return hex;
 	}
-	const vars = feedColourVarsForGizmo(gizmo);
-	if (Object.prototype.hasOwnProperty.call(vars, raw)) {
-		return vars[raw] || feedColourVarFallback();
+	const s = (gizmo && gizmo.settings) || {};
+	const dot = raw.indexOf(".");
+	if (dot > 0) {
+		const sourceId = feedCanonicalSourceId(raw.slice(0, dot)) || raw.slice(0, dot);
+		const varName = raw.slice(dot + 1);
+		if (sourceId && varName) {
+			const v = feedSourceField(s, sourceId, varName, "");
+			return optionalHex(v) || feedColourVarFallback();
+		}
+	}
+	// Migration: bare legacy names → owning builtin source.
+	const owner = FEED_LEGACY_COLOUR_OWNER[raw];
+	if (owner) {
+		const v = feedSourceField(s, owner, raw, "");
+		return optionalHex(v) || feedColourVarFallback();
 	}
 	return feedColourVarFallback();
 }
@@ -1628,30 +2267,51 @@ function paintGizmoFeed(el, gizmo) {
 	const now = performance.now();
 	const preview = document.body.classList.contains("is-focused");
 	const lines = feedVisibleLines(gizmo, now, preview);
-	const notifDefault = normalizeHexColor(gizmo.settings.textColor, DEFAULT_GIZMO_GOLD);
-	const addPaint = normalizeHexColor(gizmo.settings.addColor || gizmo.settings.textColor, DEFAULT_GIZMO_GOLD);
-	const removePaint = normalizeHexColor(gizmo.settings.removeColor || gizmo.settings.textColor, DEFAULT_GIZMO_GOLD);
-	const stolenPaint = normalizeHexColor(gizmo.settings.stolenColor || gizmo.settings.textColor, DEFAULT_GIZMO_GOLD);
-	const fallbackInvIcon = normalizeIconRelPath(gizmo.settings.icon) || DEFAULT_FEED_INVENTORY_ICON;
-	const fallbackNotifIcon = normalizeFeedNotificationIcon(gizmo.settings.notificationIcon);
-	const discoveryIcon = normalizeFeedLocationDiscoveryIcon(gizmo.settings.locationDiscoveryIcon);
-	const currentIcon = normalizeFeedCurrentLocationIcon(gizmo.settings.currentLocationIcon);
+	const notifDefault = normalizeHexColor(
+		feedSourceField(gizmo.settings, FEED_SOURCE_NOTIFICATIONS, "textColor", DEFAULT_GIZMO_GOLD),
+		DEFAULT_GIZMO_GOLD
+	);
+	const addPaint = normalizeHexColor(
+		feedSourceField(gizmo.settings, FEED_SOURCE_INVENTORY, "addColor", notifDefault),
+		DEFAULT_GIZMO_GOLD
+	);
+	const removePaint = normalizeHexColor(
+		feedSourceField(gizmo.settings, FEED_SOURCE_INVENTORY, "removeColor", notifDefault),
+		DEFAULT_GIZMO_GOLD
+	);
+	const stolenPaint = normalizeHexColor(
+		feedSourceField(gizmo.settings, FEED_SOURCE_INVENTORY, "stolenColor", notifDefault),
+		DEFAULT_GIZMO_GOLD
+	);
+	const fallbackInvIcon =
+		normalizeIconRelPath(feedSourceField(gizmo.settings, FEED_SOURCE_INVENTORY, "icon", "")) ||
+		DEFAULT_FEED_INVENTORY_ICON;
+	const fallbackNotifIcon = normalizeFeedNotificationIcon(
+		feedSourceField(gizmo.settings, FEED_SOURCE_NOTIFICATIONS, "notificationIcon", DEFAULT_FEED_NOTIFICATION_ICON)
+	);
+	const discoveryIcon = normalizeFeedLocationDiscoveryIcon(
+		feedSourceField(gizmo.settings, FEED_SOURCE_LOCATION, "locationDiscoveryIcon", DEFAULT_FEED_LOCATION_DISCOVERY_ICON)
+	);
+	const currentIcon = normalizeFeedCurrentLocationIcon(
+		feedSourceField(gizmo.settings, FEED_SOURCE_LOCATION, "currentLocationIcon", DEFAULT_FEED_CURRENT_LOCATION_ICON)
+	);
 	const discoveryPaint = normalizeHexColor(
-		gizmo.settings.locationDiscoveryColor || gizmo.settings.textColor,
+		feedSourceField(gizmo.settings, FEED_SOURCE_LOCATION, "locationDiscoveryColor", notifDefault),
 		DEFAULT_GIZMO_GOLD
 	);
 	const currentPaint = normalizeHexColor(
-		gizmo.settings.currentLocationColor || gizmo.settings.textColor,
+		feedSourceField(gizmo.settings, FEED_SOURCE_LOCATION, "currentLocationColor", notifDefault),
 		DEFAULT_GIZMO_GOLD
 	);
-	const showNotifIcons = gizmo.settings.showNotificationIcons !== false;
-	const showInvIcons = gizmo.settings.showInventoryIcons !== false;
-	const showLocIcons = gizmo.settings.showLocationIcons !== false;
-	const showSkillIcons = gizmo.settings.showSkillIcons !== false;
+	const showNotifIcons = feedSourceFieldBool(gizmo.settings, FEED_SOURCE_NOTIFICATIONS, "showNotificationIcons", true);
+	const showInvIcons = feedSourceFieldBool(gizmo.settings, FEED_SOURCE_INVENTORY, "showInventoryIcons", true);
+	const showLocIcons = feedSourceFieldBool(gizmo.settings, FEED_SOURCE_LOCATION, "showLocationIcons", true);
+	const showSkillIcons = feedSourceFieldBool(gizmo.settings, FEED_SOURCE_SKILLS, "showSkillIcons", true);
+	const showQuestIcons = feedSourceFieldBool(gizmo.settings, FEED_SOURCE_QUESTS, "showQuestIcons", true);
 	const iconPlace = normalizeFeedIconPlacement(gizmo.settings.iconPlacement);
-	const showEffectIcons = gizmo.settings.showEffectIcons === true;
-	const showEffectText = gizmo.settings.showEffectText !== false;
-	const showEffectTimer = gizmo.settings.showEffectTimer !== false;
+	const showEffectIcons = feedSourceFieldBool(gizmo.settings, FEED_SOURCE_EFFECTS, "showEffectIcons", true);
+	const showEffectText = feedSourceFieldBool(gizmo.settings, FEED_SOURCE_EFFECTS, "showEffectText", true);
+	const showEffectTimer = feedSourceFieldBool(gizmo.settings, FEED_SOURCE_EFFECTS, "showEffectTimer", true);
 	const numberFormat = normalizeNumberFormat(gizmo.settings.numberFormat, DEFAULT_FEED_NUMBER_FORMAT);
 	const progressBarWidth = feedProgressBarWidth(gizmo.settings);
 	const showProgressBar = numberFormatShowsBar(numberFormat);
@@ -1672,16 +2332,39 @@ function paintGizmoFeed(el, gizmo) {
 		String(progressBarWidth),
 		iconPlace
 	].join("|");
-	const fallbackEffectIcon = normalizeFeedEffectIcon(gizmo.settings.effectIcon);
-	const fallbackSkillIcon = normalizeFeedSkillIcon(gizmo.settings.skillProgressIcon);
-	const fallbackLevelIcon = normalizeFeedLevelIcon(gizmo.settings.levelProgressIcon);
-	const effectsPaint = normalizeHexColor(gizmo.settings.effectsColor || gizmo.settings.textColor, DEFAULT_GIZMO_GOLD);
+	const fallbackEffectIcon = normalizeFeedEffectIcon(
+		feedSourceField(gizmo.settings, FEED_SOURCE_EFFECTS, "effectIcon", DEFAULT_FEED_EFFECT_ICON)
+	);
+	const fallbackSkillIcon = normalizeFeedSkillIcon(
+		feedSourceField(gizmo.settings, FEED_SOURCE_SKILLS, "skillProgressIcon", DEFAULT_FEED_SKILL_ICON)
+	);
+	const fallbackLevelIcon = normalizeFeedLevelIcon(
+		feedSourceField(gizmo.settings, FEED_SOURCE_SKILLS, "levelProgressIcon", DEFAULT_FEED_LEVEL_ICON)
+	);
+	const fallbackQuestStatusIcon = normalizeFeedQuestStatusIcon(
+		feedSourceField(gizmo.settings, FEED_SOURCE_QUESTS, "questStatusIcon", DEFAULT_FEED_QUEST_STATUS_ICON)
+	);
+	const fallbackQuestObjectiveIcon = normalizeFeedQuestObjectiveIcon(
+		feedSourceField(gizmo.settings, FEED_SOURCE_QUESTS, "questObjectiveIcon", DEFAULT_FEED_QUEST_OBJECTIVE_ICON)
+	);
+	const effectsPaint = normalizeHexColor(
+		feedSourceField(gizmo.settings, FEED_SOURCE_EFFECTS, "effectsColor", notifDefault),
+		DEFAULT_GIZMO_GOLD
+	);
 	const skillProgressPaint = normalizeHexColor(
-		gizmo.settings.skillProgressColor || gizmo.settings.textColor,
+		feedSourceField(gizmo.settings, FEED_SOURCE_SKILLS, "skillProgressColor", notifDefault),
 		DEFAULT_GIZMO_GOLD
 	);
 	const levelProgressPaint = normalizeHexColor(
-		gizmo.settings.levelProgressColor || gizmo.settings.textColor,
+		feedSourceField(gizmo.settings, FEED_SOURCE_SKILLS, "levelProgressColor", notifDefault),
+		DEFAULT_GIZMO_GOLD
+	);
+	const questStatusPaint = normalizeHexColor(
+		feedSourceField(gizmo.settings, FEED_SOURCE_QUESTS, "questStatusColor", notifDefault),
+		DEFAULT_GIZMO_GOLD
+	);
+	const questObjectivePaint = normalizeHexColor(
+		feedSourceField(gizmo.settings, FEED_SOURCE_QUESTS, "questObjectiveColor", notifDefault),
 		DEFAULT_GIZMO_GOLD
 	);
 	const fillColor = normalizeHexColor(
@@ -1706,6 +2389,7 @@ function paintGizmoFeed(el, gizmo) {
 			row = null;
 		}
 		if (wantKind === "notification" || wantKind === "location") {
+			const modSourceId = wantKind === "notification" && line.sourceId ? String(line.sourceId) : "";
 			const showIcons = wantKind === "location" ? showLocIcons : showNotifIcons;
 			const needsRebuild =
 				!row ||
@@ -1722,13 +2406,23 @@ function paintGizmoFeed(el, gizmo) {
 				rebuildNotificationLineContent(row, showIcons, iconPlace);
 				stack.appendChild(row);
 			}
-			const paint =
-				wantKind === "location"
-					? resolveFeedColorToken(gizmo, line.color) ||
-						(line.locationKind === "current" ? currentPaint : discoveryPaint)
-					: gizmo.settings.allowModNotificationColor !== false && line.color
-						? resolveFeedColorToken(gizmo, line.color) || notifDefault
-						: notifDefault;
+			let paint = notifDefault;
+			if (wantKind === "location") {
+				paint =
+					resolveFeedColorToken(gizmo, line.color) ||
+					(line.locationKind === "current" ? currentPaint : discoveryPaint);
+			} else if (modSourceId) {
+				// Registered mod source: token / line colour, else that source's colourVars / textColor.
+				paint =
+					resolveFeedColorToken(gizmo, line.color) ||
+					resolveModSourceDefaultColor(gizmo, modSourceId, notifDefault);
+			} else if (
+				feedSourceFieldBool(gizmo.settings, FEED_SOURCE_NOTIFICATIONS, "allowModNotificationColor", true) !==
+					false &&
+				line.color
+			) {
+				paint = resolveFeedColorToken(gizmo, line.color) || notifDefault;
+			}
 			const textEl = row.querySelector(".notification-line-text");
 			if (textEl) {
 				setNotificationRichText(textEl, line.text, paint);
@@ -1741,8 +2435,18 @@ function paintGizmoFeed(el, gizmo) {
 						iconRel =
 							normalizeIconRelPath(line.icon) ||
 							(line.locationKind === "current" ? currentIcon : discoveryIcon);
+					} else if (modSourceId) {
+						// Caller asIcon wins; empty → source settings icon / notificationIcon.
+						iconRel =
+							normalizeIconRelPath(line.icon) ||
+							normalizeIconRelPath(feedSourceField(gizmo.settings, modSourceId, "icon", "")) ||
+							normalizeIconRelPath(
+								feedSourceField(gizmo.settings, modSourceId, "notificationIcon", "")
+							) ||
+							fallbackNotifIcon;
 					} else if (
-						gizmo.settings.allowModNotificationIcon !== false &&
+						feedSourceFieldBool(gizmo.settings, FEED_SOURCE_NOTIFICATIONS, "allowModNotificationIcon", true) !==
+							false &&
 						normalizeIconRelPath(line.icon)
 					) {
 						iconRel = normalizeIconRelPath(line.icon);
@@ -1761,12 +2465,19 @@ function paintGizmoFeed(el, gizmo) {
 					gizmo.settings.textAlign
 				);
 			}
-		} else if (wantKind === "skill") {
-			const showIcons = showSkillIcons;
-			const skillKind = normalizeSkillKind(line.skillKind);
-			const skillsPaint =
+		} else if (wantKind === "skill" || wantKind === "quest") {
+			const showIcons = wantKind === "quest" ? showQuestIcons : showSkillIcons;
+			const skillKind = wantKind === "skill" ? normalizeSkillKind(line.skillKind) : "";
+			const questKind = wantKind === "quest" ? normalizeQuestKind(line.questKind) : "";
+			const linePaint =
 				resolveFeedColorToken(gizmo, line.color) ||
-				(skillKind === "level" ? levelProgressPaint : skillProgressPaint);
+				(wantKind === "quest"
+					? questKind === "objective"
+						? questObjectivePaint
+						: questStatusPaint
+					: skillKind === "level"
+						? levelProgressPaint
+						: skillProgressPaint);
 			const needsRebuild =
 				!row ||
 				row.dataset.showIcons !== (showIcons ? "1" : "0") ||
@@ -1778,24 +2489,30 @@ function paintGizmoFeed(el, gizmo) {
 				row = document.createElement("div");
 				row.className = "notification-line";
 				row.dataset.lineId = key;
-				row.dataset.lineKind = "skill";
+				row.dataset.lineKind = wantKind;
 				rebuildNotificationLineContent(row, showIcons, iconPlace);
 				stack.appendChild(row);
 			}
 			const textEl = row.querySelector(".notification-line-text");
 			if (textEl) {
 				textEl.textContent = line.text;
-				textEl.style.color = skillsPaint;
+				textEl.style.color = linePaint;
 			}
 			if (showIcons) {
 				const iconHost = row.querySelector(".notification-line-icon");
 				if (iconHost) {
 					const iconRel =
 						normalizeIconRelPath(line.icon) ||
-						(skillKind === "level" ? fallbackLevelIcon : fallbackSkillIcon);
+						(wantKind === "quest"
+							? questKind === "objective"
+								? fallbackQuestObjectiveIcon
+								: fallbackQuestStatusIcon
+							: skillKind === "level"
+								? fallbackLevelIcon
+								: fallbackSkillIcon);
 					const href = resolveDisplayIconHref(iconRel);
 					paintMaskedFace(iconHost, "notification-line-icon-face", {
-						color: skillsPaint,
+						color: linePaint,
 						href
 					});
 				}
@@ -2000,14 +2717,22 @@ function paintGizmoFeed(el, gizmo) {
 }
 
 function paintAllFeedsNow() {
+	let needsHudRebuild = false;
+	const api = typeof gizmoRendererApi === "function" ? gizmoRendererApi("cog-feed") : null;
+	const canRebuild = !!(api && typeof api.build === "function");
 	for (const gizmo of snapshot.gizmos || []) {
 		if (normalizeGizmoType(gizmo.typeId) !== "cog-feed") {
 			continue;
 		}
 		const el = findHudGizmoEl(gizmo.id);
-		if (el) {
+		if (el && el.querySelector(".feed-stack")) {
 			paintGizmoFeed(el, gizmo);
+		} else if (el && canRebuild) {
+			needsHudRebuild = true;
 		}
+	}
+	if (needsHudRebuild && typeof renderGears === "function" && !drag) {
+		renderGears();
 	}
 }
 
@@ -2068,7 +2793,11 @@ const FEED_SECTION_HIDE_NOTES = {
 	],
 	skills: [
 		"cog-feed-skills-hide-note",
-		"When enabled, this section soft-hides hud.questUpdates (skill-up and level-up banners share that clip). Skill Progress and Level Progress only control what appears in this Feed. Level Up Menu is never blocked."
+		"When enabled, this section diverts skill-up and level-up banners from hud.questUpdates (quest updates share that clip and stay visible). Skill Progress and Level Progress only control what appears in this Feed. Level Up Menu is never blocked."
+	],
+	quests: [
+		"cog-feed-quests-hide-note",
+		"When enabled, Quest Status and Quest Objectives each divert their banners from hud.questUpdates (shared with skill-ups; no soft-hide). Unticked options leave those banners on the vanilla HUD."
 	]
 };
 const FEED_SECTION_ICON_NOTES = {
@@ -2127,6 +2856,13 @@ window.CogFeedHideNoteEntry = function CogFeedHideNoteEntry(name) {
 
 window.CogFeedStoragePath = function CogFeedStoragePath() {
 	return typeof CogGizmoStorage === "function" ? CogGizmoStorage("cog-feed") : "gizmoTypes/cog-feed";
+};
+
+/** Defaults for one source block (used when enabling a source in settings). */
+window.CogFeedDefaultSourceBlock = function CogFeedDefaultSourceBlock(sourceId) {
+	const id = String(sourceId || "");
+	const defaults = defaultFeedSourceBlocks();
+	return defaults[id] ? { ...defaults[id] } : { enabled: false };
 };
 
 window.CogRegisterGizmoRenderer("cog-feed", {

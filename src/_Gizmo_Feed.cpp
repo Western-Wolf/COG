@@ -6,6 +6,7 @@
 #include "_Gizmo_Feed_Log.h"
 #include "_Gizmo_Feed_SourceNotifications.h"
 #include "_Gizmo_Feed_SourceSkills.h"
+#include "_Gizmo_Feed_SourceQuests.h"
 #include "_UI_CogUi.h"
 #include "_Core_Registry.h"
 #include "_Core_Registry_Json.h"
@@ -254,9 +255,37 @@ namespace
 						} else if (CogHudSuppress::IsKeySuppressed("hud.notifications")) {
 							return RE::UI_MESSAGE_RESULTS::kIgnore;
 						}
+					} else if (
+						kind == RE::HUD_MESSAGE_TYPE::kQuestStarted ||
+						kind == RE::HUD_MESSAGE_TYPE::kQuestComplete ||
+						kind == RE::HUD_MESSAGE_TYPE::kQuestFailed) {
+						// Divert-only from QuestUpdateBaseInstance (shared with skills / objectives).
+						// Status word is not in HUDData.text — HandleQuestHud appends it; objectives
+						// that vanilla would bundle onto this notification are harvested from quest*.
+						if (CogRegistry::Get().HasVisibleFeedDivertingQuestStatus()) {
+							CogFeed::HandleQuestHud(
+								kind, text ? text : "", hudData->quest);
+							return RE::UI_MESSAGE_RESULTS::kIgnore;
+						}
+						// Objectives-only: still swallow the banner so we can harvest objective lines
+						// without leaving the quest-name toast on the vanilla clip.
+						if (CogRegistry::Get().HasVisibleFeedDivertingQuestObjectives()) {
+							CogFeed::HandleQuestHud(
+								kind, text ? text : "", hudData->quest);
+							return RE::UI_MESSAGE_RESULTS::kIgnore;
+						}
+					} else if (
+						kind == RE::HUD_MESSAGE_TYPE::kObjectiveStarted ||
+						kind == RE::HUD_MESSAGE_TYPE::kObjectiveComplete ||
+						kind == RE::HUD_MESSAGE_TYPE::kObjectiveFailed) {
+						if (CogRegistry::Get().HasVisibleFeedDivertingQuestObjectives()) {
+							CogFeed::HandleQuestHud(
+								kind, text ? text : "", hudData->quest);
+							return RE::UI_MESSAGE_RESULTS::kIgnore;
+						}
 					} else if (kind == RE::HUD_MESSAGE_TYPE::kSkillIncrease) {
-						// Skills section soft-hides hud.questUpdates (shared clip). Always divert
-						// skill/level banners when the section is on; checkboxes only gate Feed enqueue.
+						// Divert-only — do not soft-hide hud.questUpdates (shared with quest banners).
+						// Checkboxes only gate Feed enqueue; Level Up Menu is never blocked.
 						if (CogRegistry::Get().HasVisibleFeedShowingSkills()) {
 							if (text && text[0]) {
 								(void)CogFeed::HandleSkillIncreaseHud(text);
@@ -396,12 +425,12 @@ void CogFeed::EnqueueLocation(std::string text, std::string kind)
 		if (!reg.HasVisibleFeedDivertingCurrentLocation()) {
 			return;
 		}
-		color = "currentLocationColor";
+		color = "cog-location.currentLocationColor";
 	} else {
 		if (!reg.HasVisibleFeedDivertingLocationDiscovery()) {
 			return;
 		}
-		color = "locationDiscoveryColor";
+		color = "cog-location.locationDiscoveryColor";
 	}
 	std::string icon = CogFeed::ResolveLocationIcon(text, kind);
 	(void)Notify(std::move(text), std::move(color), std::move(icon), kSourceLocation);

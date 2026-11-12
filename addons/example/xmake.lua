@@ -40,7 +40,9 @@ local modules = {
 		script = "COG_Example_Feed",
 		alias = "COG_Example_Feed_Alias",
 		desc = "Description.Example.Feed",
-		scripts = { "COG_Example_Feed", "COG_Example_Feed_Alias" }
+		scripts = { "COG_Example_Feed", "COG_Example_Feed_Alias" },
+		-- Registered source settings HTML (copied by RegisterSource into gizmoTypes/cog-feed/sources/).
+		feed_views = true
 	},
 	{
 		stage = "COG - Example Gizmos",
@@ -139,6 +141,17 @@ target("COG_Example")
 				local settings_dst = path.join(view_dst, "settings")
 				os.mkdir(settings_dst)
 				os.cp(path.join(addon_dir, "view", "gear_settings.html"), path.join(settings_dst, "gear_settings.html"))
+			end
+
+			if m.feed_views then
+				local view_dst = path.join(deploy_root, "PrismaUI", "views", "Example")
+				os.mkdir(view_dst)
+				local feed_settings = path.join(addon_dir, "view", "feed_source_settings.html")
+				if os.isfile(feed_settings) then
+					os.cp(feed_settings, path.join(view_dst, "feed_source_settings.html"))
+				else
+					print("warning: missing " .. feed_settings)
+				end
 			end
 
 			if m.name_translations then

@@ -350,15 +350,24 @@ public:
 	bool HasVisibleFeedShowingInventory() const;
 	bool HasVisibleFeedDivertingLocationDiscovery() const;
 	bool HasVisibleFeedDivertingCurrentLocation() const;
-	/** Play-visible Feed with Skills section on (showSkills) — soft-hides hud.questUpdates. */
+	/** Play-visible Feed with Skills section on — diverts kSkillIncrease (no soft-hide). */
 	bool HasVisibleFeedShowingSkills() const;
 	/** Skills section + Skill Progress checkbox — enqueue skill-up lines into Feed. */
 	bool HasVisibleFeedShowingSkillProgress() const;
 	/** Skills section + Level Progress checkbox — enqueue level-up / XP meter into Feed. */
 	bool HasVisibleFeedShowingLevelProgress() const;
+	/** Quests section + Quest Status — divert kQuestStarted/Complete/Failed. */
+	bool HasVisibleFeedDivertingQuestStatus() const;
+	/** Quests section + Quest Objectives — divert kObjectiveStarted/Complete/Failed. */
+	bool HasVisibleFeedDivertingQuestObjectives() const;
 	bool AnyVisibleFeedShowsActiveEffects() const;
+	/** Play-active Feed with settings.sources.<sourceId>.enabled (or legacy flat show*). */
+	bool HasVisibleFeedShowingSource(std::string_view sourceId) const;
 	bool ShouldSuppressInventoryNotifications() const;
-	/** First play-visible cog-feed with showKey true → settings[settingKey], else fallback. */
+	/**
+	 * First play-visible cog-feed with source enabled → settings.sources.<id>[settingKey]
+	 * (legacy: showKey flat gate + flat settingKey). showKey may be a legacy show* or source id.
+	 */
 	[[nodiscard]] std::string FirstVisibleFeedSetting(
 		std::string_view showKey,
 		std::string_view settingKey,

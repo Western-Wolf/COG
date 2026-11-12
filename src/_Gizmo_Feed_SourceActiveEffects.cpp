@@ -5,7 +5,7 @@
 
 #include "_Core_Registry.h"
 #include "_Gizmo_Feed_UtilityIconRegistry.h"
-#include "_Gizmo_Storage.h"
+#include "_Gizmo_Feed_Sources.h"
 #include "_UI_CogUi.h"
 
 #include <RE/A/ActorValueList.h>
@@ -56,7 +56,7 @@ namespace
 
 	std::filesystem::path EffectIconRulesDir()
 	{
-		return CogGizmoStorage::EnsureDir("cog-feed") / "effects";
+		return CogFeedSources::SourceStorageDir(CogFeedSources::kIdEffects);
 	}
 
 	void PushAv(CogFeed::IconRegistry::Candidates& c, RE::ActorValue av)
@@ -424,7 +424,7 @@ void CogFeed::PushActiveEffectsToUi()
 	auto& reg = CogRegistry::Get();
 	const bool suppressTransform =
 		reg.FirstVisibleFeedSettingBool("showActiveEffects", "suppressTransformEffects", true);
-	constexpr const char* kEffectsColorVar = "effectsColor";
+	constexpr const char* kEffectsColorVar = "cog-effects.effectsColor";
 	std::unordered_set<RE::FormID> seen;
 	seen.reserve(rows.size());
 	constexpr std::uint32_t kMaxPush = 48;

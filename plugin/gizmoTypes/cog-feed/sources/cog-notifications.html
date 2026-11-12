@@ -1,0 +1,64 @@
+<div class="style-row">
+	<input type="color" data-gizmo-field="color" data-gizmo-value="textColor" data-gizmo-default="#e8d2a0" data-translation="cog-colour" data-translation-fallback="Colour">
+	<input type="text" data-gizmo-field="icon" data-gizmo-value="notificationIcon" data-gizmo-default="Actions/speak.svg" data-translation="cog-icon" data-translation-fallback="Icon">
+	<label class="check-row compact">
+		<input type="checkbox" data-gizmo-value="showNotificationIcons" data-gizmo-default="true">
+		<span data-translation="cog-feed-show-icons" data-translation-fallback="Show Icons">Show Icons</span>
+	</label>
+</div>
+<div class="style-row" data-cog-feed-suppress-inventory hidden>
+	<label class="check-row compact">
+		<input type="checkbox" data-gizmo-value="suppressInventory" data-gizmo-default="true">
+		<span class="field-title-row" data-cog-info-tip="When on, inventory-style notification toasts are suppressed (not shown on the vanilla HUD or in this Notifications feed) while Notifications are active. Many activators and containers fire those even when you are not looting — leave this on unless you want them on the vanilla HUD. The Inventory section tracks real item changes separately." data-cog-info-tip-tag="cog-feed-suppress-inventory-tip">
+			<span data-translation="cog-feed-suppress-inventory" data-translation-fallback="Suppress inventory">Suppress inventory</span>
+		</span>
+	</label>
+</div>
+<div class="style-row">
+	<label class="check-row compact">
+		<input type="checkbox" data-gizmo-value="allowModNotificationIcon" data-gizmo-default="true">
+		<span class="field-title-row" data-cog-info-tip="When on, mods can use COG_Feed_API.Notify (or legacy COG_API.Notify) to supply a per-message icon path under assets/icons/. When off, every message uses the Notifications icon (if Show icons is on)." data-cog-info-tip-tag="cog-feed-allow-mods-choose-icon-tip">
+			<span data-translation="cog-feed-allow-mods-choose-icon" data-translation-fallback="Allow Mods to Choose Icon">Allow Mods to Choose Icon</span>
+		</span>
+	</label>
+</div>
+<div class="style-row">
+	<label class="check-row compact">
+		<input type="checkbox" data-gizmo-value="allowModNotificationColor" data-gizmo-default="true">
+		<span class="field-title-row" data-cog-info-tip="When on, message colour can come from SkyUILib (for compatibility) or COG_Feed_API.Notify / COG_API.Notify. When off, every message uses the Notifications colour." data-cog-info-tip-tag="cog-feed-allow-mods-choose-colour-tip">
+			<span data-translation="cog-feed-allow-mods-choose-colour" data-translation-fallback="Allow Mods to Choose Colour">Allow Mods to Choose Colour</span>
+		</span>
+	</label>
+</div>
+<div data-cog-feed-notes="notifications"></div>
+<script>
+(function () {
+	var panel = document.currentScript && document.currentScript.parentElement;
+	if (!panel) return;
+	var sourceHost = panel.closest("[data-feed-source]");
+	var sourceId = sourceHost ? sourceHost.getAttribute("data-feed-source") : "cog-notifications";
+	var root = panel.closest(".gizmo-html-settings");
+	if (!root) return;
+
+	function storagePath() {
+		if (typeof window.CogFeedSourceStorage === "function") {
+			return window.CogFeedSourceStorage(sourceId);
+		}
+		return "gizmoTypes/cog-feed/sources/" + sourceId;
+	}
+
+	function mountNotes() {
+		if (typeof window.CogAppendFeedSectionNotes !== "function") return;
+		var host = panel.querySelector('[data-cog-feed-notes="notifications"]');
+		if (!host) return;
+		window.CogAppendFeedSectionNotes(host, "hud.notifications", storagePath() + "/", { notificationsApi: true });
+	}
+
+	function onBound() {
+		mountNotes();
+	}
+
+	root.addEventListener("cog-html-settings-bound", onBound);
+	onBound();
+})();
+</script>

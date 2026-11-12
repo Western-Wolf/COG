@@ -62,7 +62,9 @@ window.CogRegisterGizmoRenderer = function (typeId, api) {
 	}
 	const id = normalizeGizmoType(cleaned);
 	gizmoRenderers.set(id, api && typeof api === "object" ? api : {});
-	if (!drag && typeof renderGears === "function") {
+	// Late view-script registration: rebuild placeholder HUD nodes for this type.
+	// Guard drag: Core.js declares it after gizmo scripts load (avoid TDZ ReferenceError).
+	if ((typeof drag === "undefined" || !drag) && typeof renderGears === "function") {
 		renderGears();
 	}
 };
@@ -188,11 +190,13 @@ const GIZMO_SETTINGS_KEYS = new Set([
 	"stackOrigin",
 	"duration",
 	"fade",
+	"sources",
 	"showNotifications",
 	"showInventory",
 	"showLocation",
 	"showActiveEffects",
 	"showSkills",
+	"showQuests",
 	"timerMinSec",
 	"timerMaxSec",
 	"showEffectIcons",
@@ -208,6 +212,7 @@ const GIZMO_SETTINGS_KEYS = new Set([
 	"showInventoryIcons",
 	"showLocationIcons",
 	"showSkillIcons",
+	"showQuestIcons",
 	"notificationIcon",
 	"allowModNotificationIcon",
 	"allowModNotificationColor",
@@ -224,6 +229,12 @@ const GIZMO_SETTINGS_KEYS = new Set([
 	"levelProgressIcon",
 	"skillProgressColor",
 	"levelProgressColor",
+	"showQuestStatus",
+	"showQuestObjectives",
+	"questStatusIcon",
+	"questObjectiveIcon",
+	"questStatusColor",
+	"questObjectiveColor",
 	"backdropColor",
 	"backdropOpacity",
 	"backdropDirection",
@@ -551,6 +562,52 @@ function patchGizmoSetting(id, key, value, live) {
 	syncHudGizmo(gizmo);
 }
 
+/** Nested Feed source field: settings.sources.<sourceId>.<key> */
+function patchGizmoSourceSetting(id, sourceId, key, value, live) {
+	const gizmo = gizmoFor(id);
+	if (!gizmo || !sourceId || !key) {
+		return;
+	}
+	const settings = ensureGizmoSettings(gizmo);
+	if (!settings.sources || typeof settings.sources !== "object") {
+		settings.sources = {};
+	}
+	const prev = settings.sources[sourceId] && typeof settings.sources[sourceId] === "object"
+		? settings.sources[sourceId]
+		: {};
+	if (prev[key] === value) {
+		if (live === false) {
+			scheduleSave(true);
+		}
+		return;
+	}
+	settings.sources[sourceId] = { ...prev, [key]: value };
+	gizmo.settings = settings;
+	gizmo.settingsJson = JSON.stringify(settings);
+	// Keep flat→nested migration in sync so the next state push persists sources.*.
+	if (typeof ensureGizmo === "function") {
+		ensureGizmo(gizmo);
+	}
+	if (live === true) {
+		syncHudGizmo(gizmo);
+		return;
+	}
+	scheduleSave(true);
+	syncHudGizmo(gizmo);
+}
+
+function readGizmoSourceSetting(gizmo, sourceId, key) {
+	const settings = gizmo && gizmo.settings;
+	if (!settings || !sourceId || !key) {
+		return undefined;
+	}
+	const block = settings.sources && settings.sources[sourceId];
+	if (block && typeof block === "object" && Object.prototype.hasOwnProperty.call(block, key)) {
+		return block[key];
+	}
+	return undefined;
+}
+
 function appendGizmoVisibilityEditor(panel, gizmo, opts) {
 	const gid = gizmo.id;
 	const omitLabel = !!(opts && opts.omitLabel);
@@ -638,6 +695,29 @@ function mergeGizmoTypesPreserveSettingsHtml(incoming, previous) {
 			return Object.assign({}, t, { settingsHtml: prev.settingsHtml });
 		}
 		return t;
+	});
+}
+
+/** Feed source catalog — lean ticks omit settingsHtml; keep last-seen body per id. */
+function mergeFeedSourcesPreserveSettingsHtml(incoming, previous) {
+	if (!Array.isArray(incoming)) {
+		return Array.isArray(previous) ? previous : [];
+	}
+	const prevById = new Map();
+	for (const e of previous || []) {
+		if (e && e.id) {
+			prevById.set(String(e.id), e);
+		}
+	}
+	return incoming.map((e) => {
+		if (!e || e.settingsHtml != null) {
+			return e;
+		}
+		const prev = prevById.get(String(e.id));
+		if (prev && prev.settingsHtml != null) {
+			return Object.assign({}, e, { settingsHtml: prev.settingsHtml });
+		}
+		return e;
 	});
 }
 
@@ -960,11 +1040,24 @@ function fillHtmlGizmoEditor(panel, gizmo) {
 			.toLowerCase();
 		const defaultRaw = el.getAttribute("data-gizmo-default");
 		const settings = () => syncGizmoSettingsJson(live());
-		let current = settings()[key];
+		const feedSourceHost = el.closest("[data-feed-source]");
+		const feedSourceId = feedSourceHost
+			? String(feedSourceHost.getAttribute("data-feed-source") || "").trim()
+			: "";
+		const readSetting = () =>
+			feedSourceId ? readGizmoSourceSetting(live(), feedSourceId, key) : settings()[key];
+		const writeSetting = (value, livePaint) => {
+			if (feedSourceId) {
+				patchGizmoSourceSetting(gid, feedSourceId, key, value, livePaint);
+				return;
+			}
+			syncSettingsKey(key, value, livePaint);
+		};
+		let current = readSetting();
 		if (current == null && defaultRaw != null) {
 			current = parseGizmoHtmlDefault(defaultRaw, el);
 			if (current !== undefined) {
-				patchGizmoSetting(gid, key, current, false);
+				writeSetting(current, false);
 			}
 		}
 
@@ -978,7 +1071,7 @@ function fillHtmlGizmoEditor(panel, gizmo) {
 				labelInfo.fallback || "",
 				current != null ? current : fallback,
 				fallback,
-				(hex, livePaint) => syncSettingsKey(key, hex, livePaint)
+				(hex, livePaint) => writeSetting(hex, livePaint)
 			);
 			// Same chrome as fillEditor / gauges: compact column field, label above.
 			colorField.classList.add("compact");
@@ -1024,7 +1117,7 @@ function fillHtmlGizmoEditor(panel, gizmo) {
 					if (isEndcap && !next && typeof defaultEndCapArtPath === "function") {
 						next = defaultEndCapArtPath();
 					}
-					syncSettingsKey(key, next);
+					writeSetting(next, false);
 				}
 			});
 			iconCtrl.classList.add("compact");
@@ -1082,14 +1175,14 @@ function fillHtmlGizmoEditor(panel, gizmo) {
 					}
 					return numSpec.integer ? Math.round(v) : v;
 				},
-				apply: (v) => syncSettingsKey(key, v, false),
+				apply: (v) => writeSetting(v, false),
 				format: numSpec.autoZero
 					? (v) => (Number(v) > 0 ? fmtDec(v, decimals) : "")
 					: numSpec.integer
 						? (v) => String(Math.round(Number(v) || 0))
 						: undefined,
 				current: () => {
-					const cur = settings()[key];
+					const cur = readSetting();
 					return cur != null && Number.isFinite(Number(cur)) ? Number(cur) : initial;
 				}
 			});
@@ -1117,7 +1210,7 @@ function fillHtmlGizmoEditor(panel, gizmo) {
 		writeGizmoHtmlControlValue(el, current);
 		const commit = () => {
 			const next = readGizmoHtmlControlValue(el);
-			syncSettingsKey(key, next, false);
+			writeSetting(next, false);
 		};
 		el.addEventListener("change", commit);
 		if (String(el.tagName || "").toUpperCase() === "INPUT") {
@@ -1129,8 +1222,9 @@ function fillHtmlGizmoEditor(panel, gizmo) {
 		if (String(el.tagName || "").toUpperCase() === "TEXTAREA") {
 			el.addEventListener("input", commit);
 		}
-		bindersByKey.set(key, [
-			...(bindersByKey.get(key) || []),
+		el.setAttribute("data-cog-html-bound", "1");
+		bindersByKey.set(feedSourceId ? `${feedSourceId}.${key}` : key, [
+			...(bindersByKey.get(feedSourceId ? `${feedSourceId}.${key}` : key) || []),
 			{
 				sync: (v) => {
 					if (document.activeElement === el) {
@@ -1149,6 +1243,170 @@ function fillHtmlGizmoEditor(panel, gizmo) {
 		/* ignore */
 	}
 }
+
+/**
+ * Bind newly injected [data-gizmo-value] nodes under subtree (Feed source modules).
+ * Skips nodes already marked data-cog-html-bound.
+ */
+window.CogBindGizmoHtmlSubtree = function CogBindGizmoHtmlSubtree(subtree, gizmoId) {
+	if (!subtree || !gizmoId) {
+		return;
+	}
+	const live = () => gizmoFor(gizmoId);
+	const typeDef = (() => {
+		const g = live();
+		return g ? gizmoTypeDef(g.typeId) : null;
+	})();
+	const typeId = (typeDef && typeDef.typeId) || (live() && live().typeId) || "";
+	const nodes = [...subtree.querySelectorAll("[data-gizmo-value]")];
+	for (const el of nodes) {
+		if (!subtree.contains(el) || el.getAttribute("data-cog-html-bound") === "1") {
+			continue;
+		}
+		const key = String(el.getAttribute("data-gizmo-value") || "").trim();
+		if (!key || key.startsWith("cog-")) {
+			continue;
+		}
+		const fieldKind = String(el.getAttribute("data-gizmo-field") || "")
+			.trim()
+			.toLowerCase();
+		const defaultRaw = el.getAttribute("data-gizmo-default");
+		const feedSourceHost = el.closest("[data-feed-source]");
+		const feedSourceId = feedSourceHost
+			? String(feedSourceHost.getAttribute("data-feed-source") || "").trim()
+			: "";
+		const readSetting = () => {
+			const g = live();
+			if (!g) {
+				return undefined;
+			}
+			if (feedSourceId) {
+				return readGizmoSourceSetting(g, feedSourceId, key);
+			}
+			const settings = syncGizmoSettingsJson(g);
+			return settings[key];
+		};
+		const writeSetting = (value, livePaint) => {
+			if (feedSourceId) {
+				patchGizmoSourceSetting(gizmoId, feedSourceId, key, value, livePaint);
+				return;
+			}
+			patchGizmoSetting(gizmoId, key, value, livePaint);
+		};
+		let current = readSetting();
+		if (current == null && defaultRaw != null) {
+			current = parseGizmoHtmlDefault(defaultRaw, el);
+			if (current !== undefined) {
+				writeSetting(current, false);
+			}
+		}
+		if (fieldKind === "color") {
+			const fallback =
+				defaultRaw != null && String(defaultRaw).trim() !== ""
+					? String(defaultRaw)
+					: DEFAULT_GIZMO_GOLD;
+			const labelInfo = gizmoHtmlFieldLabel(el);
+			const colorField = makeOptionalColorField(
+				labelInfo.fallback || "",
+				current != null ? current : fallback,
+				fallback,
+				(hex, livePaint) => writeSetting(hex, livePaint)
+			);
+			colorField.classList.add("compact");
+			if (labelInfo.tag && typeof tagFieldLabel === "function") {
+				tagFieldLabel(colorField, labelInfo.tag, labelInfo.fallback || labelInfo.tag, typeId);
+			}
+			labelInfo.mount.replaceWith(colorField);
+			el.setAttribute("data-cog-html-bound", "1");
+			continue;
+		}
+		if (fieldKind === "icon" || fieldKind === "endcap") {
+			const isEndcap = fieldKind === "endcap";
+			const labelInfo = gizmoHtmlFieldLabel(el);
+			const iconCtrl = makeIconControl({
+				label: labelInfo.fallback || (isEndcap ? "Endcap" : "Icon"),
+				value: current != null ? String(current) : "",
+				folder: isEndcap ? "Endcaps" : "",
+				endArtPicker: isEndcap,
+				showName: true,
+				onCommit: (path) => writeSetting(path || "", false)
+			});
+			iconCtrl.classList.add("compact");
+			if (labelInfo.tag && typeof tagFieldLabel === "function") {
+				tagFieldLabel(iconCtrl, labelInfo.tag, labelInfo.fallback || labelInfo.tag, typeId);
+			}
+			labelInfo.mount.replaceWith(iconCtrl);
+			continue;
+		}
+		const numSpec = gizmoHtmlNumberKindSpec(fieldKind);
+		if (numSpec) {
+			const decimals = numSpec.decimals;
+			const initial =
+				current != null && Number.isFinite(Number(current))
+					? Number(current)
+					: defaultRaw != null && Number.isFinite(Number(defaultRaw))
+						? Number(defaultRaw)
+						: 0;
+			if (numSpec.autoZero) {
+				el.value = initial > 0 ? fmtDec(initial, decimals) : "";
+			} else if (numSpec.integer) {
+				el.value = String(Math.round(initial));
+			} else {
+				el.value = fmtDec(initial, decimals);
+			}
+			bindNumberField(el, {
+				suffix: numSpec.suffix || undefined,
+				decimals: numSpec.integer ? 0 : decimals,
+				parse: (raw) => {
+					if (numSpec.autoZero && String(raw).trim() === "") {
+						return 0;
+					}
+					if (String(raw).trim() === "" || raw === "." || raw === "-") {
+						return null;
+					}
+					const v = Number(raw);
+					if (!Number.isFinite(v)) {
+						return null;
+					}
+					return numSpec.integer ? Math.round(v) : v;
+				},
+				apply: (v) => writeSetting(v, false),
+				format: numSpec.autoZero
+					? (v) => (Number(v) > 0 ? fmtDec(v, decimals) : "")
+					: numSpec.integer
+						? (v) => String(Math.round(Number(v) || 0))
+						: undefined,
+				current: () => {
+					const cur = readSetting();
+					return cur != null && Number.isFinite(Number(cur)) ? Number(cur) : initial;
+				}
+			});
+			el.setAttribute("data-cog-html-bound", "1");
+			continue;
+		}
+		writeGizmoHtmlControlValue(el, current);
+		const commit = () => writeSetting(readGizmoHtmlControlValue(el), false);
+		el.addEventListener("change", commit);
+		if (String(el.tagName || "").toUpperCase() === "INPUT") {
+			const type = String(el.type || "").toLowerCase();
+			if (type === "text" || type === "number" || type === "color" || type === "") {
+				el.addEventListener("input", commit);
+			}
+		}
+		el.setAttribute("data-cog-html-bound", "1");
+	}
+	if (typeof makeInfoTip === "function") {
+		subtree.querySelectorAll("[data-cog-info-tip]").forEach((tipEl) => {
+			const tipText = tipEl.getAttribute("data-cog-info-tip") || "";
+			const tipTag = tipEl.getAttribute("data-cog-info-tip-tag") || "";
+			const tipType = tipEl.getAttribute("data-translation-type") || typeId;
+			tipEl.classList.add("field-title-row");
+			tipEl.appendChild(makeInfoTip(tipText, tipTag, tipType));
+			tipEl.removeAttribute("data-cog-info-tip");
+			tipEl.removeAttribute("data-cog-info-tip-tag");
+		});
+	}
+};
 
 // Migration Code for Transition from v1.11 or earlier to v1.2: schema editor + auto Visibility.
 function fillSchemaGizmoEditor(panel, gizmo) {
@@ -1567,6 +1825,20 @@ function patchGizmo(id, patch, skipHud, live) {
 		}
 		if (key === "settings" && value && typeof value === "object" && !Array.isArray(value)) {
 			for (const [sk, sv] of Object.entries(value)) {
+				if (sk === "sources" && sv && typeof sv === "object" && !Array.isArray(sv)) {
+					const nextSources = {
+						...(settings.sources && typeof settings.sources === "object" ? settings.sources : {})
+					};
+					for (const [sid, block] of Object.entries(sv)) {
+						nextSources[sid] = {
+							...(nextSources[sid] && typeof nextSources[sid] === "object" ? nextSources[sid] : {}),
+							...(block && typeof block === "object" ? block : {})
+						};
+					}
+					settings.sources = nextSources;
+					changed = true;
+					continue;
+				}
 				if (settings[sk] !== sv) {
 					changed = true;
 					settings[sk] = sv;
@@ -1664,13 +1936,46 @@ function layoutHudGizmo(el, gizmo) {
 	layoutHudGizmoCustom(el, gizmo);
 }
 
+function gizmoHudNeedsRebuild(el, gizmo, api) {
+	const type = normalizeGizmoType(gizmo && gizmo.typeId);
+	if (!el) {
+		return true;
+	}
+	if (el.dataset.gizmoType !== type) {
+		return true;
+	}
+	// Only rebuild when a real build() exists — avoids renderGears loops on placeholders.
+	if (!(api && typeof api.build === "function")) {
+		return false;
+	}
+	// Custom placeholder ("Feed 1") left over from before the view script registered.
+	if (el.classList.contains("hud-gizmo-custom")) {
+		return true;
+	}
+	if (type === "cog-feed" && !el.querySelector(".feed-stack")) {
+		return true;
+	}
+	return false;
+}
+
 function syncHudGizmo(gizmo) {
-	const el = findHudGizmoEl(gizmo.id);
+	const api = gizmoRendererApi(gizmo.typeId);
+	let el = findHudGizmoEl(gizmo.id);
+	if (gizmoHudNeedsRebuild(el, gizmo, api)) {
+		// Full sync rebuilds hosts; fall back to in-place replace when possible.
+		if (typeof renderGears === "function" && !drag) {
+			renderGears();
+			return;
+		}
+		if (!el) {
+			return;
+		}
+	}
+	el = findHudGizmoEl(gizmo.id);
 	if (!el) {
 		return;
 	}
 	el.dataset.visibility = normalizeGizmoVisibility(gizmo.visibility);
-	const api = gizmoRendererApi(gizmo.typeId);
 	if (api && typeof api.layout === "function") {
 		api.layout(el, gizmo);
 		applyHostMaxAlpha(el, gizmo);
@@ -1837,10 +2142,12 @@ function syncHudGizmos(root, frontRoot, preview) {
 			const dest = isFront && frontRoot ? frontRoot : root;
 			let el = findHudGizmoEl(gizmo.id, dest);
 			const mode = normalizeGizmoDisplayMode(ensureGizmoSettings(gizmo).displayMode);
+			const api = gizmoRendererApi(gizmoType);
 			const needRebuild =
 				!el ||
 				el.parentElement !== dest ||
 				el.dataset.gizmoType !== gizmoType ||
+				gizmoHudNeedsRebuild(el, gizmo, api) ||
 				(gizmoType === "cog-clock" && el.dataset.gizmoMode !== mode) ||
 				(gizmoType === "cog-clock" && mode === "celestial" && !el.querySelector(".gizmo-celestial-rotor"));
 			if (needRebuild) {
@@ -1853,7 +2160,16 @@ function syncHudGizmos(root, frontRoot, preview) {
 			} else {
 				el.classList.toggle("is-front", isFront);
 				el.classList.toggle("is-editable", preview);
-				if (gizmoType === "cog-shout-meter") {
+				if (api && typeof api.layout === "function") {
+					api.layout(el, gizmo);
+					applyHostMaxAlpha(el, gizmo);
+					if (typeof api.paint === "function") {
+						api.paint(el, gizmo);
+					}
+					if (gizmoType === "cog-clock") {
+						paintCelestialArc(el, gizmo);
+					}
+				} else if (gizmoType === "cog-shout-meter") {
 					layoutHudGizmoShoutMeter(el, gizmo);
 					paintGizmoShoutMeter(el, gizmo);
 				} else if (gizmoType === "cog-feed") {

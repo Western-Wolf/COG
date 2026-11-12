@@ -573,7 +573,7 @@ std::string CogHudSuppress::CanonicalKey(std::string_view linked)
 	if (lower == "hud.currentlocation" || lower == "currentlocation" || lower == "locationlockbase") {
 		return std::string(RE::HUDMenu::MENU_NAME) + "|HUDMovieBaseInstance.LocationLockBase";
 	}
-	// Retired aliases — location discovery diverts without its own clip; use hud.questUpdates for Skills.
+	// Retired aliases — location discovery / Skills divert from QuestUpdateBaseInstance (no soft-hide).
 	if (lower == "hud.locationdiscovery" || lower == "locationdiscovery" || lower == "hud.location" ||
 		lower == "hud.skills" || lower == "skills") {
 		return {};

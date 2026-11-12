@@ -1,7 +1,5 @@
-<!-- Builtin Feed settings. Bound by fillHtmlGizmoEditor; script toggles sections + notes.
-     gizmo-text-settings picks up shared Feed section layout (nested rows, etc.). -->
+<!-- Builtin Feed settings shell. Per-source panels come from CogFeedSourceCatalog + sources/*.html -->
 <div class="gizmo-text-settings">
-<!-- Root soft-hide list — hidden; script keeps it in sync with section / nested toggles. -->
 <input type="hidden" data-gizmo-value="cog-hudSuppress" data-gizmo-default="[]" value="[]">
 <p class="hint" data-translation="cog-feed-intro" data-translation-fallback="Combined notification and inventory message feed. Add as many sections as you like, or split sections into multiple feeds.">Combined notification and inventory message feed. Add as many sections as you like, or split sections into multiple feeds.</p>
 <hr class="editor-rule">
@@ -50,6 +48,12 @@
 			<option value="top" data-translation="cog-top" data-translation-fallback="Top">Top</option>
 		</select>
 	</label>
+</div>
+<hr class="editor-rule">
+<p class="lede section-heading">
+	<span data-translation-fallback="Timing">Timing</span>
+</p>
+<div class="style-row">
 	<label class="pos-field compact">
 		<span data-translation="cog-feed-persist" data-translation-fallback="Persist">Persist</span>
 		<input type="text" inputmode="decimal" data-gizmo-field="second" data-gizmo-value="duration" data-gizmo-default="5">
@@ -115,186 +119,9 @@
 <p class="lede section-heading">
 	<span data-translation="cog-feed-sources" data-translation-fallback="Sources">Sources</span>
 </p>
-<div class="style-row">
-	<label class="check-row compact">
-		<input type="checkbox" data-gizmo-value="showActiveEffects" data-gizmo-default="false" data-cog-feed-source="effects">
-		<span data-translation="cog-feed-active-effects" data-translation-fallback="Active Effects">Active Effects</span>
-	</label>
-	<label class="check-row compact">
-		<input type="checkbox" data-gizmo-value="showInventory" data-gizmo-default="false" data-cog-feed-source="inventory">
-		<span data-translation="cog-feed-inventory" data-translation-fallback="Inventory">Inventory</span>
-	</label>
-	<label class="check-row compact">
-		<input type="checkbox" data-gizmo-value="showLocation" data-gizmo-default="false" data-cog-feed-source="location">
-		<span data-translation="cog-feed-location" data-translation-fallback="Location">Location</span>
-	</label>
-	<label class="check-row compact">
-		<input type="checkbox" data-gizmo-value="showNotifications" data-gizmo-default="false" data-cog-feed-source="notifications">
-		<span data-translation="cog-feed-notifications" data-translation-fallback="Notifications">Notifications</span>
-	</label>
-	<label class="check-row compact">
-		<input type="checkbox" data-gizmo-value="showSkills" data-gizmo-default="false" data-cog-feed-source="skills">
-		<span data-translation="cog-feed-skills" data-translation-fallback="Skills">Skills</span>
-	</label>
-</div>
+<div data-cog-feed-sources-checks></div>
 <p class="hint" data-cog-feed-none-hint data-translation="cog-feed-add-one-source" data-translation-fallback="Please add at least one source." hidden>Please add at least one source.</p>
-
-<div data-cog-feed-panel="effects" hidden>
-	<hr class="editor-rule">
-	<p class="lede section-heading">
-		<span data-translation="cog-feed-active-effects" data-translation-fallback="Active Effects">Active Effects</span>
-	</p>
-	<p class="hint" data-translation="cog-feed-effects-hint" data-translation-fallback="Timed player effects only. They stay until the timer ends, then fade. Timer min/max are under Progress Bar.">Timed player effects only. They stay until the timer ends, then fade. Timer min/max are under Progress Bar.</p>
-	<div class="style-row">
-		<input type="color" data-gizmo-field="color" data-gizmo-value="effectsColor" data-gizmo-default="#e8d2a0" data-translation="cog-text-colour" data-translation-fallback="Text Colour">
-		<label class="check-row compact">
-			<input type="checkbox" data-gizmo-value="showEffectText" data-gizmo-default="true">
-			<span data-translation="cog-feed-show-text" data-translation-fallback="Show text">Show text</span>
-		</label>
-		<label class="check-row compact">
-			<input type="checkbox" data-gizmo-value="showEffectTimer" data-gizmo-default="true">
-			<span data-translation="cog-feed-show-timer" data-translation-fallback="Show timer">Show timer</span>
-		</label>
-		<label class="check-row compact">
-			<input type="checkbox" data-gizmo-value="showEffectIcons" data-gizmo-default="true">
-			<span data-translation="cog-feed-show-icons" data-translation-fallback="Show Icons">Show Icons</span>
-		</label>
-	</div>
-	<div class="style-row">
-		<label class="check-row compact">
-			<input type="checkbox" data-gizmo-value="suppressTransformEffects" data-gizmo-default="true">
-			<span data-translation="cog-feed-suppress-transform-effects" data-translation-fallback="Suppress Werewolf/Vampire transformation effects">Suppress Werewolf/Vampire transformation effects</span>
-		</label>
-	</div>
-	<div class="style-row feed-effects-controls">
-		<input type="text" data-gizmo-field="icon" data-gizmo-value="effectIcon" data-gizmo-default="Magic/sparkles.svg" data-translation="cog-feed-default-icon" data-translation-fallback="Default Icon">
-	</div>
-	<div data-cog-feed-notes="effects"></div>
-</div>
-
-<div data-cog-feed-panel="inventory" hidden>
-	<hr class="editor-rule">
-	<p class="lede section-heading">
-		<span data-translation="cog-feed-inventory" data-translation-fallback="Inventory">Inventory</span>
-	</p>
-	<div class="style-row">
-		<input type="color" data-gizmo-field="color" data-gizmo-value="addColor" data-gizmo-default="#e8d2a0" data-translation="cog-add" data-translation-fallback="Add">
-		<input type="color" data-gizmo-field="color" data-gizmo-value="removeColor" data-gizmo-default="#e8d2a0" data-translation="cog-remove" data-translation-fallback="Remove">
-		<input type="color" data-gizmo-field="color" data-gizmo-value="stolenColor" data-gizmo-default="#e8d2a0" data-translation="cog-feed-stolen" data-translation-fallback="Stolen">
-	</div>
-	<div class="style-row">
-		<input type="text" data-gizmo-field="icon" data-gizmo-value="icon" data-gizmo-default="Treasure/bag.svg" data-translation="cog-feed-default-icon" data-translation-fallback="Default Icon">
-		<label class="check-row compact">
-			<input type="checkbox" data-gizmo-value="showInventoryIcons" data-gizmo-default="true">
-			<span data-translation="cog-feed-show-icons" data-translation-fallback="Show Icons">Show Icons</span>
-		</label>
-	</div>
-	<div data-cog-feed-notes="inventory"></div>
-</div>
-
-<div data-cog-feed-panel="location" hidden>
-	<hr class="editor-rule">
-	<p class="lede section-heading">
-		<span data-translation="cog-feed-location" data-translation-fallback="Location">Location</span>
-	</p>
-	<div class="feed-location-type">
-		<label class="check-row compact">
-			<input type="checkbox" data-gizmo-value="showLocationDiscovery" data-gizmo-default="true" data-cog-feed-nested="loc-discovery">
-			<span data-translation="cog-feed-location-discovery" data-translation-fallback="Location Discovery">Location Discovery</span>
-		</label>
-		<div class="style-row feed-location-row is-nested" data-cog-feed-nested-panel="loc-discovery">
-			<input type="color" data-gizmo-field="color" data-gizmo-value="locationDiscoveryColor" data-gizmo-default="#e8d2a0" data-translation="cog-colour" data-translation-fallback="Colour">
-			<input type="text" data-gizmo-field="icon" data-gizmo-value="locationDiscoveryIcon" data-gizmo-default="Camping/map.svg" data-translation="cog-icon" data-translation-fallback="Icon">
-		</div>
-	</div>
-	<div class="feed-location-type">
-		<label class="check-row compact">
-			<input type="checkbox" data-gizmo-value="showCurrentLocation" data-gizmo-default="true" data-cog-feed-nested="loc-current">
-			<span data-translation="cog-feed-current-location" data-translation-fallback="Current Location">Current Location</span>
-		</label>
-		<div class="style-row feed-location-row is-nested" data-cog-feed-nested-panel="loc-current">
-			<input type="color" data-gizmo-field="color" data-gizmo-value="currentLocationColor" data-gizmo-default="#e8d2a0" data-translation="cog-colour" data-translation-fallback="Colour">
-			<input type="text" data-gizmo-field="icon" data-gizmo-value="currentLocationIcon" data-gizmo-default="Camping/compass.svg" data-translation="cog-icon" data-translation-fallback="Icon">
-		</div>
-	</div>
-	<label class="check-row compact">
-		<input type="checkbox" data-gizmo-value="showLocationIcons" data-gizmo-default="true">
-		<span data-translation="cog-feed-show-icons" data-translation-fallback="Show Icons">Show Icons</span>
-	</label>
-	<div data-cog-feed-notes="location"></div>
-</div>
-
-<div data-cog-feed-panel="notifications" hidden>
-	<hr class="editor-rule">
-	<p class="lede section-heading">
-		<span data-translation="cog-feed-notifications" data-translation-fallback="Notifications">Notifications</span>
-	</p>
-	<div class="style-row">
-		<input type="color" data-gizmo-field="color" data-gizmo-value="textColor" data-gizmo-default="#e8d2a0" data-translation="cog-colour" data-translation-fallback="Colour">
-		<input type="text" data-gizmo-field="icon" data-gizmo-value="notificationIcon" data-gizmo-default="Actions/speak.svg" data-translation="cog-icon" data-translation-fallback="Icon">
-		<label class="check-row compact">
-			<input type="checkbox" data-gizmo-value="showNotificationIcons" data-gizmo-default="true">
-			<span data-translation="cog-feed-show-icons" data-translation-fallback="Show Icons">Show Icons</span>
-		</label>
-	</div>
-	<div class="style-row" data-cog-feed-suppress-inventory hidden>
-		<label class="check-row compact">
-			<input type="checkbox" data-gizmo-value="suppressInventory" data-gizmo-default="true">
-			<span class="field-title-row" data-cog-info-tip="When on, inventory-style notification toasts are suppressed (not shown on the vanilla HUD or in this Notifications feed) while Notifications are active. Many activators and containers fire those even when you are not looting — leave this on unless you want them on the vanilla HUD. The Inventory section tracks real item changes separately." data-cog-info-tip-tag="cog-feed-suppress-inventory-tip">
-				<span data-translation="cog-feed-suppress-inventory" data-translation-fallback="Suppress inventory">Suppress inventory</span>
-			</span>
-		</label>
-	</div>
-	<div class="style-row">
-		<label class="check-row compact">
-			<input type="checkbox" data-gizmo-value="allowModNotificationIcon" data-gizmo-default="true">
-			<span class="field-title-row" data-cog-info-tip="When on, mods can use COG_Feed_API.Notify (or legacy COG_API.Notify) to supply a per-message icon path under assets/icons/. When off, every message uses the Notifications icon (if Show icons is on)." data-cog-info-tip-tag="cog-feed-allow-mods-choose-icon-tip">
-				<span data-translation="cog-feed-allow-mods-choose-icon" data-translation-fallback="Allow Mods to Choose Icon">Allow Mods to Choose Icon</span>
-			</span>
-		</label>
-	</div>
-	<div class="style-row">
-		<label class="check-row compact">
-			<input type="checkbox" data-gizmo-value="allowModNotificationColor" data-gizmo-default="true">
-			<span class="field-title-row" data-cog-info-tip="When on, message colour can come from SkyUILib (for compatibility) or COG_Feed_API.Notify / COG_API.Notify. When off, every message uses the Notifications colour." data-cog-info-tip-tag="cog-feed-allow-mods-choose-colour-tip">
-				<span data-translation="cog-feed-allow-mods-choose-colour" data-translation-fallback="Allow Mods to Choose Colour">Allow Mods to Choose Colour</span>
-			</span>
-		</label>
-	</div>
-	<div data-cog-feed-notes="notifications"></div>
-</div>
-
-<div data-cog-feed-panel="skills" hidden>
-	<hr class="editor-rule">
-	<p class="lede section-heading">
-		<span data-translation="cog-feed-skills" data-translation-fallback="Skills">Skills</span>
-	</p>
-	<div class="feed-location-type">
-		<label class="check-row compact">
-			<input type="checkbox" data-gizmo-value="showSkillProgress" data-gizmo-default="true" data-cog-feed-nested="skill-progress">
-			<span data-translation="cog-feed-skill-progress" data-translation-fallback="Skill Progress">Skill Progress</span>
-		</label>
-		<div class="style-row feed-location-row is-nested" data-cog-feed-nested-panel="skill-progress">
-			<input type="color" data-gizmo-field="color" data-gizmo-value="skillProgressColor" data-gizmo-default="#e8d2a0" data-translation="cog-colour" data-translation-fallback="Colour">
-			<input type="text" data-gizmo-field="icon" data-gizmo-value="skillProgressIcon" data-gizmo-default="Scribe/book-open.svg" data-translation="cog-icon" data-translation-fallback="Icon">
-		</div>
-	</div>
-	<div class="feed-location-type">
-		<label class="check-row compact">
-			<input type="checkbox" data-gizmo-value="showLevelProgress" data-gizmo-default="true" data-cog-feed-nested="level-progress">
-			<span data-translation="cog-feed-level-progress" data-translation-fallback="Level Progress">Level Progress</span>
-		</label>
-		<div class="style-row feed-location-row is-nested" data-cog-feed-nested-panel="level-progress">
-			<input type="color" data-gizmo-field="color" data-gizmo-value="levelProgressColor" data-gizmo-default="#e8d2a0" data-translation="cog-colour" data-translation-fallback="Colour">
-			<input type="text" data-gizmo-field="icon" data-gizmo-value="levelProgressIcon" data-gizmo-default="Celestial/star.svg" data-translation="cog-icon" data-translation-fallback="Icon">
-		</div>
-	</div>
-	<label class="check-row compact">
-		<input type="checkbox" data-gizmo-value="showSkillIcons" data-gizmo-default="true">
-		<span data-translation="cog-feed-show-icons" data-translation-fallback="Show Icons">Show Icons</span>
-	</label>
-	<div data-cog-feed-notes="skills"></div>
-</div>
+<div data-cog-feed-sources-panels></div>
 </div>
 
 <script>
@@ -303,86 +130,132 @@
 	while (root && !(root.classList && root.classList.contains("gizmo-html-settings"))) {
 		root = root.parentElement;
 	}
+	if (!root) {
+		var hosts = document.querySelectorAll(".gizmo-html-settings");
+		root = hosts.length ? hosts[hosts.length - 1] : null;
+	}
 	if (!root) return;
 
-	function isOn(sel) {
-		var el = root.querySelector(sel);
-		return !!(el && el.checked);
+	var checksHost = root.querySelector("[data-cog-feed-sources-checks]");
+	var panelsHost = root.querySelector("[data-cog-feed-sources-panels]");
+	var noneHint = root.querySelector("[data-cog-feed-none-hint]");
+	var legacyShowKey = {
+		"cog-notifications": "showNotifications",
+		"cog-inventory": "showInventory",
+		"cog-location": "showLocation",
+		"cog-skills": "showSkills",
+		"cog-quests": "showQuests",
+		"cog-effects": "showActiveEffects"
+	};
+
+	function gid() {
+		return root.dataset && root.dataset.gizmoId ? root.dataset.gizmoId : "";
 	}
 
-	function setPanel(name, on) {
-		var panel = root.querySelector('[data-cog-feed-panel="' + name + '"]');
-		if (panel) panel.hidden = !on;
+	function liveGizmo() {
+		return typeof gizmoFor === "function" && gid() ? gizmoFor(gid()) : null;
 	}
 
-	function syncNested() {
-		root.querySelectorAll("[data-cog-feed-nested]").forEach(function (input) {
-			var key = input.getAttribute("data-cog-feed-nested");
-			var panel = root.querySelector('[data-cog-feed-nested-panel="' + key + '"]');
-			if (panel) panel.hidden = !input.checked;
+	function liveSettings() {
+		var g = liveGizmo();
+		return g && g.settings && typeof g.settings === "object" ? g.settings : {};
+	}
+
+	function getCatalog() {
+		if (typeof window.CogFeedSourceCatalogResolved === "function") {
+			return window.CogFeedSourceCatalogResolved();
+		}
+		return Array.isArray(window.CogFeedSourceCatalog) ? window.CogFeedSourceCatalog.slice() : [];
+	}
+
+	function catalogSortName(entry, labelEl) {
+		if (labelEl) {
+			var t = (labelEl.textContent || "").trim();
+			if (t) return t;
+		}
+		return String(entry.displayName || entry.id || "");
+	}
+
+	function truthyFlag(v) {
+		return v === true || v === "true" || v === 1 || v === "1";
+	}
+
+	function sourceEnabled(id) {
+		var s = liveSettings();
+		if (s.sources && s.sources[id] && Object.prototype.hasOwnProperty.call(s.sources[id], "enabled")) {
+			return truthyFlag(s.sources[id].enabled);
+		}
+		var legacy = legacyShowKey[id];
+		if (!legacy) return false;
+		return truthyFlag(s[legacy]);
+	}
+
+	function patchSourceEnabled(id, on) {
+		var g = liveGizmo();
+		if (!g || typeof patchGizmo !== "function") return;
+		var s = liveSettings();
+		var sources = Object.assign({}, s.sources || {});
+		var prev = sources[id] && typeof sources[id] === "object" ? sources[id] : {};
+		var def =
+			typeof window.CogFeedDefaultSourceBlock === "function"
+				? window.CogFeedDefaultSourceBlock(id) || {}
+				: {};
+		// On enable, fill missing subtype defaults (e.g. Quest Status + Objectives both on).
+		var block = on
+			? Object.assign({}, def, prev, { enabled: true })
+			: Object.assign({}, prev, { enabled: false });
+		sources[id] = block;
+		var legacy = legacyShowKey[id];
+		var settingsPatch = { sources: sources };
+		if (legacy) {
+			settingsPatch[legacy] = !!on;
+		}
+		patchGizmo(g.id, { settings: settingsPatch });
+	}
+
+	function activateScripts(host) {
+		if (!host) return;
+		host.querySelectorAll("script").forEach(function (old) {
+			var next = document.createElement("script");
+			for (var i = 0; i < old.attributes.length; i++) {
+				var attr = old.attributes[i];
+				next.setAttribute(attr.name, attr.value);
+			}
+			next.textContent = old.textContent;
+			old.replaceWith(next);
 		});
 	}
 
-	function mountNotes() {
-		if (typeof window.CogAppendFeedSectionNotes !== "function") return;
-		var storage = typeof window.CogFeedStoragePath === "function" ? window.CogFeedStoragePath() : "gizmoTypes/cog-feed";
-		var hide = typeof window.CogFeedHideNoteEntry === "function" ? window.CogFeedHideNoteEntry : function () { return null; };
-		var fx = root.querySelector('[data-cog-feed-notes="effects"]');
-		if (fx) window.CogAppendFeedSectionNotes(fx, "hud.activeEffects", storage + "/effects/");
-		var inv = root.querySelector('[data-cog-feed-notes="inventory"]');
-		if (inv) window.CogAppendFeedSectionNotes(inv, "", storage + "/inventory/", { hideEntry: hide("inventory") });
-		var skills = root.querySelector('[data-cog-feed-notes="skills"]');
-		if (skills) window.CogAppendFeedSectionNotes(skills, "", storage + "/skills/", { hideEntry: hide("skills") });
-		var notif = root.querySelector('[data-cog-feed-notes="notifications"]');
-		if (notif) window.CogAppendFeedSectionNotes(notif, "hud.notifications", storage + "/notifications/", { notificationsApi: true });
-		syncLocationNotes();
+	function bindExclusiveAccordion(details) {
+		details.addEventListener("toggle", function () {
+			if (!details.open) return;
+			panelsHost.querySelectorAll("details.feed-source-acc").forEach(function (other) {
+				if (other !== details) other.open = false;
+			});
+		});
 	}
 
-	function syncLocationNotes() {
-		if (typeof window.CogAppendFeedSectionNotes !== "function") return;
-		var storage = typeof window.CogFeedStoragePath === "function" ? window.CogFeedStoragePath() : "gizmoTypes/cog-feed";
-		var hide = typeof window.CogFeedHideNoteEntry === "function" ? window.CogFeedHideNoteEntry : function () { return null; };
-		var host = root.querySelector('[data-cog-feed-notes="location"]');
-		if (!host) return;
-		var showCurrent = isOn('[data-gizmo-value="showCurrentLocation"]');
-		var showDiscovery = isOn('[data-gizmo-value="showLocationDiscovery"]');
-		var entryName = "locationBoth";
-		if (showCurrent && showDiscovery) entryName = "locationBoth";
-		else if (showCurrent) entryName = "locationCurrent";
-		else if (showDiscovery) entryName = "locationDiscovery";
-		else entryName = "locationBoth";
-		window.CogAppendFeedSectionNotes(host, "", storage + "/location/", { hideEntry: hide(entryName) });
+	function syncSuppressInventoryRow() {
+		var notifOn = sourceEnabled("cog-notifications");
+		var invOn = sourceEnabled("cog-inventory");
+		root.querySelectorAll("[data-cog-feed-suppress-inventory]").forEach(function (el) {
+			el.hidden = !(notifOn && !invOn);
+		});
 	}
 
-	function syncPanels() {
-		var effects = isOn('[data-cog-feed-source="effects"]');
-		var inventory = isOn('[data-cog-feed-source="inventory"]');
-		var location = isOn('[data-cog-feed-source="location"]');
-		var notifications = isOn('[data-cog-feed-source="notifications"]');
-		var skills = isOn('[data-cog-feed-source="skills"]');
-		setPanel("effects", effects);
-		setPanel("inventory", inventory);
-		setPanel("location", location);
-		setPanel("notifications", notifications);
-		setPanel("skills", skills);
-		var noneHint = root.querySelector("[data-cog-feed-none-hint]");
-		if (noneHint) noneHint.hidden = effects || inventory || location || notifications || skills;
-		var suppress = root.querySelector("[data-cog-feed-suppress-inventory]");
-		if (suppress) suppress.hidden = !(notifications && !inventory);
-		syncNested();
-		syncHudSuppress();
-	}
-
-	/** Keep hidden cog-hudSuppress in sync with section toggles (same binder path as customs). */
 	function syncHudSuppress() {
 		var keys = [];
-		if (isOn('[data-cog-feed-source="notifications"]')) keys.push("hud.notifications");
-		if (isOn('[data-cog-feed-source="inventory"]')) keys.push("hud.inventory");
-		if (isOn('[data-cog-feed-source="location"]') && isOn('[data-gizmo-value="showCurrentLocation"]')) {
-			keys.push("hud.currentLocation");
-		}
-		if (isOn('[data-cog-feed-source="effects"]')) keys.push("hud.activeEffects");
-		if (isOn('[data-cog-feed-source="skills"]')) keys.push("hud.questUpdates");
+		var seen = {};
+		getCatalog().forEach(function (entry) {
+			if (!entry || !entry.id || !sourceEnabled(entry.id)) return;
+			var list = entry.hudSuppress || [];
+			for (var i = 0; i < list.length; i++) {
+				var k = list[i];
+				if (!k || seen[k]) continue;
+				seen[k] = true;
+				keys.push(k);
+			}
+		});
 		var el = root.querySelector('[data-gizmo-value="cog-hudSuppress"]');
 		if (!el) return;
 		var next = JSON.stringify(keys);
@@ -393,20 +266,102 @@
 		} catch (e) { /* ignore */ }
 	}
 
-	function onBound() {
-		syncPanels();
-		mountNotes();
+	function syncNoneHint(anyOn) {
+		if (noneHint) noneHint.hidden = !!anyOn;
 	}
 
-	root.addEventListener("cog-html-settings-bound", onBound);
-	root.querySelectorAll("[data-cog-feed-source], [data-cog-feed-nested], [data-gizmo-value='showCurrentLocation'], [data-gizmo-value='showLocationDiscovery']").forEach(function (el) {
-		el.addEventListener("change", function () {
-			syncPanels();
-			if (el.getAttribute("data-gizmo-value") === "showCurrentLocation" || el.getAttribute("data-gizmo-value") === "showLocationDiscovery" || el.getAttribute("data-cog-feed-nested")) {
-				syncLocationNotes();
+	function bindSubtree(host) {
+		if (typeof window.CogBindGizmoHtmlSubtree === "function" && gid()) {
+			window.CogBindGizmoHtmlSubtree(host, gid());
+		}
+	}
+
+	function openSourceId() {
+		var open = panelsHost && panelsHost.querySelector("details.feed-source-acc[open] [data-feed-source]");
+		return open ? String(open.getAttribute("data-feed-source") || "") : "";
+	}
+
+	function buildSourcePanels(preferOpenId) {
+		if (!checksHost || !panelsHost) return;
+		var keepOpen = preferOpenId != null && preferOpenId !== "" ? String(preferOpenId) : openSourceId();
+		checksHost.className = "feed-sources-checks";
+		panelsHost.className = "feed-sources-panels";
+		checksHost.replaceChildren();
+		panelsHost.replaceChildren();
+		var catalog = getCatalog();
+		catalog.sort(function (a, b) {
+			return catalogSortName(a).localeCompare(catalogSortName(b));
+		});
+		var anyOn = false;
+		var builtBodies = [];
+		var openDetails = null;
+		catalog.forEach(function (entry) {
+			if (!entry || !entry.id) return;
+			var id = entry.id;
+			var label = document.createElement("label");
+			label.className = "check-row";
+			label.setAttribute("data-feed-source", id);
+			var box = document.createElement("input");
+			box.type = "checkbox";
+			box.checked = sourceEnabled(id);
+			if (box.checked) anyOn = true;
+			var title = document.createElement("span");
+			title.textContent = entry.displayName || id;
+			label.appendChild(box);
+			label.appendChild(title);
+			box.addEventListener("change", function () {
+				patchSourceEnabled(id, box.checked);
+				// Keep the toggled source open when enabling; clear when disabling it.
+				buildSourcePanels(box.checked ? id : "");
+				syncSuppressInventoryRow();
+				syncHudSuppress();
+			});
+			checksHost.appendChild(label);
+			if (!box.checked) return;
+			var details = document.createElement("details");
+			details.className = "accordion nested-acc feed-source-acc";
+			details.innerHTML =
+				'<summary><span class="group-title"></span><span class="end"></span></summary>' +
+				'<div class="accordion-body gizmo-text-settings" data-feed-source="' +
+				id.replace(/"/g, "") +
+				'"></div>';
+			details.querySelector(".group-title").textContent = catalogSortName(entry, title);
+			var body = details.querySelector(".accordion-body");
+			body.innerHTML = entry.settingsHtml || "";
+			bindExclusiveAccordion(details);
+			panelsHost.appendChild(details);
+			activateScripts(body);
+			builtBodies.push(body);
+			if (keepOpen && id === keepOpen) {
+				openDetails = details;
 			}
 		});
+		if (openDetails) {
+			openDetails.open = true;
+		}
+		if (typeof applyTranslations === "function") {
+			applyTranslations(checksHost);
+			applyTranslations(panelsHost);
+		}
+		builtBodies.forEach(bindSubtree);
+		syncNoneHint(anyOn);
+		syncSuppressInventoryRow();
+		syncHudSuppress();
+	}
+
+	// Build after shell binders exist (fillHtmlGizmoEditor fires this once).
+	root.addEventListener("cog-html-settings-bound", function () {
+		buildSourcePanels();
 	});
-	onBound();
+	// Catalog HTML may arrive after the editor opened (dedicated Interop).
+	window.addEventListener("cog-feed-source-catalog", function () {
+		if (root.isConnected) {
+			buildSourcePanels();
+		}
+	});
+	// If binders already finished before this script activated, populate now.
+	if (root.getAttribute("data-cog-html-bound-done") === "1" || root.querySelector("[data-cog-html-bound='1']")) {
+		buildSourcePanels();
+	}
 })();
 </script>

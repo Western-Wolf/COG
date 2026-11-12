@@ -1814,6 +1814,74 @@ button.action:hover,
 	margin-top: 0.75em;
 }
 
+/* Feed Sources: inline checks with gap, breathing room before hint / enabled panels. */
+#editor-panel .feed-sources-checks {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.55em 1.1em;
+	margin-top: 0.35em;
+}
+
+#editor-panel .feed-sources-checks > .check-row {
+	margin-top: 0;
+	margin-bottom: 0;
+}
+
+#editor-panel .hint[data-cog-feed-none-hint] {
+	margin-top: 0.85em;
+	margin-bottom: 0;
+}
+
+#editor-panel .feed-sources-panels {
+	display: flex;
+	flex-direction: column;
+	gap: 0.65em;
+	margin-top: 0.85em;
+}
+
+#editor-panel .feed-sources-panels > .feed-source-acc.nested-acc {
+	margin-top: 0;
+}
+
+#editor-panel .feed-source-acc > summary {
+	display: flex;
+	align-items: center;
+	gap: 0.5em;
+}
+
+#editor-panel .feed-source-acc > summary .group-title {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+#editor-panel .feed-source-acc > summary .end {
+	display: flex;
+	align-items: center;
+	margin-left: auto;
+	flex-shrink: 0;
+}
+
+/* Title left, open/closed marker on the right (match COG accordion chrome otherwise). */
+#editor-panel .feed-source-acc > summary::before {
+	content: none;
+}
+
+#editor-panel .feed-source-acc > summary::after {
+	content: "▸";
+	margin-left: 0.35em;
+	flex-shrink: 0;
+	opacity: 0.9;
+}
+
+#editor-panel .feed-source-acc[open] > summary::after {
+	content: "▾";
+}
+
 .accordion > summary {
 	cursor: pointer;
 	list-style: none;

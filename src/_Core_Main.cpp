@@ -4,12 +4,14 @@
 #include "_Gears_Inventory.h"
 #include "_Gizmo_Feed.h"
 #include "_Gizmo_Feed_API.h"
+#include "_Gizmo_Feed_Sources.h"
 #include "_Gizmo_Feed_SourceActiveEffects.h"
 #include "_Gizmo_Feed_SourceInventory.h"
 #include "_Gizmo_Feed_SourceLocation.h"
 #include "_Gizmo_Feed_Log.h"
 #include "_Gizmo_Feed_SourceNotifications.h"
 #include "_Gizmo_Feed_SourceSkills.h"
+#include "_Gizmo_Feed_SourceQuests.h"
 #include "_API_Core.h"
 #include "_Core_Registry.h"
 #include "_Core_HudSuppress.h"
@@ -261,9 +263,12 @@ namespace
 		CogIcon::EnsureFallbackIconOnDisk();
 		CogUi::SetApi(prisma, view);
 		CogRegistry::Get().LoadConfig();
+		// Feed storage ensure + 1.11→1.2 folder migrate + builtin RegisterSource batch + COG_Feed_Ready.
+		CogFeedSources::Bootstrap();
 		CogFeed::LoadInventoryIconRules();
 		CogFeed::LoadEffectIconRules();
 		CogFeed::LoadSkillIconRules();
+		CogFeed::LoadQuestIconRules();
 		CogFeed::LoadNotificationIconRules();
 		CogFeed::LoadLocationIconRules();
 		prisma->RegisterJSListener(view, "cogToSKSE", HandleJsMessage);

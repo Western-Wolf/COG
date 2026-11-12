@@ -6,7 +6,7 @@ Papyrus-only reference for public `COG_API` / `COG_Feed_API` usage. Four **esp-a
 |-----|------|
 | `COG - Example Core.esp` | `ImportIcon` (fill + hollow lightbulbs) **first**, then `COG_Example_IconsReady`, then 10→0 countdown + `COG_Example_Tick` |
 | `COG - Example Gears.esp` | Registers count / percent / timer; updates from the tick |
-| `COG - Example Feed.esp` | `COG_Feed_API.Notify` when Remaining hits 0 |
+| `COG - Example Feed.esp` | Registers **Example Source** (`xmp-countdown`) + two `Notify`s when Remaining hits 0 (source toast + Notifications toast) |
 | `COG - Example Gizmos.esp` | Two gizmo types; gear-backed only if Gears is loaded |
 
 **FOMOD:** install step **Example Core** (check it, then Next) unlocks step **Example Modules** (Gears / Feed / Gizmos). Always enable Core before the others in the load order.
@@ -51,6 +51,15 @@ SendModEvent("COG_Example_Tick", IconFillPath, Remaining as Float)
 
 **Translation override:** Example Gears ships `SKSE/Plugins/COG/translations/Example.json` with `name:Example` (category) plus `name:Example Count` / `Percent` / `Timer` (`en-CA` + `fr-CA`). COG loads all `translations/*.json` A→Z last-wins, so this file rides beside Core’s `_COG.json` and demonstrates author overrides without editing the main catalog. Enable **Update stock titles on translation** (or recreate gears) if an older English `displayName` is already on disk.
 
+## Feed
+
+| Notify | Demonstrates |
+|--------|----------------|
+| **Example Source** (`xmp-countdown`) | `COG_Feed_Ready` → `RegisterSource` + settings HTML (`textColor` / `icon`); `Notify(..., "xmp-countdown.textColor", "", "xmp-countdown")` — empty icon uses that source’s settings |
+| **Notifications** (empty `asSource`) | Same countdown zero; `Notify(..., "#C4A35A", icon, "")` lands in the builtin Notifications module |
+
+Enable **Example Source** on a play-visible Feed for the registered toast; enable **Notifications** for the unregistered one.
+
 ## Gizmos
 
 | Type | Demonstrates |
@@ -64,7 +73,7 @@ Both: colours + **Show Count** (digit beside icon) + opt-in Visibility (`cog-vis
 
 1. Core only — icons import; no gears/toasts/gizmos.
 2. Core + Gears — three gears animate with the matrix above; Count hides at 0.
-3. Core + Feed — toast when countdown hits 0 (needs a visible Feed with Notifications).
+3. Core + Feed — two toasts when countdown hits 0: **Example Source** (enable that source; colour/icon in its settings) and a second line in **Notifications** (empty `asSource`).
 4. Core + Gizmos (no Gears) — only Example (Push Updated); Example (Gear Updated) absent.
 5. Core + Gears + Gizmos — both types; gear-backed follows count.
 

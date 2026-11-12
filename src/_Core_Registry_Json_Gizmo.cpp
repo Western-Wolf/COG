@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "_Core_Registry_Json.h"
+#include "_Gizmo_Feed_Sources.h"
 #include "_UI_KeyNames.h"
 
 #include <algorithm>
@@ -420,11 +421,22 @@ namespace CogRegistryJson
 		CogJson::Value settings;
 		settings.type = CogJson::Type::Object;
 		if (ctx.Has(obj, "settings")) {
-			const auto raw = ctx.GetRawJson(obj, "settings", "{}");
 			std::string err;
 			CogJson::Value parsed;
-			if (CogJson::Parse(raw, parsed, err) && parsed.IsObject()) {
+			bool ok = false;
+			// Prefer object/array body (UI state + disk). Also accept a JSON string
+			// so a double-encoded settings payload cannot wipe instance fields.
+			const auto* rawVal = obj.Find("settings");
+			if (rawVal && (rawVal->IsObject() || rawVal->IsArray())) {
+				const auto raw = ctx.GetRawJson(obj, "settings", "{}");
+				ok = CogJson::Parse(raw, parsed, err) && parsed.IsObject();
+			} else if (rawVal && rawVal->IsString() && !rawVal->stringValue.empty()) {
+				ok = CogJson::Parse(rawVal->stringValue, parsed, err) && parsed.IsObject();
+			}
+			if (ok) {
 				settings = std::move(parsed);
+			} else if (!err.empty()) {
+				logger::warn("COG: gizmo '{}' settings parse failed — keeping empty object ({})", g.id, err);
 			}
 		}
 		// Caller may have looked up `type` before Resolve — drop a mismatched record.
@@ -459,6 +471,10 @@ namespace CogRegistryJson
 		// Instance settings ← type schema defaults ← (universal leave-absent for ensure/create).
 		if (type) {
 			MergeMissingSettingsFromSchema(settings, type->settingsSchemaJson);
+		}
+		// Feed: flat show*/colours → nested sources.*; heal malformed bags before stringify.
+		if (g.typeId == "cog-feed") {
+			CogFeedSources::CanonicalizeInstanceSettings(settings);
 		}
 
 		if (hasVisibility) {

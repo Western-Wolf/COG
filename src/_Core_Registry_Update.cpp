@@ -8,6 +8,7 @@
 #include "_Gears_LiveStats.h"
 #include "_Gears_Inventory.h"
 #include "_Gizmo_Feed.h"
+#include "_Gizmo_Feed_Sources.h"
 #include "_Gizmo_Storage.h"
 #include "_API_Core.h"
 
@@ -110,22 +111,44 @@ namespace
 		return CogRegistryJson::GizmoSettingsBool(g, key, fallback);
 	}
 
-	/** Shared play-Feed walk. key2 empty → only key1. Call under CogRegistry::_mutex. */
-	bool AnyPlayFeedMatching(
+	std::string_view SourceIdFromShowKey(std::string_view showKey)
+	{
+		if (showKey == "showNotifications" || showKey == CogFeedSources::kIdNotifications) {
+			return CogFeedSources::kIdNotifications;
+		}
+		if (showKey == "showInventory" || showKey == CogFeedSources::kIdInventory) {
+			return CogFeedSources::kIdInventory;
+		}
+		if (showKey == "showLocation" || showKey == CogFeedSources::kIdLocation) {
+			return CogFeedSources::kIdLocation;
+		}
+		if (showKey == "showSkills" || showKey == CogFeedSources::kIdSkills) {
+			return CogFeedSources::kIdSkills;
+		}
+		if (showKey == "showQuests" || showKey == CogFeedSources::kIdQuests) {
+			return CogFeedSources::kIdQuests;
+		}
+		if (showKey == "showActiveEffects" || showKey == CogFeedSources::kIdEffects) {
+			return CogFeedSources::kIdEffects;
+		}
+		return showKey;
+	}
+
+	/** Shared play-Feed walk by nested source enabled (+ optional nested field). Call under _mutex. */
+	bool AnyPlayFeedSourceMatching(
 		const std::vector<CogGizmo>& gizmos,
-		std::string_view key1,
-		bool def1,
-		std::string_view key2 = {},
+		std::string_view sourceId,
+		std::string_view field2 = {},
 		bool def2 = false)
 	{
 		for (const auto& g : gizmos) {
 			if (!GizmoIsPlayActive(g) || NormalizeGizmoType(g.typeId) != "cog-feed") {
 				continue;
 			}
-			if (!GizmoSettingsBool(g, key1, def1)) {
+			if (!CogFeedSources::SourceEnabled(g, sourceId)) {
 				continue;
 			}
-			if (!key2.empty() && !GizmoSettingsBool(g, key2, def2)) {
+			if (!field2.empty() && !CogFeedSources::SourceFieldBool(g, sourceId, field2, def2)) {
 				continue;
 			}
 			return true;
@@ -416,6 +439,7 @@ void CogRegistry::OnLoadingMenuClosed()
 	// Re-register COG.Builtin after the session clear (native catalog + omit-prune).
 	EnsureBuiltinSources();
 	CogInventory::RegisterFromSaved();
+	CogFeedSources::OnLoadSessionReady();
 	CogUi::SendReadyEvent();
 	logger::info("COG: loading — finished; live UI resumes");
 	// Paint immediately. Next JS tick will keep live patches flowing.
@@ -568,7 +592,7 @@ void CogRegistry::ToggleUiHidden()
 bool CogRegistry::HasVisibleFeedShowingNotifications() const
 {
 	std::lock_guard lock(_mutex);
-	return AnyPlayFeedMatching(_gizmos, "showNotifications", false);
+	return AnyPlayFeedSourceMatching(_gizmos, CogFeedSources::kIdNotifications);
 }
 
 
@@ -576,7 +600,7 @@ bool CogRegistry::HasVisibleFeedShowingNotifications() const
 bool CogRegistry::HasVisibleFeedShowingInventory() const
 {
 	std::lock_guard lock(_mutex);
-	return AnyPlayFeedMatching(_gizmos, "showInventory", false);
+	return AnyPlayFeedSourceMatching(_gizmos, CogFeedSources::kIdInventory);
 }
 
 
@@ -584,7 +608,8 @@ bool CogRegistry::HasVisibleFeedShowingInventory() const
 bool CogRegistry::HasVisibleFeedDivertingLocationDiscovery() const
 {
 	std::lock_guard lock(_mutex);
-	return AnyPlayFeedMatching(_gizmos, "showLocation", false, "showLocationDiscovery", true);
+	return AnyPlayFeedSourceMatching(
+		_gizmos, CogFeedSources::kIdLocation, "showLocationDiscovery", true);
 }
 
 
@@ -592,7 +617,8 @@ bool CogRegistry::HasVisibleFeedDivertingLocationDiscovery() const
 bool CogRegistry::HasVisibleFeedDivertingCurrentLocation() const
 {
 	std::lock_guard lock(_mutex);
-	return AnyPlayFeedMatching(_gizmos, "showLocation", false, "showCurrentLocation", true);
+	return AnyPlayFeedSourceMatching(
+		_gizmos, CogFeedSources::kIdLocation, "showCurrentLocation", true);
 }
 
 
@@ -600,7 +626,7 @@ bool CogRegistry::HasVisibleFeedDivertingCurrentLocation() const
 bool CogRegistry::HasVisibleFeedShowingSkills() const
 {
 	std::lock_guard lock(_mutex);
-	return AnyPlayFeedMatching(_gizmos, "showSkills", false);
+	return AnyPlayFeedSourceMatching(_gizmos, CogFeedSources::kIdSkills);
 }
 
 
@@ -608,7 +634,8 @@ bool CogRegistry::HasVisibleFeedShowingSkills() const
 bool CogRegistry::HasVisibleFeedShowingSkillProgress() const
 {
 	std::lock_guard lock(_mutex);
-	return AnyPlayFeedMatching(_gizmos, "showSkills", false, "showSkillProgress", true);
+	return AnyPlayFeedSourceMatching(
+		_gizmos, CogFeedSources::kIdSkills, "showSkillProgress", true);
 }
 
 
@@ -616,7 +643,26 @@ bool CogRegistry::HasVisibleFeedShowingSkillProgress() const
 bool CogRegistry::HasVisibleFeedShowingLevelProgress() const
 {
 	std::lock_guard lock(_mutex);
-	return AnyPlayFeedMatching(_gizmos, "showSkills", false, "showLevelProgress", true);
+	return AnyPlayFeedSourceMatching(
+		_gizmos, CogFeedSources::kIdSkills, "showLevelProgress", true);
+}
+
+
+
+bool CogRegistry::HasVisibleFeedDivertingQuestStatus() const
+{
+	std::lock_guard lock(_mutex);
+	return AnyPlayFeedSourceMatching(
+		_gizmos, CogFeedSources::kIdQuests, "showQuestStatus", true);
+}
+
+
+
+bool CogRegistry::HasVisibleFeedDivertingQuestObjectives() const
+{
+	std::lock_guard lock(_mutex);
+	return AnyPlayFeedSourceMatching(
+		_gizmos, CogFeedSources::kIdQuests, "showQuestObjectives", true);
 }
 
 
@@ -626,15 +672,16 @@ std::string CogRegistry::FirstVisibleFeedSetting(
 	std::string_view settingKey,
 	std::string_view fallback) const
 {
+	const auto sourceId = SourceIdFromShowKey(showKey);
 	std::lock_guard lock(_mutex);
 	for (const auto& g : _gizmos) {
 		if (!GizmoIsPlayActive(g) || NormalizeGizmoType(g.typeId) != "cog-feed") {
 			continue;
 		}
-		if (!GizmoSettingsBool(g, showKey, false)) {
+		if (!CogFeedSources::SourceEnabled(g, sourceId)) {
 			continue;
 		}
-		auto v = CogRegistryJson::GizmoSettingsString(g, settingKey, fallback);
+		auto v = CogFeedSources::SourceFieldString(g, sourceId, settingKey, fallback);
 		if (!v.empty()) {
 			return v;
 		}
@@ -649,15 +696,16 @@ bool CogRegistry::FirstVisibleFeedSettingBool(
 	std::string_view settingKey,
 	bool fallback) const
 {
+	const auto sourceId = SourceIdFromShowKey(showKey);
 	std::lock_guard lock(_mutex);
 	for (const auto& g : _gizmos) {
 		if (!GizmoIsPlayActive(g) || NormalizeGizmoType(g.typeId) != "cog-feed") {
 			continue;
 		}
-		if (!GizmoSettingsBool(g, showKey, false)) {
+		if (!CogFeedSources::SourceEnabled(g, sourceId)) {
 			continue;
 		}
-		return CogRegistryJson::GizmoSettingsBool(g, settingKey, fallback);
+		return CogFeedSources::SourceFieldBool(g, sourceId, settingKey, fallback);
 	}
 	return fallback;
 }
@@ -667,7 +715,15 @@ bool CogRegistry::FirstVisibleFeedSettingBool(
 bool CogRegistry::AnyVisibleFeedShowsActiveEffects() const
 {
 	std::lock_guard lock(_mutex);
-	return AnyPlayFeedMatching(_gizmos, "showActiveEffects", false);
+	return AnyPlayFeedSourceMatching(_gizmos, CogFeedSources::kIdEffects);
+}
+
+
+
+bool CogRegistry::HasVisibleFeedShowingSource(std::string_view sourceId) const
+{
+	std::lock_guard lock(_mutex);
+	return AnyPlayFeedSourceMatching(_gizmos, CogFeedSources::CanonicalSourceId(sourceId));
 }
 
 
@@ -679,10 +735,11 @@ bool CogRegistry::ShouldSuppressInventoryNotifications() const
 		if (!GizmoIsPlayActive(g) || NormalizeGizmoType(g.typeId) != "cog-feed") {
 			continue;
 		}
-		if (GizmoSettingsBool(g, "showInventory", false)) {
+		if (CogFeedSources::SourceEnabled(g, CogFeedSources::kIdInventory)) {
 			return true;
 		}
-		if (GizmoSettingsBool(g, "showNotifications", false) && GizmoSettingsBool(g, "suppressInventory", true)) {
+		if (CogFeedSources::SourceEnabled(g, CogFeedSources::kIdNotifications) &&
+			CogFeedSources::SourceFieldBool(g, CogFeedSources::kIdNotifications, "suppressInventory", true)) {
 			return true;
 		}
 	}

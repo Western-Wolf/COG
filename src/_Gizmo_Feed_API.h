@@ -12,19 +12,19 @@ namespace RE::BSScript
 
 namespace CogFeed
 {
-	/** Builtin Feed source ids (cog- prefix reserved). */
-	inline constexpr const char* kSourceNotifications = "cog-feednotifications";
-	inline constexpr const char* kSourceInventory = "cog-feedinventory";
-	inline constexpr const char* kSourceLocation = "cog-feedlocation";
-	inline constexpr const char* kSourceSkills = "cog-feedskills";
-	inline constexpr const char* kSourceEffects = "cog-feedeffects";
-	inline constexpr const char* kSourceGeneral = "general";
+	/** Builtin Feed source ids (canonical). Legacy cog-feed* aliases accepted at Notify. */
+	inline constexpr const char* kSourceNotifications = "cog-notifications";
+	inline constexpr const char* kSourceInventory = "cog-inventory";
+	inline constexpr const char* kSourceLocation = "cog-location";
+	inline constexpr const char* kSourceSkills = "cog-skills";
+	inline constexpr const char* kSourceQuests = "cog-quests";
+	inline constexpr const char* kSourceEffects = "cog-effects";
 
 	/**
 	 * Create/upsert a Feed line. Sources fully resolve message/color/icon/(meter) first.
-	 * Empty source → "general" (log label only). Sentinel current/max (< 0) → toast.
-	 * Only current set → append number to message, toast. Both set → meter (type "timer" or progress).
-	 * Expired/unknown receipt → new line + new receipt.
+	 * Empty/unknown asSource → Notifications bucket; log label "empty" or as provided.
+	 * Sentinel current/max (< 0) → toast. Only current set → append number, toast.
+	 * Both set → meter (type "timer" or progress). Expired/unknown receipt → new line.
 	 * Returns 0 when dropped (no matching visible Feed section).
 	 */
 	[[nodiscard]] std::int32_t Notify(

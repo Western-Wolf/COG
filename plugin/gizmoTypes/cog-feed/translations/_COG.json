@@ -180,8 +180,24 @@
     "fr-CA": "Compétences"
   },
   "cog-feed-skills-hide-note": {
-    "en-CA": "When enabled, this section soft-hides hud.questUpdates (skill-up and level-up banners share that clip). Skill Progress and Level Progress only control what appears in this Feed. Level Up Menu is never blocked.",
-    "fr-CA": "Lorsque cette section est activée, elle masque en douceur hud.questUpdates (les bandeaux de montée de compétence et de niveau partagent ce clip). Progression de compétence et Progression de niveau ne contrôlent que ce qui s'affiche dans ce Feed. Le menu de montée de niveau n'est jamais bloqué."
+    "en-CA": "When enabled, this section diverts skill-up and level-up banners from hud.questUpdates (quest updates share that clip and stay visible). Skill Progress and Level Progress only control what appears in this Feed. Level Up Menu is never blocked.",
+    "fr-CA": "Lorsque cette section est activée, elle détourne les bandeaux de montée de compétence et de niveau de hud.questUpdates (les mises à jour de quête partagent ce clip et restent visibles). Progression de compétence et Progression de niveau ne contrôlent que ce qui s'affiche dans ce Feed. Le menu de montée de niveau n'est jamais bloqué."
+  },
+  "cog-feed-quest-objectives": {
+    "en-CA": "Quest Objectives",
+    "fr-CA": "Objectifs de quête"
+  },
+  "cog-feed-quest-status": {
+    "en-CA": "Quest Status",
+    "fr-CA": "Statut de quête"
+  },
+  "cog-feed-quests": {
+    "en-CA": "Quests",
+    "fr-CA": "Quêtes"
+  },
+  "cog-feed-quests-hide-note": {
+    "en-CA": "When enabled, Quest Status and Quest Objectives each divert their banners from hud.questUpdates (shared with skill-ups; no soft-hide). Unticked options leave those banners on the vanilla HUD.",
+    "fr-CA": "Lorsque cette section est activée, Statut de quête et Objectifs de quête détournent chacun leurs bandeaux de hud.questUpdates (partagé avec les montées de compétence; pas de masquage). Les options décochées laissent ces bandeaux sur le HUD vanilla."
   },
   "cog-feed-sources": {
     "en-CA": "Sources",

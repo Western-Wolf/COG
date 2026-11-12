@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "_Gizmo_Feed_SourceNotifications.h"
 #include "_Gizmo_Feed_UtilityIconRegistry.h"
-#include "_Gizmo_Storage.h"
+#include "_Gizmo_Feed_Sources.h"
 
 #include <filesystem>
 #include <mutex>
@@ -13,7 +13,7 @@ namespace
 
 	std::filesystem::path NotificationIconRulesDir()
 	{
-		return CogGizmoStorage::EnsureDir("cog-feed") / "notifications";
+		return CogFeedSources::SourceStorageDir(CogFeedSources::kIdNotifications);
 	}
 }
 

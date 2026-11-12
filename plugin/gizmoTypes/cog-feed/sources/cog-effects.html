@@ -1,0 +1,57 @@
+<p class="hint" data-translation="cog-feed-effects-hint" data-translation-fallback="Timed player effects only. They stay until the timer ends, then fade. Timer min/max are under Progress Bar.">Timed player effects only. They stay until the timer ends, then fade. Timer min/max are under Progress Bar.</p>
+<div class="style-row">
+	<input type="color" data-gizmo-field="color" data-gizmo-value="effectsColor" data-gizmo-default="#e8d2a0" data-translation="cog-text-colour" data-translation-fallback="Text Colour">
+	<label class="check-row compact">
+		<input type="checkbox" data-gizmo-value="showEffectText" data-gizmo-default="true">
+		<span data-translation="cog-feed-show-text" data-translation-fallback="Show text">Show text</span>
+	</label>
+	<label class="check-row compact">
+		<input type="checkbox" data-gizmo-value="showEffectTimer" data-gizmo-default="true">
+		<span data-translation="cog-feed-show-timer" data-translation-fallback="Show timer">Show timer</span>
+	</label>
+	<label class="check-row compact">
+		<input type="checkbox" data-gizmo-value="showEffectIcons" data-gizmo-default="true">
+		<span data-translation="cog-feed-show-icons" data-translation-fallback="Show Icons">Show Icons</span>
+	</label>
+</div>
+<div class="style-row">
+	<label class="check-row compact">
+		<input type="checkbox" data-gizmo-value="suppressTransformEffects" data-gizmo-default="true">
+		<span data-translation="cog-feed-suppress-transform-effects" data-translation-fallback="Suppress Werewolf/Vampire transformation effects">Suppress Werewolf/Vampire transformation effects</span>
+	</label>
+</div>
+<div class="style-row feed-effects-controls">
+	<input type="text" data-gizmo-field="icon" data-gizmo-value="effectIcon" data-gizmo-default="Magic/sparkles.svg" data-translation="cog-feed-default-icon" data-translation-fallback="Default Icon">
+</div>
+<div data-cog-feed-notes="effects"></div>
+<script>
+(function () {
+	var panel = document.currentScript && document.currentScript.parentElement;
+	if (!panel) return;
+	var sourceHost = panel.closest("[data-feed-source]");
+	var sourceId = sourceHost ? sourceHost.getAttribute("data-feed-source") : "cog-effects";
+	var root = panel.closest(".gizmo-html-settings");
+	if (!root) return;
+
+	function storagePath() {
+		if (typeof window.CogFeedSourceStorage === "function") {
+			return window.CogFeedSourceStorage(sourceId);
+		}
+		return "gizmoTypes/cog-feed/sources/" + sourceId;
+	}
+
+	function mountNotes() {
+		if (typeof window.CogAppendFeedSectionNotes !== "function") return;
+		var host = panel.querySelector('[data-cog-feed-notes="effects"]');
+		if (!host) return;
+		window.CogAppendFeedSectionNotes(host, "hud.activeEffects", storagePath() + "/");
+	}
+
+	function onBound() {
+		mountNotes();
+	}
+
+	root.addEventListener("cog-html-settings-bound", onBound);
+	onBound();
+})();
+</script>

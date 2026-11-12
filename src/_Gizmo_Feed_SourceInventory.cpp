@@ -5,7 +5,7 @@
 #include "_Gizmo_Feed.h"
 #include "_Gizmo_Feed_API.h"
 #include "_Gizmo_Feed_Log.h"
-#include "_Gizmo_Storage.h"
+#include "_Gizmo_Feed_Sources.h"
 #include "_Core_Registry.h"
 #include "_UI_CogUi.h"
 
@@ -38,7 +38,7 @@ namespace
 
 	std::filesystem::path InventoryIconRulesDir()
 	{
-		return CogGizmoStorage::EnsureDir("cog-feed") / "inventory";
+		return CogFeedSources::SourceStorageDir(CogFeedSources::kIdInventory);
 	}
 
 	const char* WeaponTypeName(RE::WEAPON_TYPE wt)
@@ -954,14 +954,13 @@ void CogFeed::EnqueueInventory(
 		stolen = false;
 	}
 
-	auto& reg = CogRegistry::Get();
 	std::string color;
 	if (!added) {
-		color = reg.FirstVisibleFeedSetting("showInventory", "removeColor", "#e8d2a0");
+		color = "cog-inventory.removeColor";
 	} else if (stolen) {
-		color = reg.FirstVisibleFeedSetting("showInventory", "stolenColor", "#e8d2a0");
+		color = "cog-inventory.stolenColor";
 	} else {
-		color = reg.FirstVisibleFeedSetting("showInventory", "addColor", "#e8d2a0");
+		color = "cog-inventory.addColor";
 	}
 
 	// Fully resolved toast text — include signed count so Feed paints the message as-is.

@@ -7,6 +7,7 @@
 #include "_Gizmo_Feed_SourceActiveEffects.h"
 #include "_Gizmo_Feed_SourceSkills.h"
 #include "_Gizmo_Feed_SourceInventory.h"
+#include "_Gizmo_Feed_Sources.h"
 #include "_Gizmo_Storage.h"
 #include "_UI_CogUi.h"
 #include "_Core_Json.h"
@@ -532,6 +533,8 @@ std::string CogRegistry::BuildSnapshotJson()
 		o << "]";
 	}
 	o << ",\"suppressions\":" << CogHudSuppress::SuppressionsJson(*this);
+	// Metadata only here — HTML bodies go via applyFeedSourceCatalog (Interop size).
+	o << ",\"feedSources\":" << CogFeedSources::CatalogJson(false);
 	o << ",\"suppressionAliases\":" << CogHudSuppress::KnownAliasesJson();
 	o << "}";
 	return o.str();
@@ -633,6 +636,7 @@ void CogRegistry::PushToUi()
 	// Suppress vanilla HUD before painting COG so duplicates never flash on load.
 	SyncHudDuplicates();
 	bool fullSnapshot = false;
+	bool catalogDirty = false;
 	{
 		std::lock_guard lock(_mutex);
 		// Missed EndRegister (or Wait mid-batch): persist deferred registers without closing the batch.
@@ -640,11 +644,17 @@ void CogRegistry::PushToUi()
 			FlushBatchCommitUnlocked();
 			_layoutDirty = true;
 		}
+		catalogDirty = _catalogDirty;
 		fullSnapshot = _layoutDirty || _catalogDirty;
 	}
 	if (fullSnapshot) {
 		// Catalogs first — smaller payload so Interop limits cannot drop locale discovery.
 		CogUi::Interop("applyTranslationCatalogs", BuildTranslationCatalogsJson());
+		// Feed source HTML only when the module catalog changed — not on every settings save
+		// (rebuilding Sources panels would close open source accordions).
+		if (catalogDirty) {
+			CogUi::Interop("applyFeedSourceCatalog", CogFeedSources::CatalogJson(true));
+		}
 		CogUi::Interop("applySnapshot", BuildSnapshotJson());
 	} else {
 		CogUi::Interop("applyLivePatch", BuildLivePatchJson());

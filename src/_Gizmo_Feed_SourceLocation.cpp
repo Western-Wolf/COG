@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "_Gizmo_Feed_SourceLocation.h"
 #include "_Gizmo_Feed_UtilityIconRegistry.h"
-#include "_Gizmo_Storage.h"
+#include "_Gizmo_Feed_Sources.h"
 #include "_Core_Registry.h"
 
 #include <filesystem>
@@ -14,7 +14,7 @@ namespace
 
 	std::filesystem::path LocationIconRulesDir()
 	{
-		return CogGizmoStorage::EnsureDir("cog-feed") / "location";
+		return CogFeedSources::SourceStorageDir(CogFeedSources::kIdLocation);
 	}
 }
 

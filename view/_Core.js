@@ -106,6 +106,51 @@ window.applyTranslationCatalogs = (jsonStr) => {
 	}
 };
 
+/** Stable signature so Sources UI can skip rebuilds when catalog content is unchanged. */
+function feedSourceCatalogSignature(list) {
+	if (!Array.isArray(list) || !list.length) {
+		return "";
+	}
+	return list
+		.map((e) => {
+			if (!e || !e.id) {
+				return "";
+			}
+			const html = e.settingsHtml != null ? String(e.settingsHtml) : "";
+			return `${e.id}\n${e.displayName || ""}\n${html.length}\n${html}`;
+		})
+		.join("\x1e");
+}
+
+/** Feed source modules + settings HTML (not bundled into applySnapshot — Interop size). */
+window.applyFeedSourceCatalog = (jsonStr) => {
+	try {
+		const incoming = typeof jsonStr === "string" ? JSON.parse(jsonStr) : jsonStr;
+		if (!Array.isArray(incoming)) {
+			return;
+		}
+		const prev = Array.isArray(snapshot.feedSources) ? snapshot.feedSources : [];
+		const merged =
+			typeof mergeFeedSourcesPreserveSettingsHtml === "function"
+				? mergeFeedSourcesPreserveSettingsHtml(incoming, prev)
+				: incoming;
+		const prevSig = feedSourceCatalogSignature(prev);
+		const nextSig = feedSourceCatalogSignature(merged);
+		snapshot.feedSources = merged;
+		window.CogFeedSourceCatalog = snapshot.feedSources;
+		if (prevSig === nextSig) {
+			return;
+		}
+		try {
+			window.dispatchEvent(new CustomEvent("cog-feed-source-catalog"));
+		} catch (e2) {
+			/* ignore */
+		}
+	} catch (e) {
+		window.cogReportError("applyFeedSourceCatalog", e);
+	}
+};
+
 window.applySnapshot = (jsonStr) => {
 	try {
 		const incoming = typeof jsonStr === "string" ? JSON.parse(jsonStr) : jsonStr;
@@ -150,6 +195,13 @@ window.applySnapshot = (jsonStr) => {
 						? mergeGizmoTypesPreserveSettingsHtml(incoming.gizmoTypes, snapshot.gizmoTypes)
 						: incoming.gizmoTypes;
 				ensureGizmoViewScripts();
+			}
+			if (Array.isArray(incoming.feedSources)) {
+				snapshot.feedSources =
+					typeof mergeFeedSourcesPreserveSettingsHtml === "function"
+						? mergeFeedSourcesPreserveSettingsHtml(incoming.feedSources, snapshot.feedSources)
+						: incoming.feedSources;
+				window.CogFeedSourceCatalog = snapshot.feedSources;
 			}
 			if (Array.isArray(incoming.suppressions)) {
 				snapshot.suppressions = incoming.suppressions;
@@ -207,6 +259,7 @@ window.applySnapshot = (jsonStr) => {
 		const prevGauges = snapshot.gauges;
 		const prevGizmos = snapshot.gizmos;
 		const prevGizmoTypes = snapshot.gizmoTypes;
+		const prevFeedSources = snapshot.feedSources;
 		const prevLanguages = snapshot.languages;
 		const prevTranslations = snapshot.translations;
 		const prevGizmoTranslations = snapshot.gizmoTranslations;
@@ -229,7 +282,15 @@ window.applySnapshot = (jsonStr) => {
 		if (Array.isArray(incoming.gizmoTypes) && typeof mergeGizmoTypesPreserveSettingsHtml === "function") {
 			snapshot.gizmoTypes = mergeGizmoTypesPreserveSettingsHtml(incoming.gizmoTypes, prevGizmoTypes);
 		}
-		// Translation catalogs arrive via applyTranslationCatalogs — preserve if omitted.
+		// Feed source catalog HTML arrives via applyFeedSourceCatalog — preserve if omitted/lean.
+		if (Array.isArray(incoming.feedSources) && typeof mergeFeedSourcesPreserveSettingsHtml === "function") {
+			snapshot.feedSources = mergeFeedSourcesPreserveSettingsHtml(incoming.feedSources, prevFeedSources);
+		} else if (!Array.isArray(incoming.feedSources)) {
+			snapshot.feedSources = prevFeedSources;
+		}
+		if (Array.isArray(snapshot.feedSources)) {
+			window.CogFeedSourceCatalog = snapshot.feedSources;
+		}
 		if (!Array.isArray(incoming.languages)) {
 			snapshot.languages = prevLanguages;
 		}
@@ -253,6 +314,8 @@ window.applySnapshot = (jsonStr) => {
 			snapshot.gizmos = prevGizmos;
 		}
 		normalizeSnapshot();
+		// State echo can still be flat while the UI already holds nested sources.* — keep them.
+		mergePreservedFeedGizmoSources(prevGizmos, snapshot.gizmos);
 		syncCogVersionBadge();
 		if (rebindListening && snapshot.general.editorKey && snapshot.general.editorKey !== prevKey) {
 			rebindListening = false;
@@ -468,6 +531,10 @@ function normalizeSnapshot() {
 	if (!Array.isArray(snapshot.gizmoTypes)) {
 		snapshot.gizmoTypes = [];
 	}
+	if (!Array.isArray(snapshot.feedSources)) {
+		snapshot.feedSources = [];
+	}
+	window.CogFeedSourceCatalog = snapshot.feedSources;
 	if (!Array.isArray(snapshot.suppressions)) {
 		snapshot.suppressions = [];
 	}
@@ -1056,6 +1123,76 @@ function appendStackOrderButtons(end, opts) {
 	stopHeaderToggle(down);
 }
 
+function feedSourcesBagUsable(sources) {
+	if (!sources || typeof sources !== "object" || Array.isArray(sources)) {
+		return false;
+	}
+	const keys = Object.keys(sources);
+	if (!keys.length) {
+		return false;
+	}
+	// Prefer nested bags that look like real source blocks (enabled present on at least one).
+	return keys.some((sid) => {
+		const block = sources[sid];
+		return block && typeof block === "object" && !Array.isArray(block)
+			&& Object.prototype.hasOwnProperty.call(block, "enabled");
+	});
+}
+
+/** Keep nested Feed settings.sources when a snapshot echo drops them (flat legacy shape). */
+function mergePreservedFeedGizmoSources(prevGizmos, nextGizmos) {
+	if (!Array.isArray(prevGizmos) || !Array.isArray(nextGizmos) || !nextGizmos.length) {
+		return;
+	}
+	const prevById = new Map();
+	for (const z of prevGizmos) {
+		if (z && z.id) {
+			prevById.set(z.id, z);
+		}
+	}
+	for (const z of nextGizmos) {
+		if (!z || !z.id) {
+			continue;
+		}
+		if (typeof normalizeGizmoType === "function" && normalizeGizmoType(z.typeId) !== "cog-feed") {
+			continue;
+		}
+		const prev = prevById.get(z.id);
+		if (!prev) {
+			continue;
+		}
+		const prevSettings =
+			prev.settings && typeof prev.settings === "object" && !Array.isArray(prev.settings)
+				? prev.settings
+				: null;
+		const prevSources =
+			prevSettings && feedSourcesBagUsable(prevSettings.sources) ? prevSettings.sources : null;
+		if (!prevSources) {
+			continue;
+		}
+		if (!z.settings || typeof z.settings !== "object" || Array.isArray(z.settings)) {
+			z.settings = {};
+		}
+		const nextSources = feedSourcesBagUsable(z.settings.sources) ? z.settings.sources : null;
+		if (!nextSources) {
+			// Snapshot echoed flat/malformed — keep the last good nested bag.
+			z.settings.sources = prevSources;
+			if (prevSettings.feedSourcesVersion != null) {
+				z.settings.feedSourcesVersion = prevSettings.feedSourcesVersion;
+			}
+			continue;
+		}
+		const merged = { ...prevSources };
+		for (const [sid, block] of Object.entries(nextSources)) {
+			merged[sid] = {
+				...(prevSources[sid] && typeof prevSources[sid] === "object" ? prevSources[sid] : {}),
+				...(block && typeof block === "object" ? block : {})
+			};
+		}
+		z.settings.sources = merged;
+	}
+}
+
 function flushSave() {
 	clearTimeout(saveTimer);
 	saveTimer = null;
@@ -1064,6 +1201,14 @@ function flushSave() {
 		return;
 	}
 	saveQueued = false;
+	// Persist nested sources.* (migrate flat leftovers before the state push).
+	if (typeof ensureGizmo === "function" && typeof normalizeGizmoType === "function") {
+		for (const z of snapshot.gizmos || []) {
+			if (z && normalizeGizmoType(z.typeId) === "cog-feed") {
+				ensureGizmo(z);
+			}
+		}
+	}
 	const gizmos = (snapshot.gizmos || []).map((z) => {
 		const copy = { ...z };
 		delete copy.livePayload;
