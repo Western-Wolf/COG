@@ -54,6 +54,7 @@ namespace CogFeed::IconRegistry
 	[[nodiscard]] KindSet LocationKinds();
 	[[nodiscard]] KindSet InventoryKinds();
 	[[nodiscard]] KindSet EffectKinds();
+	[[nodiscard]] KindSet QuestKinds();
 
 	[[nodiscard]] std::string FormLookupKey(RE::TESForm* form);
 

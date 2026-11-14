@@ -25,6 +25,8 @@ Function ToggleUiHidden() Global Native
 ; registered (additive batches keep prior entries). Without EndRegister, missing names are never
 ; auto-removed (open / additive batches).
 ; Absent senders: plugin-bound mods are pruned when the plugin is not loaded; unbound mods use a two-strike rule.
+; Reserved (hard reject, receipt 0 / no-op): sourceMod exact "COG" or starting with "COG." — any letter case
+;   (COG / cog / CoG). Underscore mods like "COG_Example_Gears" are fine. Native builtins seed in C++.
 Function BeginRegister(String sourceMod, String pluginFile = "") Global Native
 Function EndRegister(String sourceMod) Global Native
 
@@ -57,6 +59,7 @@ Function Unregister(Int receipt) Global Native
 ; Copy/convert sourcePath (Data-relative, e.g. "Interface/exported/MyMod/icon.dds") into
 ; assets/imports/icons/, index it, and return the imports-relative path (e.g. "MyMod/icon.png").
 ; "" on failure. Prefer this over RegisterImportedIcon for files outside COG's asset trees.
+; Reserved sourceMod "COG" / "COG.*" → "" (same rule as BeginRegister).
 String Function ImportIcon(String sourceMod, String iconName, String sourcePath) Global Native
 
 ; Record a path already under assets/imports/icons/ in COG's import index (no copy).
@@ -107,7 +110,8 @@ Function Notify(String asMessage, String asColor = "#FFFFFF", String asIcon = ""
 ; Migration Code for Transition from v1.11 or earlier to v1.2: a JSON array/object starting with [ or {
 ;   still registers as the legacy schema editor (phasing out — new mods should ship HTML).
 ; Use the same BeginRegister / EndRegister batch as gears. Returns a session receipt (0 on failure).
-; typeIds starting with "cog-" are reserved for COG. Prefer a short mod prefix (e.g. xmp-, mymod-).
+; Reserved (hard reject): sourceMod "COG" / "COG.*", and any typeId starting with "cog-" — any letter case.
+; Prefer a short mod prefix for typeId (e.g. xmp-, mymod-). Builtin types seed in C++, not via this API.
 ; Type catalog is persisted and loaded before gizmo instances. Missing instance fields fall back to
 ; this type record (defaultVisibility / defaultWidth/Height / HTML data-gizmo-default), then universal defaults.
 ; defaultVisibility: "hud" | "ui" | "none" (default "hud").

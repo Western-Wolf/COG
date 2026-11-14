@@ -3,6 +3,7 @@
 #include "_Gizmo_Storage.h"
 #include "_Core_Registry.h"
 #include "_Core_Registry_Json.h"
+#include "_Core_Reserved.h"
 #include "_Core_Json.h"
 #include "_UI_CogUi.h"
 
@@ -431,6 +432,7 @@ void CogFeedSources::BeginRegister(std::string sourceMod, std::string pluginFile
 		logger::warn("COG_Feed_API.BeginRegister rejected: empty sourceMod");
 		return;
 	}
+	// Reserved COG / COG.* gate lives in the Papyrus wrapper (PapyrusBeginRegister).
 	const auto key = LowerCopy(sourceMod);
 	std::lock_guard lock(g_mutex);
 	g_batchOpen.insert(key);
@@ -456,6 +458,8 @@ std::int32_t CogFeedSources::RegisterSource(
 		logger::warn("COG_Feed_API.RegisterSource rejected: empty mod or id");
 		return 0;
 	}
+	// Reserved COG / COG.* / cog-* gates live in the Papyrus wrapper (PapyrusRegisterSource).
+	// Builtins seed via RegisterBuiltinUnlocked and never call this.
 	const auto modKey = LowerCopy(sourceMod);
 	std::lock_guard lock(g_mutex);
 	if (!g_batchOpen.count(modKey)) {
@@ -501,6 +505,7 @@ void CogFeedSources::EndRegister(std::string sourceMod)
 		logger::warn("COG_Feed_API.EndRegister rejected: empty sourceMod");
 		return;
 	}
+	// Reserved COG / COG.* gate lives in the Papyrus wrapper (PapyrusEndRegister).
 	const auto modKey = LowerCopy(sourceMod);
 	std::lock_guard lock(g_mutex);
 	if (!g_batchOpen.count(modKey)) {
@@ -905,6 +910,12 @@ namespace
 		std::string sourceMod,
 		std::string pluginFile)
 	{
+		if (CogReserved::IsReservedCogSourceMod(sourceMod)) {
+			logger::warn(
+				"COG_Feed_API.BeginRegister rejected: sourceMod '{}' is reserved for COG (native builtins only)",
+				sourceMod);
+			return;
+		}
 		CogFeedSources::BeginRegister(std::move(sourceMod), std::move(pluginFile));
 	}
 
@@ -917,6 +928,18 @@ namespace
 		std::string colourVarsJson,
 		std::string hudSuppressJson)
 	{
+		if (CogReserved::IsReservedCogSourceMod(sourceMod)) {
+			logger::warn(
+				"COG_Feed_API.RegisterSource rejected: sourceMod '{}' is reserved for COG (native builtins only)",
+				sourceMod);
+			return 0;
+		}
+		if (CogReserved::IsReservedCogPrefixedId(sourceId)) {
+			logger::warn(
+				"COG_Feed_API.RegisterSource rejected: sourceId '{}' uses reserved cog- prefix",
+				sourceId);
+			return 0;
+		}
 		return CogFeedSources::RegisterSource(
 			std::move(sourceMod),
 			std::move(sourceId),
@@ -928,6 +951,12 @@ namespace
 
 	void PapyrusEndRegister(RE::StaticFunctionTag*, std::string sourceMod)
 	{
+		if (CogReserved::IsReservedCogSourceMod(sourceMod)) {
+			logger::warn(
+				"COG_Feed_API.EndRegister rejected: sourceMod '{}' is reserved for COG (native builtins only)",
+				sourceMod);
+			return;
+		}
 		CogFeedSources::EndRegister(std::move(sourceMod));
 		// Catalog dirty → applyFeedSourceCatalog with settingsHtml (layout-only push is metadata-only).
 		MarkFeedCatalogDirtyOnMain();

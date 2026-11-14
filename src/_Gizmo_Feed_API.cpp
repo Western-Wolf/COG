@@ -4,6 +4,7 @@
 #include "_Gizmo_Feed_Log.h"
 #include "_Gizmo_Feed_Sources.h"
 #include "_Core_Registry.h"
+#include "_Core_Reserved.h"
 #include "_UI_CogUi.h"
 
 #include <algorithm>
@@ -78,32 +79,27 @@ namespace
 		return s;
 	}
 
-	std::string WarnReservedCogPrefix(std::string source)
+	/** Empty / non-cog- / canonical builtin (incl. legacy cog-feed* aliases) allowed; other cog-* hard-reject. */
+	bool AllowNotifySource(std::string& source)
 	{
 		source = TrimCopy(std::move(source));
-		if (source.size() < 4) {
-			return source;
-		}
-		const auto prefix = source.substr(0, 4);
-		bool cog = true;
-		for (std::size_t i = 0; i < 4; ++i) {
-			const char expect[] = { 'c', 'o', 'g', '-' };
-			if (std::tolower(static_cast<unsigned char>(prefix[i])) != expect[i]) {
-				cog = false;
-				break;
-			}
-		}
-		if (!cog) {
-			return source;
+		if (source.empty()) {
+			return true;
 		}
 		const auto canon = CogFeedSources::CanonicalSourceId(source);
 		const bool builtin = canon == CogFeed::kSourceNotifications || canon == CogFeed::kSourceInventory ||
 			canon == CogFeed::kSourceLocation || canon == CogFeed::kSourceSkills ||
 			canon == CogFeed::kSourceQuests || canon == CogFeed::kSourceEffects;
-		if (!builtin && !source.starts_with("cog-feed")) {
-			CogFeedLog::warn("Notify source '{}' uses reserved cog- prefix (non-builtin)", source);
+		if (builtin) {
+			return true;
 		}
-		return source;
+		if (CogReserved::IsReservedCogPrefixedId(source)) {
+			CogFeedLog::warn(
+				"Notify rejected: source '{}' uses reserved cog- prefix (non-builtin)",
+				source);
+			return false;
+		}
+		return true;
 	}
 
 	bool IsTimerType(std::string_view type)
@@ -187,7 +183,10 @@ std::int32_t CogFeed::Notify(
 	std::string type,
 	std::int32_t receipt)
 {
-	const std::string provided = WarnReservedCogPrefix(std::move(source));
+	if (!AllowNotifySource(source)) {
+		return 0;
+	}
+	const std::string provided = std::move(source);
 	const std::string logSource = CogFeedSources::LogSourceLabel(provided);
 	const std::string routeSource = CogFeedSources::RouteSourceId(provided);
 	while (!message.empty() && (message.back() == '\n' || message.back() == '\r')) {

@@ -2,6 +2,7 @@
 #include "_API_Gizmos.h"
 #include "_API_Core.h"
 #include "_Core_Registry.h"
+#include "_Core_Reserved.h"
 #include "_Gizmo_Storage.h"
 
 namespace
@@ -18,6 +19,18 @@ namespace
 		std::string settingsSchemaJson,
 		std::string defaultVisibility)
 	{
+		if (CogReserved::IsReservedCogSourceMod(sourceMod)) {
+			logger::warn(
+				"COG_API.RegisterGizmo rejected: sourceMod '{}' is reserved for COG (native builtins only)",
+				sourceMod);
+			return 0;
+		}
+		if (CogReserved::IsReservedCogPrefixedId(typeId)) {
+			logger::warn(
+				"COG_API.RegisterGizmo rejected: typeId '{}' uses reserved cog- prefix",
+				typeId);
+			return 0;
+		}
 		const std::string modKey = sourceMod;
 		const auto receipt = CogRegistry::Get().RegisterGizmo(
 			std::move(sourceMod),

@@ -172,7 +172,8 @@ struct CogGizmo
 	std::string typeId = "cog-clock";
 	// none | hud (HUD Visible) | ui (UI Visible / menus too)
 	std::string visibility = "hud";
-	// Soft-hide HUD aliases / paths while this instance is play-active (root; not settings).
+	// Soft-hide HUD aliases / paths while this instance exists (root; not settings).
+	// Not gated on visibility — "none" still applies the list (Suppressor-style policy marker OK).
 	std::vector<std::string> hudSuppress;
 	CogBoxDisplay display{ 0.1f, 0.1f, 0.0f, 275.0f, 40.0f, 100.0f };
 	// Owning mod of the gizmo type (empty for builtin types).

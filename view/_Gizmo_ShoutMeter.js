@@ -118,7 +118,7 @@ function ensureShoutMeterGizmo(gizmo) {
 		);
 	}
 	gizmo.visibility = coalesceGizmoVisibility(gizmo, "cog-shout-meter");
-	// Sticky seed — soft-hide casting while play-active (same as pre-hudSuppress shout branch).
+	// Sticky seed — soft-hide casting while this instance exists (not visibility-gated).
 	{
 		const list =
 			typeof normalizeGizmoHudSuppressList === "function"

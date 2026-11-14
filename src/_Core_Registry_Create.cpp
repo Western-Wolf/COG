@@ -369,10 +369,8 @@ std::int32_t CogRegistry::RegisterGizmo(
 			typeId);
 		return 0;
 	}
-	if (IsBuiltinGizmoTypeId(typeId) && mod != "COG") {
-		logger::warn("RegisterGizmo rejected: '{}' uses reserved cog- prefix (COG only)", typeId);
-		return 0;
-	}
+	// Reserved COG / COG.* / cog-* gates live in the Papyrus wrapper (_API_Gizmos).
+	// Builtins seed via RegisterBuiltinGizmoTypesUnlocked and never call this.
 	viewScript = SanitizeViewScriptPath(std::move(viewScript));
 	settingsSchema = TrimCopy(std::move(settingsSchema));
 	defaultVisibility = NormalizeGizmoVisibility(std::move(defaultVisibility));

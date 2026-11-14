@@ -1221,10 +1221,8 @@ void CogHudSuppress::CollectSuppressions(const CogRegistry& reg, std::vector<Cog
 			}
 			continue;
 		}
-		if (!CogRegistryJson::GizmoIsPlayActive(gizmo)) {
-			continue;
-		}
-		// Universal root hudSuppress (builtins + customs). Feed/Shout write via cog-hudSuppress.
+		// Universal root hudSuppress (builtins + customs). Instance-gated, not visibility-gated —
+		// keys on the placed gizmo apply even when visibility is "none". Feed/Shout write via cog-hudSuppress.
 		for (const auto& raw : gizmo.hudSuppress) {
 			const auto token = CogRegistryJson::TrimCopy(raw);
 			if (token.empty()) {

@@ -877,9 +877,9 @@ function ensureFeedGizmo(gizmo) {
 	s.backdropColor = optionalHex(s.backdropColor);
 	s.backdropOpacity = quantizePct(
 		Math.max(
-			0,
-			Math.min(
-				100,
+		0,
+		Math.min(
+			100,
 				Number.isFinite(Number(s.backdropOpacity)) ? Number(s.backdropOpacity) : DEFAULT_FEED_BACKDROP_OPACITY
 			)
 		)
@@ -1826,8 +1826,8 @@ function feedVisibleLines(gizmo, now, preview) {
 		}
 		for (const line of source) {
 			if (!line.demo && now - line.addedAt >= life) {
-				continue;
-			}
+			continue;
+		}
 			const skillKind = normalizeSkillKind(line.kind);
 			// Live lines are gated in C++ before Notify; kind may be omitted on Notify path.
 			// Demo previews still honour skill / level progress checkboxes.

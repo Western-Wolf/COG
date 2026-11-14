@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "_Core_Registry_Json.h"
+#include "_Core_Reserved.h"
 #include "_Gizmo_Feed_Sources.h"
 #include "_UI_KeyNames.h"
 
@@ -34,7 +35,7 @@ namespace CogRegistryJson
 	bool IsBuiltinGizmoTypeId(std::string_view typeId)
 	{
 		// Any typeId starting with "cog-" is reserved for COG (built-ins + future products).
-		return typeId.size() >= 4 && typeId.substr(0, 4) == "cog-";
+		return CogReserved::IsReservedCogPrefixedId(typeId);
 	}
 
 

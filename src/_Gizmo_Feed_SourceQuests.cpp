@@ -44,11 +44,190 @@ namespace
 		return text;
 	}
 
-	std::string ResolveQuestIcon(std::string_view displayText)
+	/** SKSE key → translated chrome word; English fallback if missing. */
+	std::string TranslateChromeWord(const char* key, const char* fallback)
+	{
+		auto translated = TranslateHudText(key);
+		if (translated.empty() || translated.starts_with('$')) {
+			return fallback;
+		}
+		return translated;
+	}
+
+	enum class QuestLineStatus
+	{
+		None,
+		Started,
+		Completed,
+		Failed
+	};
+
+	const char* StatusToken(QuestLineStatus status)
+	{
+		switch (status) {
+		case QuestLineStatus::Started:
+			return "started";
+		case QuestLineStatus::Completed:
+			return "completed";
+		case QuestLineStatus::Failed:
+			return "failed";
+		default:
+			return nullptr;
+		}
+	}
+
+	QuestLineStatus StatusFromHudType(RE::HUD_MESSAGE_TYPE type)
+	{
+		switch (type) {
+		case RE::HUD_MESSAGE_TYPE::kQuestStarted:
+		case RE::HUD_MESSAGE_TYPE::kObjectiveStarted:
+			return QuestLineStatus::Started;
+		case RE::HUD_MESSAGE_TYPE::kQuestComplete:
+		case RE::HUD_MESSAGE_TYPE::kObjectiveComplete:
+			return QuestLineStatus::Completed;
+		case RE::HUD_MESSAGE_TYPE::kQuestFailed:
+		case RE::HUD_MESSAGE_TYPE::kObjectiveFailed:
+			return QuestLineStatus::Failed;
+		default:
+			return QuestLineStatus::None;
+		}
+	}
+
+	QuestLineStatus StatusFromObjectiveState(RE::QUEST_OBJECTIVE_STATE state)
+	{
+		using St = RE::QUEST_OBJECTIVE_STATE;
+		if (state == St::kDisplayed) {
+			return QuestLineStatus::Started;
+		}
+		if (state == St::kCompletedDisplayed) {
+			return QuestLineStatus::Completed;
+		}
+		if (state == St::kFailedDisplayed) {
+			return QuestLineStatus::Failed;
+		}
+		return QuestLineStatus::None;
+	}
+
+	/** Vanilla QuestNotification second word — $Started / $Completed / $Failed. */
+	std::string StatusWord(QuestLineStatus status)
+	{
+		switch (status) {
+		case QuestLineStatus::Started:
+			return TranslateChromeWord("$Started", "Started");
+		case QuestLineStatus::Completed:
+			return TranslateChromeWord("$Completed", "Completed");
+		case QuestLineStatus::Failed:
+			return TranslateChromeWord("$Failed", "Failed");
+		default:
+			return {};
+		}
+	}
+
+	std::string QuestTypeToken(RE::TESQuest* quest)
+	{
+		if (!quest) {
+			return {};
+		}
+		using T = RE::QUEST_DATA::Type;
+		switch (quest->GetType()) {
+		case T::kNone:
+			return "none";
+		case T::kMainQuest:
+			return "mainquest";
+		case T::kMagesGuild:
+			return "magesguild";
+		case T::kThievesGuild:
+			return "thievesguild";
+		case T::kDarkBrotherhood:
+			return "darkbrotherhood";
+		case T::kCompanionsQuest:
+			return "companionsquest";
+		case T::kMiscellaneous:
+			return "miscellaneous";
+		case T::kDaedric:
+			return "daedric";
+		case T::kSideQuest:
+			return "sidequest";
+		case T::kCivilWar:
+			return "civilwar";
+		case T::kDLC01_Vampire:
+			return "dlc01_vampire";
+		case T::kDLC02_Dragonborn:
+			return "dlc02_dragonborn";
+		default:
+			return {};
+		}
+	}
+
+	std::string CleanHudName(std::string name)
+	{
+		name = TranslateHudText(std::move(name));
+		while (!name.empty() && (name.back() == '\n' || name.back() == '\r')) {
+			name.pop_back();
+		}
+		return name;
+	}
+
+	/** Vanilla-style: "Quest Started: <name>" — chrome via SKSE, name already cleaned. */
+	std::string FormatQuestStatusLine(std::string rawName, QuestLineStatus status)
+	{
+		auto name = CleanHudName(std::move(rawName));
+		if (name.empty()) {
+			return {};
+		}
+		const auto statusWord = StatusWord(status);
+		if (statusWord.empty()) {
+			return name;
+		}
+		std::string out = TranslateChromeWord("$Quest", "Quest");
+		out += ' ';
+		out += statusWord;
+		out += ": ";
+		out += name;
+		return out;
+	}
+
+	/**
+	 * Objectives: plain when started/updated; "Completed: …" / "Failed: …" otherwise.
+	 * No Started prefix (matches vanilla objective list chrome).
+	 */
+	std::string FormatQuestObjectiveLine(std::string rawName, QuestLineStatus status)
+	{
+		auto name = CleanHudName(std::move(rawName));
+		if (name.empty()) {
+			return {};
+		}
+		if (status != QuestLineStatus::Completed && status != QuestLineStatus::Failed) {
+			return name;
+		}
+		std::string out = StatusWord(status);
+		out += ": ";
+		out += name;
+		return out;
+	}
+
+	std::string ResolveQuestIcon(
+		RE::TESQuest* quest,
+		std::string_view rawName,
+		QuestLineStatus status,
+		bool objective)
 	{
 		CogFeed::IconRegistry::Candidates c;
-		if (!displayText.empty()) {
-			CogFeed::IconRegistry::PushCandidate(c, "name", std::string{ displayText });
+		if (!rawName.empty()) {
+			CogFeed::IconRegistry::PushCandidate(c, "name", std::string{ rawName });
+		}
+		if (const auto* token = StatusToken(status)) {
+			CogFeed::IconRegistry::PushCandidate(c, objective ? "objectivestatus" : "queststatus", token);
+		}
+		if (quest) {
+			const auto formKey = CogFeed::IconRegistry::FormLookupKey(quest);
+			if (!formKey.empty()) {
+				CogFeed::IconRegistry::PushCandidateRaw(c, "form", formKey);
+			}
+			// PushCandidate skips the literal "none"; questtype none must still match rules.
+			if (auto typeTok = QuestTypeToken(quest); !typeTok.empty()) {
+				CogFeed::IconRegistry::PushCandidateRaw(c, "questtype", std::move(typeTok));
+			}
 		}
 		std::lock_guard lock(g_iconMutex);
 		return CogFeed::IconRegistry::Resolve(g_iconStore, c);
@@ -68,113 +247,18 @@ namespace
 			type == RE::HUD_MESSAGE_TYPE::kObjectiveFailed;
 	}
 
-	/** Vanilla QuestNotification shows this as a second animated word beside the name. */
-	std::string StatusWord(RE::HUD_MESSAGE_TYPE type)
+	void NotifyQuestLine(
+		std::string message,
+		std::string_view rawName,
+		RE::TESQuest* quest,
+		QuestLineStatus status,
+		bool objective)
 	{
-		const char* key = nullptr;
-		const char* fallback = nullptr;
-		switch (type) {
-		case RE::HUD_MESSAGE_TYPE::kQuestStarted:
-		case RE::HUD_MESSAGE_TYPE::kObjectiveStarted:
-			key = "$Started";
-			fallback = "Started";
-			break;
-		case RE::HUD_MESSAGE_TYPE::kQuestComplete:
-		case RE::HUD_MESSAGE_TYPE::kObjectiveComplete:
-			key = "$Completed";
-			fallback = "Completed";
-			break;
-		case RE::HUD_MESSAGE_TYPE::kQuestFailed:
-		case RE::HUD_MESSAGE_TYPE::kObjectiveFailed:
-			key = "$Failed";
-			fallback = "Failed";
-			break;
-		default:
-			return {};
-		}
-		auto translated = TranslateHudText(key);
-		if (translated.empty() || translated.starts_with('$')) {
-			return fallback;
-		}
-		return translated;
-	}
-
-	std::string CleanHudName(std::string name)
-	{
-		name = TranslateHudText(std::move(name));
-		while (!name.empty() && (name.back() == '\n' || name.back() == '\r')) {
-			name.pop_back();
-		}
-		return name;
-	}
-
-	/** Vanilla-style: "Quest Started: <name>". */
-	std::string FormatQuestStatusLine(std::string name, std::string_view status)
-	{
-		name = CleanHudName(std::move(name));
-		if (name.empty()) {
-			return {};
-		}
-		if (status.empty()) {
-			return name;
-		}
-		std::string out = "Quest ";
-		out += status;
-		out += ": ";
-		out += name;
-		return out;
-	}
-
-	/**
-	 * Objectives: plain when started/updated; "Completed: …" / "Failed: …" otherwise.
-	 * No Started prefix (matches vanilla objective list chrome).
-	 */
-	std::string FormatQuestObjectiveLine(std::string name, std::string_view prefix)
-	{
-		name = CleanHudName(std::move(name));
-		if (name.empty()) {
-			return {};
-		}
-		if (prefix.empty()) {
-			return name;
-		}
-		std::string out{ prefix };
-		out += ": ";
-		out += name;
-		return out;
-	}
-
-	std::string_view ObjectivePrefix(RE::HUD_MESSAGE_TYPE type)
-	{
-		switch (type) {
-		case RE::HUD_MESSAGE_TYPE::kObjectiveComplete:
-			return "Completed";
-		case RE::HUD_MESSAGE_TYPE::kObjectiveFailed:
-			return "Failed";
-		default:
-			return {};
-		}
-	}
-
-	std::string_view ObjectivePrefixFromState(RE::QUEST_OBJECTIVE_STATE state)
-	{
-		using St = RE::QUEST_OBJECTIVE_STATE;
-		if (state == St::kCompletedDisplayed) {
-			return "Completed";
-		}
-		if (state == St::kFailedDisplayed) {
-			return "Failed";
-		}
-		return {};
-	}
-
-	void NotifyQuestLine(std::string text, bool objective)
-	{
-		if (text.empty()) {
+		if (message.empty()) {
 			return;
 		}
 		auto& reg = CogRegistry::Get();
-		std::string icon = ResolveQuestIcon(text);
+		std::string icon = ResolveQuestIcon(quest, rawName, status, objective);
 		std::string colorKey;
 		std::string iconKey;
 		std::string iconFallback;
@@ -190,7 +274,7 @@ namespace
 		if (icon.empty()) {
 			icon = reg.FirstVisibleFeedSetting(CogFeedSources::kIdQuests, iconKey, iconFallback);
 		}
-		const auto id = CogFeed::Notify(std::move(text), colorKey, std::move(icon), CogFeed::kSourceQuests);
+		const auto id = CogFeed::Notify(std::move(message), colorKey, std::move(icon), CogFeed::kSourceQuests);
 		CogFeedLog::debug("QuestsFeed: Notify id={} objective={}", id, objective ? 1 : 0);
 		if (id != 0) {
 			CogUi::RunOnMainThread([]() { CogFeed::FlushNotificationsToUi(); });
@@ -216,7 +300,14 @@ namespace
 			if (!raw || !raw[0]) {
 				continue;
 			}
-			NotifyQuestLine(FormatQuestObjectiveLine(raw, ObjectivePrefixFromState(state)), true);
+			const auto status = StatusFromObjectiveState(state);
+			const auto cleaned = CleanHudName(raw);
+			NotifyQuestLine(
+				FormatQuestObjectiveLine(raw, status),
+				cleaned,
+				quest,
+				status,
+				true);
 		}
 	}
 }
@@ -224,17 +315,23 @@ namespace
 void CogFeed::LoadQuestIconRules()
 {
 	std::lock_guard lock(g_iconMutex);
-	IconRegistry::LoadDir(QuestIconRulesDir(), g_iconStore, "QuestIcons", IconRegistry::SkillsKinds());
+	IconRegistry::LoadDir(QuestIconRulesDir(), g_iconStore, "QuestIcons", IconRegistry::QuestKinds());
 }
 
 void CogFeed::HandleQuestHud(RE::HUD_MESSAGE_TYPE type, std::string text, RE::TESQuest* quest)
 {
 	auto& reg = CogRegistry::Get();
-	const auto status = StatusWord(type);
+	const auto status = StatusFromHudType(type);
 
 	if (IsQuestStatusType(type)) {
 		if (reg.HasVisibleFeedDivertingQuestStatus()) {
-			NotifyQuestLine(FormatQuestStatusLine(std::move(text), status), false);
+			const auto cleaned = CleanHudName(text);
+			NotifyQuestLine(
+				FormatQuestStatusLine(text, status),
+				cleaned,
+				quest,
+				status,
+				false);
 		}
 		// Vanilla bundles displayed objectives into the same QuestUpdate notification.
 		EnqueueDisplayedObjectives(quest);
@@ -245,13 +342,14 @@ void CogFeed::HandleQuestHud(RE::HUD_MESSAGE_TYPE type, std::string text, RE::TE
 		return;
 	}
 
-	auto line = FormatQuestObjectiveLine(std::move(text), ObjectivePrefix(type));
+	const auto cleaned = CleanHudName(text);
+	auto line = FormatQuestObjectiveLine(text, status);
 	if (line.empty() && quest) {
 		// Empty HUD text — fall back to newly displayed objectives on the quest.
 		EnqueueDisplayedObjectives(quest);
 		return;
 	}
 	if (!line.empty()) {
-		NotifyQuestLine(std::move(line), true);
+		NotifyQuestLine(std::move(line), cleaned, quest, status, true);
 	}
 }

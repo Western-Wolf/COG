@@ -59,6 +59,15 @@ namespace CogFeed::IconRegistry
 		return k;
 	}
 
+	KindSet QuestKinds()
+	{
+		auto k = BaseKinds();
+		k.insert("questtype");
+		k.insert("queststatus");
+		k.insert("objectivestatus");
+		return k;
+	}
+
 	void PushCandidate(Candidates& c, const char* kind, std::string value)
 	{
 		if (!kind || !kind[0]) {

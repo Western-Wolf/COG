@@ -2,9 +2,45 @@
 # Location: Data/SKSE/Plugins/COG/gizmoTypes/cog-feed/sources/cog-quests/
 # Last wins: later-named *.txt files and later lines override earlier matches.
 #
-# Grammar (name only for this section):
-#   name <op> `<needle>` = Section/icon.svg
+# Grammar:
+#   <kind> <op> `<needle>` [<op> `<needle>` ...] = Section/icon.svg
 # Ops: equals, notequals, contains, notcontains (case-insensitive; spaces in ` ` matter)
 #
-# Candidates: quest / objective display text from the HUD banner.
-# When no rule matches, the Quests source Status / Objectives icons are used.
+# Kinds:
+#   name            — raw quest title or objective text (NOT "Quest Started:" / "Completed:" chrome)
+#   form            — plugin:hex pin (same as inventory/effects), e.g. Skyrim.esm:0003372B
+#   questtype       — CK Type: none, mainquest, magesguild, thievesguild, darkbrotherhood,
+#                     companionsquest, miscellaneous, daedric, sidequest, civilwar,
+#                     dlc01_vampire, dlc02_dragonborn
+#   queststatus     — started | completed | failed (quest banners only)
+#   objectivestatus — started | completed | failed (objective lines only)
+#
+# Objective lines still carry the parent quest's form + questtype.
+# When no rule matches, Quests source Status / Objectives icons are used.
+
+# --- questtype (broad defaults) ---
+questtype equals `companionsquest` = Werewolf/wolf.svg
+questtype equals `magesguild` = Clothing/hat-wizard.svg
+questtype equals `thievesguild` = Clothing/cloak-and-dagger.svg
+questtype equals `darkbrotherhood` = Alchemy/skull.svg
+questtype equals `daedric` = Magic/pentagram.svg
+questtype equals `mainquest` = Animals/dragon-head.svg
+questtype equals `civilwar` = Weapons/shield-round.svg
+questtype equals `dlc01_vampire` = Vampire/fangs.svg
+questtype equals `dlc02_dragonborn` = Animals/dragon.svg
+questtype equals `sidequest` = Map Markers/quest.svg
+questtype equals `miscellaneous` = Map Markers/quest.svg
+questtype equals `none` = Map Markers/quest.svg
+
+# --- status (quest/objective status EXAMPLES) ---
+# queststatus equals `failed` = Survival/heart-broken.svg
+# objectivestatus equals `completed` = Treasure/chest-open.svg
+# queststatus equals `completed` = Jewellery/crown.svg
+
+# --- name (raw title / objective text EXAMPLES) ---
+# name contains `bleak falls` = Camping/axe.svg
+# name contains `dragonborn` = Actions/shout.svg
+
+# --- form pins (last) ---
+# MQ101 Unbound
+form equals `Skyrim.esm:0003372B` = Restraints/rope.svg

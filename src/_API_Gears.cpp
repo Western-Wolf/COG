@@ -2,6 +2,7 @@
 #include "_API_Gears.h"
 #include "_API_Core.h"
 #include "_Core_Registry.h"
+#include "_Core_Reserved.h"
 #include "_Gears_LiveStats.h"
 
 namespace
@@ -21,6 +22,12 @@ namespace
 		std::string hudLinkedElement,
 		bool hudHideDuplicate)
 	{
+		if (CogReserved::IsReservedCogSourceMod(sourceMod)) {
+			logger::warn(
+				"COG_API.RegisterGear rejected: sourceMod '{}' is reserved for COG (native builtins only)",
+				sourceMod);
+			return 0;
+		}
 		const std::string modKey = sourceMod;
 		const auto receipt = CogRegistry::Get().Register(
 			std::move(sourceMod),
@@ -82,12 +89,24 @@ namespace
 		std::string sourceMod,
 		std::string pluginFile)
 	{
+		if (CogReserved::IsReservedCogSourceMod(sourceMod)) {
+			logger::warn(
+				"COG_API.BeginRegister rejected: sourceMod '{}' is reserved for COG (native builtins only)",
+				sourceMod);
+			return;
+		}
 		auto sniffed = CogCaller::SniffCallerPlugin(vm, stackID);
 		CogRegistry::Get().BeginRegister(std::move(sourceMod), std::move(pluginFile), std::move(sniffed));
 	}
 
 	void EndRegister(RE::StaticFunctionTag*, std::string sourceMod)
 	{
+		if (CogReserved::IsReservedCogSourceMod(sourceMod)) {
+			logger::warn(
+				"COG_API.EndRegister rejected: sourceMod '{}' is reserved for COG (native builtins only)",
+				sourceMod);
+			return;
+		}
 		CogRegistry::Get().EndRegister(std::move(sourceMod));
 		CogRegistry::Get().MarkLayoutDirty();
 		CogRegistry::Get().PushToUi();
@@ -165,6 +184,12 @@ namespace
 		std::string iconName,
 		std::string sourcePath)
 	{
+		if (CogReserved::IsReservedCogSourceMod(sourceMod)) {
+			logger::warn(
+				"COG_API.ImportIcon rejected: sourceMod '{}' is reserved for COG (native builtins only)",
+				sourceMod);
+			return {};
+		}
 		return CogRegistry::Get().ImportIcon(
 			std::move(sourceMod),
 			std::move(iconName),
