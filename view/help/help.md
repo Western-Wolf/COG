@@ -25,7 +25,7 @@ Icon at 0% / 100% tint meter icons by value. For most types of icons, blank ends
 
 COG ships with the ability to suppress HUD elements, allowing you to replace them with your own COG elements. This allows us to do some neat things like hiding mod-added elements without the need to edit those mods in any way.
 
-Gears have suppression options as a field that's registered when the gear is, but you can also edit it. Just make sure you know the exact location of the element you want to suppress (hud.stamina, for example, or hud.oxygen)
+Gears have suppression options as a field that's registered when the gear is, but you can also edit it. Just make sure you know the exact location of the element you want to suppress (cog.stamina, for example, or cog.o2)
  +++
 
 +++ How do count colour stops work? #cog-help-count-colour-stops

@@ -51,7 +51,7 @@
 		if (typeof window.CogAppendFeedSectionNotes !== "function") return;
 		var host = panel.querySelector('[data-cog-feed-notes="notifications"]');
 		if (!host) return;
-		window.CogAppendFeedSectionNotes(host, "hud.notifications", storagePath() + "/", { notificationsApi: true });
+		window.CogAppendFeedSectionNotes(host, "cog.notifications", storagePath() + "/", { notificationsApi: true });
 	}
 
 	function onBound() {

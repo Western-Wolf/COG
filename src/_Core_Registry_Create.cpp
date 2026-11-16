@@ -4,6 +4,7 @@
 #include "_Core_Icon.h"
 #include "_UI_CogUi.h"
 #include "_Core_HudSuppress.h"
+#include "_Core_HudAliases.h"
 #include "_UI_KeyNames.h"
 #include "_Gears_LiveStats.h"
 #include "_Gears_Inventory.h"
@@ -263,6 +264,8 @@ std::int32_t CogRegistry::Register(
 	barColor = CogRegistryJson::NormalizeColorRamp(std::move(barColor));
 	hideAt = NormalizeHideAt(std::move(hideAt), type);
 	hudLinkedElement = TrimCopy(std::move(hudLinkedElement));
+	// Migration Code for Transition from v1.11 or earlier to v1.2
+	hudLinkedElement = CogHudAliases::MigrateToken(hudLinkedElement);
 	std::lock_guard lock(_mutex);
 	const auto key = KeyOf(mod, name);
 	std::int32_t receipt = 0;
@@ -570,21 +573,21 @@ void CogRegistry::EnsureBuiltinSources()
 {
 	// Sole register path for COG.Builtin (not Papyrus). Live values: RefreshLiveUnlocked.
 	BeginRegister("COG.Builtin", kCogPluginFile);
-	Register("COG.Builtin", "Health", "percent", "Health", "Stat", "Survival/health.svg", "#ffffff", "", "#DF2020", "", "hud.health", true);
-	Register("COG.Builtin", "Stamina", "percent", "Stamina", "Stat", "Camping/hiker.svg", "#ffffff", "", "#20DF20", "", "hud.stamina", true);
+	Register("COG.Builtin", "Health", "percent", "Health", "Stat", "Survival/health.svg", "#ffffff", "", "#DF2020", "", "cog.health", true);
+	Register("COG.Builtin", "Stamina", "percent", "Stamina", "Stat", "Camping/hiker.svg", "#ffffff", "", "#20DF20", "", "cog.stamina", true);
 	Register("COG.Builtin", "MountStamina", "percent", "Mount Stamina", "Mount", "Animals/horse-head.svg", "#ffffff", "", "#20DF20", "<0.01");
-	Register("COG.Builtin", "Magicka", "percent", "Magicka", "Stat", "Magic/crystal-ball-shiny.svg", "#ffffff", "", "#2020DF", "", "hud.magicka", true);
+	Register("COG.Builtin", "Magicka", "percent", "Magicka", "Stat", "Magic/crystal-ball-shiny.svg", "#ffffff", "", "#2020DF", "", "cog.magicka", true);
 	Register("COG.Builtin", "CarryWeight", "percent", "Carry Weight", "Stat", "Camping/backpack.svg", "#ffffff");
-	Register("COG.Builtin", "Arrows", "count", "Arrows (Equipped)", "Equipment", "Weapons/arrows.svg", "#ffffff", "", "", "<0.01", "hud.ammo", true);
-	Register("COG.Builtin", "Bolts", "count", "Bolts (Equipped)", "Equipment", "Weapons/quiver.svg", "#ffffff", "", "", "<0.01", "hud.ammo", true);
+	Register("COG.Builtin", "Arrows", "count", "Arrows (Equipped)", "Equipment", "Weapons/arrows.svg", "#ffffff", "", "", "<0.01", "cog.ammo", true);
+	Register("COG.Builtin", "Bolts", "count", "Bolts (Equipped)", "Equipment", "Weapons/quiver.svg", "#ffffff", "", "", "<0.01", "cog.ammo", true);
 	Register("COG.Builtin", "Werewolf", "timer", "Transformation", "Werewolf", "Werewolf/wolf.svg", "#ffffff", "", "#777780");
 	Register("COG.Builtin", "VampiricHunger", "percent", "Vampiric Hunger", "Vampire", "Vampire/fangs.svg", "#ffffff", "", "", "<0.01");
-	Register("COG.Builtin", "Oxygen", "timer", "Oxygen", "Survival", "Survival/oxygen.svg", "#ffffff", "", "#44DDCC", "", "hud.oxygen", true);
-	Register("COG.Builtin", "BowDraw", "percent", "Bow Draw", "Charge", "Weapons/bow.svg", "#ffffff", "", "#AA6633", "<0.01", "hud.casting", true);
-	Register("COG.Builtin", "SpellCharge", "percent", "Spell Casting", "Charge", "Magic/sparkles.svg", "#ffffff", "", "#7744DD", "<0.01", "hud.casting", true);
-	Register("COG.Builtin", "WeaponCharge", "percent", "Weapon Charge", "Charge", "Actions/hand-right.svg", "#ffffff", "", "", "<0.01", "hud.charge", true);
-	Register("COG.Builtin", "SecondaryWeaponCharge", "percent", "Secondary Weapon Charge", "Charge", "Actions/hand-left.svg", "#ffffff", "", "", "<0.01", "hud.leftcharge", true);
-	Register("COG.Builtin", "Shout", "timer", "Shout Cooldown", "Charge", "Actions/shout.svg", "#ffffff", "", "#5ba4f9", "", "hud.casting", true);
+	Register("COG.Builtin", "Oxygen", "timer", "Oxygen", "Survival", "Survival/oxygen.svg", "#ffffff", "", "#44DDCC", "", "cog.o2", true);
+	Register("COG.Builtin", "BowDraw", "percent", "Bow Draw", "Charge", "Weapons/bow.svg", "#ffffff", "", "#AA6633", "<0.01", "cog.casting", true);
+	Register("COG.Builtin", "SpellCharge", "percent", "Spell Casting", "Charge", "Magic/sparkles.svg", "#ffffff", "", "#7744DD", "<0.01", "cog.casting", true);
+	Register("COG.Builtin", "WeaponCharge", "percent", "Weapon Charge", "Charge", "Actions/hand-right.svg", "#ffffff", "", "", "<0.01", "cog.charge", true);
+	Register("COG.Builtin", "SecondaryWeaponCharge", "percent", "Secondary Weapon Charge", "Charge", "Actions/hand-left.svg", "#ffffff", "", "", "<0.01", "cog.leftcharge", true);
+	Register("COG.Builtin", "Shout", "timer", "Shout Cooldown", "Charge", "Actions/shout.svg", "#ffffff", "", "#5ba4f9", "", "cog.casting", true);
 	Register("COG.Builtin", "Howl", "timer", "Howl Cooldown", "Charge", "Werewolf/wolf-side.svg", "#ffffff");
 	Register("COG.Builtin", "FireResist", "percent", "Fire Resistance", "Resistance", "Survival/fire.svg", "#ffffff");
 	Register("COG.Builtin", "FrostResist", "percent", "Frost Resistance", "Resistance", "Weather/snowflake.svg", "#ffffff");

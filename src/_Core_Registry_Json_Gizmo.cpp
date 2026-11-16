@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "_Core_Registry_Json.h"
+#include "_Core_HudAliases.h"
 #include "_Core_Reserved.h"
 #include "_Gizmo_Feed_Sources.h"
 #include "_UI_KeyNames.h"
@@ -486,6 +487,33 @@ namespace CogRegistryJson
 			g.visibility = BuiltinDefaultVisibilityForType(g.typeId);
 		}
 		g.hudSuppress = ctx.GetStringArray(obj, "hudSuppress");
+		// Migration Code for Transition from v1.11 or earlier to v1.2:
+		// Legacy hud.* / bare synonyms → cog.* unless the token is a user alias key.
+		if (CogHudAliases::MigrateTokenList(g.hudSuppress)) {
+			NoteMigration(ctx, "gizmo hudSuppress legacy → cog.*");
+		}
+		auto migrateSettingsHudList = [&](const char* key) {
+			auto it = settings.objectValue.find(key);
+			if (it == settings.objectValue.end() || !it->second.IsArray()) {
+				return;
+			}
+			bool changed = false;
+			for (auto& elem : it->second.arrayValue) {
+				if (!elem.IsString()) {
+					continue;
+				}
+				auto next = CogHudAliases::MigrateToken(elem.stringValue);
+				if (next != elem.stringValue) {
+					elem.stringValue = std::move(next);
+					changed = true;
+				}
+			}
+			if (changed) {
+				NoteMigration(ctx, std::string("gizmo settings.") + key + " legacy → cog.*");
+			}
+		};
+		migrateSettingsHudList("alwaysHide");
+		migrateSettingsHudList("neverHide");
 
 		float defaultW = type ? type->defaultWidth : 240.0f;
 		float defaultH = type ? type->defaultHeight : 48.0f;

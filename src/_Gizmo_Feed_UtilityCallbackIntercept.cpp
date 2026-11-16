@@ -154,7 +154,7 @@ namespace
 				CogRegistry::Get().ShouldSuppressInventoryNotifications()) {
 				return true;
 			}
-			if (CogHudSuppress::IsKeySuppressed("hud.notifications")) {
+			if (CogHudSuppress::IsKeySuppressed("cog.notifications")) {
 				if (CogRegistry::Get().HasVisibleFeedShowingNotifications()) {
 					CogFeed::EnqueueNotification(std::move(text), std::move(color), {});
 				}

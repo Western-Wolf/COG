@@ -3,67 +3,61 @@
 
 const DEFAULT_SUPPRESSOR_SIZE = 100;
 
-/** Harvestable [tag, en-CA] — Suppressions / Suppressor friendly names (by alias value). */
-const HUD_ALIAS_LABEL_TAGS = {
-	"hud.health": ["cog-hud-alias-health", "Health bar"],
-	"hud.stamina": ["cog-hud-alias-stamina", "Stamina bar"],
-	"hud.magicka": ["cog-hud-alias-magicka", "Magicka bar"],
-	"hud.ammo": ["cog-hud-alias-ammo", "Ammo / arrows"],
-	"hud.oxygen": ["cog-hud-alias-oxygen", "Oxygen Meter 2"],
-	"hud.casting": ["cog-hud-alias-casting", "Casting Bar (whole menu)"],
-	"hud.charge": ["cog-hud-alias-charge", "Right / two-hand charge"],
-	"hud.leftcharge": ["cog-hud-alias-leftcharge", "Left-hand charge"],
-	"hud.compass": ["cog-hud-alias-compass", "Compass / shout meter"],
-	"hud.enemyhealth": ["cog-hud-alias-enemy-health", "Enemy health"],
-	"hud.stealth": ["cog-hud-alias-stealth", "Stealth eye"],
-	"hud.crosshair": ["cog-hud-alias-crosshair", "Crosshair"],
-	"hud.activate": ["cog-hud-alias-activate", "Activate / rollover prompt"],
-	"hud.subtitles": ["cog-hud-alias-subtitles", "Subtitles"],
-	"hud.tutorials": ["cog-hud-alias-tutorials", "Tutorial hints"],
-	"hud.questupdates": ["cog-hud-alias-quest-updates", "Quest updates"],
-	"hud.notifications": ["cog-hud-alias-notifications", "Notifications (MessagesBlock)"],
-	"hud.inventory": ["cog-hud-alias-inventory", "Inventory (TrueHUD Recent Loot)"],
-	"hud.currentlocation": ["cog-hud-alias-current-location", "Current location (LocationLockBase)"],
-	"hud.activeeffects": ["cog-hud-alias-active-effects", "SkyUI Active Effects"]
-};
-
+/** Fallback alias catalog when snapshot.suppressionAliases is empty (name = stock English key). */
 const SUPPRESSOR_HUD_KEYS_FALLBACK = [
-	{ value: "hud.health", label: HUD_ALIAS_LABEL_TAGS["hud.health"][1] },
-	{ value: "hud.stamina", label: HUD_ALIAS_LABEL_TAGS["hud.stamina"][1] },
-	{ value: "hud.magicka", label: HUD_ALIAS_LABEL_TAGS["hud.magicka"][1] },
-	{ value: "hud.ammo", label: HUD_ALIAS_LABEL_TAGS["hud.ammo"][1] },
-	{ value: "hud.oxygen", label: HUD_ALIAS_LABEL_TAGS["hud.oxygen"][1] },
-	{ value: "hud.casting", label: HUD_ALIAS_LABEL_TAGS["hud.casting"][1] },
-	{ value: "hud.charge", label: HUD_ALIAS_LABEL_TAGS["hud.charge"][1] },
-	{ value: "hud.leftcharge", label: HUD_ALIAS_LABEL_TAGS["hud.leftcharge"][1] },
-	{ value: "hud.compass", label: HUD_ALIAS_LABEL_TAGS["hud.compass"][1] },
-	{ value: "hud.enemyHealth", label: HUD_ALIAS_LABEL_TAGS["hud.enemyhealth"][1] },
-	{ value: "hud.stealth", label: HUD_ALIAS_LABEL_TAGS["hud.stealth"][1] },
-	{ value: "hud.crosshair", label: HUD_ALIAS_LABEL_TAGS["hud.crosshair"][1] },
-	{ value: "hud.activate", label: HUD_ALIAS_LABEL_TAGS["hud.activate"][1] },
-	{ value: "hud.subtitles", label: HUD_ALIAS_LABEL_TAGS["hud.subtitles"][1] },
-	{ value: "hud.tutorials", label: HUD_ALIAS_LABEL_TAGS["hud.tutorials"][1] },
-	{ value: "hud.questUpdates", label: HUD_ALIAS_LABEL_TAGS["hud.questupdates"][1] },
-	{ value: "hud.notifications", label: HUD_ALIAS_LABEL_TAGS["hud.notifications"][1] },
-	{ value: "hud.inventory", label: HUD_ALIAS_LABEL_TAGS["hud.inventory"][1] },
-	{ value: "hud.currentLocation", label: HUD_ALIAS_LABEL_TAGS["hud.currentlocation"][1] },
-	{ value: "hud.activeEffects", label: HUD_ALIAS_LABEL_TAGS["hud.activeeffects"][1] }
+	{ value: "cog.health", name: "Health" },
+	{ value: "cog.stamina", name: "Stamina" },
+	{ value: "cog.magicka", name: "Magicka" },
+	{ value: "cog.ammo", name: "Ammo" },
+	{ value: "cog.o2", name: "Oxygen" },
+	{ value: "cog.casting", name: "Casting Bar" },
+	{ value: "cog.charge", name: "Weapon Charge" },
+	{ value: "cog.leftcharge", name: "Secondary Weapon Charge" },
+	{ value: "cog.compass", name: "Compass" },
+	{ value: "cog.enemyHealth", name: "Enemy Health" },
+	{ value: "cog.stealth", name: "Stealth" },
+	{ value: "cog.crosshair", name: "Crosshair" },
+	{ value: "cog.activate", name: "Activate" },
+	{ value: "cog.subtitles", name: "Subtitles" },
+	{ value: "cog.tutorials", name: "Tutorials" },
+	{ value: "cog.questUpdates", name: "Quest Updates" },
+	{ value: "cog.notifications", name: "Notifications" },
+	{ value: "cog.inventory", name: "Recent Loot" },
+	{ value: "cog.currentLocation", name: "Current Location" },
+	{ value: "cog.activeEffects", name: "Active Effects" }
 ];
 
-function hudAliasLabelEntry(value) {
-	const fold = String(value || "")
-		.trim()
-		.toLowerCase();
-	return fold ? HUD_ALIAS_LABEL_TAGS[fold] || null : null;
+function aliasDisplayName(itemOrValue, fallbackName) {
+	let english = "";
+	let value = "";
+	if (itemOrValue && typeof itemOrValue === "object") {
+		value = String(itemOrValue.value || "").trim();
+		english = String(itemOrValue.name || itemOrValue.label || fallbackName || value).trim();
+	} else {
+		value = String(itemOrValue || "").trim();
+		english = String(fallbackName || value).trim();
+		const snap = Array.isArray(snapshot.suppressionAliases) ? snapshot.suppressionAliases : [];
+		const hit = snap.find((a) => String(a && a.value || "").toLowerCase() === value.toLowerCase());
+		if (hit && hit.name) {
+			english = String(hit.name).trim();
+		} else {
+			const fb = SUPPRESSOR_HUD_KEYS_FALLBACK.find((a) => a.value.toLowerCase() === value.toLowerCase());
+			if (fb) {
+				english = fb.name;
+			}
+		}
+	}
+	if (english && typeof tName === "function") {
+		return tName(english);
+	}
+	if (english && typeof resolveStockDisplayName === "function") {
+		return resolveStockDisplayName(english, english);
+	}
+	return english || value || "—";
 }
 
 function translateHudAliasLabel(value, fallback) {
-	const entry = hudAliasLabelEntry(value);
-	const fb = fallback != null && String(fallback).trim() ? String(fallback) : entry ? entry[1] : String(value || "");
-	if (entry && typeof t === "function") {
-		return t(entry[0], entry[1]);
-	}
-	return fb;
+	return aliasDisplayName(value, fallback);
 }
 
 function suppressorHudKeys() {
@@ -76,17 +70,21 @@ function suppressorHudKeys() {
 		}
 		out.push({
 			value,
-			label: translateHudAliasLabel(value, item.label || value)
+			name: String(item.name || item.label || value).trim() || value,
+			label: aliasDisplayName(item)
 		});
 	}
-	return out.length ? out : SUPPRESSOR_HUD_KEYS_FALLBACK.map((item) => ({
-		value: item.value,
-		label: translateHudAliasLabel(item.value, item.label)
-	}));
+	return out.length
+		? out
+		: SUPPRESSOR_HUD_KEYS_FALLBACK.map((item) => ({
+				value: item.value,
+				name: item.name,
+				label: aliasDisplayName(item)
+			}));
 }
 
+window.aliasDisplayName = aliasDisplayName;
 window.translateHudAliasLabel = translateHudAliasLabel;
-window.hudAliasLabelEntry = hudAliasLabelEntry;
 
 function normalizeSuppressorKeyList(raw) {
 	if (!Array.isArray(raw)) {
@@ -267,9 +265,9 @@ function makeSuppressorKeyListEditor(panel, gizmo, listKey, titleTag, title, hin
 			input.type = "text";
 			input.setAttribute("list", datalistId);
 			if (typeof setTranslatedPlaceholder === "function") {
-				setTranslatedPlaceholder(input, "cog-hud-key-placeholder", "hud.health or Menu|path");
+				setTranslatedPlaceholder(input, "cog-hud-key-placeholder", "cog.health or Menu|path");
 			} else {
-				input.placeholder = "hud.health or Menu|path";
+				input.placeholder = "cog.health or Menu|path";
 			}
 			input.value = key;
 			const applyValue = () => {

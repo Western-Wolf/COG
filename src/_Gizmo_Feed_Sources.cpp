@@ -5,6 +5,7 @@
 #include "_Core_Registry_Json.h"
 #include "_Core_Reserved.h"
 #include "_Core_Json.h"
+#include "_Core_HudAliases.h"
 #include "_UI_CogUi.h"
 
 #include <algorithm>
@@ -290,24 +291,24 @@ namespace
 		RegisterBuiltinUnlocked(
 			CogFeedSources::kIdEffects,
 			"Active Effects",
-			"hud.activeEffects",
+			"cog.activeEffects",
 			{ "effectsColor" });
 		RegisterBuiltinUnlocked(
 			CogFeedSources::kIdInventory,
 			"Inventory",
-			"hud.inventory",
+			"cog.inventory",
 			{ "addColor", "removeColor", "stolenColor" });
 		RegisterBuiltinUnlocked(
 			CogFeedSources::kIdLocation,
 			"Location",
-			"hud.currentLocation",
+			"cog.currentLocation",
 			{ "locationDiscoveryColor", "currentLocationColor" });
 		RegisterBuiltinUnlocked(
 			CogFeedSources::kIdNotifications,
 			"Notifications",
-			"hud.notifications",
+			"cog.notifications",
 			{ "textColor" });
-		// Skills: divert-only (kSkillIncrease). Do not soft-hide hud.questUpdates — that clip is
+		// Skills: divert-only (kSkillIncrease). Do not soft-hide cog.questUpdates — that clip is
 		// shared with quest-update banners (same pattern as location discovery).
 		RegisterBuiltinUnlocked(
 			CogFeedSources::kIdSkills,
@@ -479,6 +480,8 @@ std::int32_t CogFeedSources::RegisterSource(
 	e.settingsHtmlRel = std::string("gizmoTypes/cog-feed/sources/") + sourceId + ".html";
 	e.colourVars = ParseStringArrayJson(colourVarsJson);
 	e.hudSuppress = ParseStringArrayJson(hudSuppressJson);
+	// Migration Code for Transition from v1.11 or earlier to v1.2
+	CogHudAliases::MigrateTokenList(e.hudSuppress);
 	e.receipt = g_nextReceipt++;
 	if (e.receipt <= 0) {
 		g_nextReceipt = 1;

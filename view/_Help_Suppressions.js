@@ -3,7 +3,7 @@
 
 let suppressionsFilterText = "";
 let suppressionsFilterVisibility = "all";
-let suppressionsSortCol = "element";
+let suppressionsSortCol = "name";
 let suppressionsSortDir = 1;
 
 let aliasIndexFilterText = "";
@@ -83,7 +83,12 @@ function sortedFilteredSuppressions() {
 		if (!q) {
 			return true;
 		}
+		const nameText =
+			typeof aliasDisplayName === "function"
+				? aliasDisplayName({ value: row.alias || row.key, name: row.label || row.alias || row.key })
+				: row.label || row.alias || row.key || "";
 		const hay = [
+			nameText,
 			row.alias,
 			row.label,
 			row.key,
@@ -105,9 +110,18 @@ function sortedFilteredSuppressions() {
 		} else if (col === "controllers") {
 			av = suppressionControllersPlain(a.controllers).toLowerCase();
 			bv = suppressionControllersPlain(b.controllers).toLowerCase();
-		} else {
+		} else if (col === "asAlias") {
 			av = String(a.alias || a.key || "").toLowerCase();
 			bv = String(b.alias || b.key || "").toLowerCase();
+		} else {
+			const an = typeof aliasDisplayName === "function"
+				? aliasDisplayName({ value: a.alias || a.key, name: a.label || a.alias || a.key })
+				: a.label || a.alias || a.key || "";
+			const bn = typeof aliasDisplayName === "function"
+				? aliasDisplayName({ value: b.alias || b.key, name: b.label || b.alias || b.key })
+				: b.label || b.alias || b.key || "";
+			av = String(an).toLowerCase();
+			bv = String(bn).toLowerCase();
 		}
 		if (av < bv) {
 			return -1 * dir;
@@ -120,6 +134,25 @@ function sortedFilteredSuppressions() {
 	return filtered;
 }
 
+function aliasCanonicalKeys(item) {
+	const raw = [];
+	if (item && Array.isArray(item.targets)) {
+		for (const t of item.targets) {
+			const s = String(t == null ? "" : t).trim();
+			if (s) {
+				raw.push(s);
+			}
+		}
+	}
+	if (!raw.length) {
+		const one = String((item && item.key) || "").trim();
+		if (one) {
+			raw.push(one);
+		}
+	}
+	return raw.slice().sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+}
+
 function aliasIndexRows() {
 	const fromSnap = Array.isArray(snapshot.suppressionAliases) ? snapshot.suppressionAliases : [];
 	const out = [];
@@ -128,10 +161,13 @@ function aliasIndexRows() {
 		if (!alias) {
 			continue;
 		}
+		const keys = aliasCanonicalKeys(item);
 		out.push({
 			alias,
-			label: String((item && item.label) || alias),
-			key: String((item && item.key) || "").trim()
+			name: String((item && item.name) || (item && item.label) || alias),
+			label: String((item && item.name) || (item && item.label) || alias),
+			keys,
+			key: keys.length ? keys[0] : ""
 		});
 	}
 	return out;
@@ -145,10 +181,11 @@ function sortedFilteredAliasIndex() {
 			return true;
 		}
 		const translated =
-			typeof translateHudAliasLabel === "function"
-				? translateHudAliasLabel(row.alias || row.key, row.label)
-				: row.label;
-		const hay = [row.alias, row.label, translated, row.key].join(" ").toLowerCase();
+			typeof aliasDisplayName === "function"
+				? aliasDisplayName({ value: row.alias, name: row.name || row.label })
+				: row.name || row.label;
+		const keysText = Array.isArray(row.keys) ? row.keys.join(" ") : row.key || "";
+		const hay = [row.alias, row.name, row.label, translated, keysText].join(" ").toLowerCase();
 		return hay.includes(q);
 	});
 	const dir = aliasIndexSortDir >= 0 ? 1 : -1;
@@ -157,18 +194,18 @@ function sortedFilteredAliasIndex() {
 		let av = "";
 		let bv = "";
 		if (col === "key") {
-			av = String(a.key || "").toLowerCase();
-			bv = String(b.key || "").toLowerCase();
-		} else if (col === "title") {
+			av = String((a.keys && a.keys[0]) || a.key || "").toLowerCase();
+			bv = String((b.keys && b.keys[0]) || b.key || "").toLowerCase();
+		} else if (col === "name" || col === "title") {
 			av = String(
-				typeof translateHudAliasLabel === "function"
-					? translateHudAliasLabel(a.alias || a.key, a.label)
-					: a.label || ""
+				typeof aliasDisplayName === "function"
+					? aliasDisplayName({ value: a.alias, name: a.name || a.label })
+					: a.name || a.label || ""
 			).toLowerCase();
 			bv = String(
-				typeof translateHudAliasLabel === "function"
-					? translateHudAliasLabel(b.alias || b.key, b.label)
-					: b.label || ""
+				typeof aliasDisplayName === "function"
+					? aliasDisplayName({ value: b.alias, name: b.name || b.label })
+					: b.name || b.label || ""
 			).toLowerCase();
 		} else {
 			av = String(a.alias || "").toLowerCase();
@@ -191,7 +228,7 @@ function paintSuppressionsTableBody(tbody) {
 	if (!rows.length) {
 		const tr = document.createElement("tr");
 		const td = document.createElement("td");
-		td.colSpan = 3;
+		td.colSpan = 4;
 		td.className = "suppressions-empty";
 		if (suppressionsFilterText.trim() || suppressionsFilterVisibility !== "all") {
 			if (typeof setTranslatedText === "function") {
@@ -216,29 +253,22 @@ function paintSuppressionsTableBody(tbody) {
 	for (const row of rows) {
 		const tr = document.createElement("tr");
 		tr.className = row.hidden ? "is-hidden" : "is-visible";
-		const el = document.createElement("td");
-		el.className = "suppressions-element";
-		const alias = document.createElement("div");
-		alias.className = "suppressions-alias";
-		alias.textContent = row.alias || row.key || "—";
-		el.appendChild(alias);
-		if (row.label && row.label !== row.alias) {
-			const tip = document.createElement("div");
-			tip.className = "suppressions-label";
-			const entry =
-				typeof hudAliasLabelEntry === "function" ? hudAliasLabelEntry(row.alias || row.key) : null;
-			if (entry && typeof setTranslatedText === "function") {
-				setTranslatedText(tip, entry[0], entry[1]);
-			} else if (typeof translateHudAliasLabel === "function") {
-				tip.textContent = translateHudAliasLabel(row.alias || row.key, row.label);
-			} else {
-				tip.textContent = row.label;
-			}
-			el.appendChild(tip);
+		const nameTd = document.createElement("td");
+		nameTd.className = "suppressions-element";
+		const englishName = row.label || row.alias || row.key || "";
+		if (typeof aliasDisplayName === "function") {
+			nameTd.textContent = aliasDisplayName({ value: row.alias || row.key, name: englishName });
+		} else if (typeof tName === "function" && englishName) {
+			nameTd.textContent = tName(englishName);
+		} else {
+			nameTd.textContent = englishName || "—";
 		}
-		if (row.key && row.key !== row.alias) {
-			el.title = row.key;
+		if (row.key) {
+			nameTd.title = row.key;
 		}
+		const aliasTd = document.createElement("td");
+		aliasTd.className = "suppressions-as-alias";
+		aliasTd.textContent = row.alias || row.key || "—";
 		const vis = document.createElement("td");
 		vis.className = "suppressions-visibility";
 		if (typeof setTranslatedText === "function") {
@@ -253,7 +283,8 @@ function paintSuppressionsTableBody(tbody) {
 		const ctrl = document.createElement("td");
 		ctrl.className = "suppressions-controllers";
 		appendSuppressionControllers(ctrl, row.controllers);
-		tr.appendChild(el);
+		tr.appendChild(nameTd);
+		tr.appendChild(aliasTd);
 		tr.appendChild(vis);
 		tr.appendChild(ctrl);
 		tbody.appendChild(tr);
@@ -291,26 +322,28 @@ function paintAliasIndexTableBody(tbody) {
 		alias.className = "suppressions-alias";
 		alias.textContent = row.alias;
 		aliasTd.appendChild(alias);
-		const keyTd = document.createElement("td");
-		keyTd.className = "suppressions-key";
-		keyTd.textContent = row.key || "—";
-		if (row.key) {
-			keyTd.title = row.key;
-		}
 		const titleTd = document.createElement("td");
 		titleTd.className = "suppressions-title";
-		const titleEntry =
-			typeof hudAliasLabelEntry === "function" ? hudAliasLabelEntry(row.alias || row.key) : null;
-		if (titleEntry && typeof setTranslatedText === "function") {
-			setTranslatedText(titleTd, titleEntry[0], titleEntry[1]);
+		if (typeof aliasDisplayName === "function") {
+			titleTd.textContent = aliasDisplayName({
+				value: row.alias || row.value || row.key,
+				name: row.name || row.label
+			});
 		} else if (typeof translateHudAliasLabel === "function") {
 			titleTd.textContent = translateHudAliasLabel(row.alias || row.key, row.label) || "—";
 		} else {
-			titleTd.textContent = row.label || "—";
+			titleTd.textContent = row.name || row.label || "—";
+		}
+		const keyTd = document.createElement("td");
+		keyTd.className = "suppressions-key";
+		const keys = Array.isArray(row.keys) ? row.keys : row.key ? [row.key] : [];
+		keyTd.textContent = keys.length ? keys.join("\n") : "—";
+		if (keys.length) {
+			keyTd.title = keys.join("\n");
 		}
 		tr.appendChild(aliasTd);
-		tr.appendChild(keyTd);
 		tr.appendChild(titleTd);
+		tr.appendChild(keyTd);
 		tbody.appendChild(tr);
 	}
 }
@@ -487,7 +520,7 @@ function renderSuppressionsTab(host) {
 	}
 	active.body.appendChild(hint);
 	appendSuppressionsFilters(active.body, {
-		placeholder: ["cog-filter-suppressions", "Filter by element, status, or gadget…"],
+		placeholder: ["cog-filter-suppressions", "Filter by name, alias, status, or gadget…"],
 		getText: () => suppressionsFilterText,
 		setText: (v) => {
 			suppressionsFilterText = v;
@@ -500,7 +533,8 @@ function renderSuppressionsTab(host) {
 	appendSortableTable(active.body, {
 		role: "active",
 		columns: [
-			{ id: "element", tag: ["cog-element", "Element"] },
+			{ id: "name", tag: ["cog-name", "Name"] },
+			{ id: "asAlias", tag: ["cog-as-alias", "As Alias"] },
 			{ id: "visibility", tag: ["cog-visibility", "Visibility"] },
 			{ id: "controllers", tag: ["cog-controlling-gadgets", "Controlling Gadget(s)"] }
 		],
@@ -522,15 +556,15 @@ function renderSuppressionsTab(host) {
 		setTranslatedText(
 			aliasHint,
 			"cog-alias-index-hint",
-			"Known short names you can use in the Suppressor or HUD-linked Gears, with the CanonicalKey each alias resolves to."
+			"Known short names you can use in the Suppressor or HUD-linked Gears, with the Canonical Keys each alias resolves to."
 		);
 	} else {
 		aliasHint.textContent =
-			"Known short names you can use in the Suppressor or HUD-linked Gears, with the CanonicalKey each alias resolves to.";
+			"Known short names you can use in the Suppressor or HUD-linked Gears, with the Canonical Keys each alias resolves to.";
 	}
 	aliases.body.appendChild(aliasHint);
 	appendSuppressionsFilters(aliases.body, {
-		placeholder: ["cog-filter-aliases", "Filter by alias, CanonicalKey, or friendly name…"],
+		placeholder: ["cog-filter-aliases", "Filter by alias, name, or Canonical Keys…"],
 		getText: () => aliasIndexFilterText,
 		setText: (v) => {
 			aliasIndexFilterText = v;
@@ -540,8 +574,8 @@ function renderSuppressionsTab(host) {
 		role: "aliases",
 		columns: [
 			{ id: "alias", tag: ["cog-alias", "Alias"] },
-			{ id: "key", tag: ["cog-canonical-key", "CanonicalKey"] },
-			{ id: "title", tag: ["cog-friendly-name", "Friendly Name"] }
+			{ id: "name", tag: ["cog-name", "Name"] },
+			{ id: "key", tag: ["cog-canonical-keys", "Canonical Keys"] }
 		],
 		onSort: (colId) => {
 			if (aliasIndexSortCol === colId) {

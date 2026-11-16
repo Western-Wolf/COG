@@ -60,8 +60,16 @@
     "fr-CA": "Index des alias"
   },
   "cog-alias-index-hint": {
-    "en-CA": "Known short names you can use in the Suppressor or HUD-linked Gears, with the CanonicalKey each alias resolves to.",
-    "fr-CA": "Noms courts connus que vous pouvez utiliser dans le Suppresseur ou les Engrenages liés au HUD, avec la CanonicalKey à laquelle correspond chaque alias."
+    "en-CA": "Known short names you can use in the Suppressor or HUD-linked Gears, with the Canonical Keys each alias resolves to.",
+    "fr-CA": "Noms courts connus que vous pouvez utiliser dans le Suppresseur ou les Engrenages liés au HUD, avec les Canonical Keys auxquelles correspond chaque alias."
+  },
+  "cog-as-alias": {
+    "en-CA": "As Alias",
+    "fr-CA": "Comme alias"
+  },
+  "cog-name": {
+    "en-CA": "Name",
+    "fr-CA": "Nom"
   },
   "cog-align-center": {
     "en-CA": "Center",
@@ -218,6 +226,10 @@
   "cog-canonical-key": {
     "en-CA": "CanonicalKey",
     "fr-CA": "CanonicalKey"
+  },
+  "cog-canonical-keys": {
+    "en-CA": "Canonical Keys",
+    "fr-CA": "Canonical Keys"
   },
   "cog-category": {
     "en-CA": "Category",
@@ -400,16 +412,16 @@
     "fr-CA": "Remplir depuis le masqué"
   },
   "cog-filter-aliases": {
-    "en-CA": "Filter by alias, CanonicalKey, or friendly name…",
-    "fr-CA": "Filtrer par alias, CanonicalKey ou nom convivial…"
+    "en-CA": "Filter by alias, name, or Canonical Keys…",
+    "fr-CA": "Filtrer par alias, nom ou Canonical Keys…"
   },
   "cog-filter-by-name": {
     "en-CA": "Filter by name…",
     "fr-CA": "Filtrer par nom…"
   },
   "cog-filter-suppressions": {
-    "en-CA": "Filter by element, status, or gadget…",
-    "fr-CA": "Filtrer par élément, état ou gadget…"
+    "en-CA": "Filter by name, alias, status, or gadget…",
+    "fr-CA": "Filtrer par nom, alias, état ou gadget…"
   },
   "cog-font": {
     "en-CA": "Font",
@@ -488,8 +500,8 @@
     "fr-CA": "Masquer cet engrenage lorsque le temps restant (secondes) est sous ou au-dessus du seuil. Remplir depuis masqué du groupe peut adoucir l'apparence pendant l'affichage; cela n'outrepasse pas Masquer quand."
   },
   "cog-gear-hud-suppress-tip": {
-    "en-CA": "While this gear is exposed (shown on a visible group or bound to a visible gauge), soft-hide the HUD target. Use an alias (e.g. hud.casting) or a raw menu/path (e.g. HUD Menu|HUDMovieBaseInstance.Health).",
-    "fr-CA": "Tant que cet engrenage est exposé (affiché dans un groupe visible ou lié à une jauge visible), masquer en douceur la cible HUD. Utilisez un alias (p. ex. hud.casting) ou un chemin brut menu|chemin (p. ex. HUD Menu|HUDMovieBaseInstance.Health)."
+    "en-CA": "While this gear is exposed (shown on a visible group or bound to a visible gauge), soft-hide the HUD target. Use an alias (e.g. cog.casting) or a raw menu/path (e.g. HUD Menu|HUDMovieBaseInstance.Health).",
+    "fr-CA": "Tant que cet engrenage est exposé (affiché dans un groupe visible ou lié à une jauge visible), masquer en douceur la cible HUD. Utilisez un alias (p. ex. cog.casting) ou un chemin brut menu|chemin (p. ex. HUD Menu|HUDMovieBaseInstance.Health)."
   },
   "cog-gear-meta-mod": {
     "en-CA": "Mod {mod} · {name} · {meta}",
@@ -780,8 +792,8 @@
     "fr-CA": "Qu'est-ce que la Suppression, et comment ça fonctionne?"
   },
   "cog-help-what-is-suppression-body": {
-    "en-CA": "COG ships with the ability to suppress HUD elements, allowing you to replace them with your own COG elements. This allows us to do some neat things like hiding mod-added elements without the need to edit those mods in any way.\n\nGears have suppression options as a field that's registered when the gear is, but you can also edit it. Just make sure you know the exact location of the element you want to suppress (hud.stamina, for example, or hud.oxygen)",
-    "fr-CA": "COG peut masquer des éléments du HUD afin de les remplacer par vos propres éléments COG. Cela permet notamment de masquer des éléments ajoutés par des mods sans avoir à modifier ces mods.\n\nLes Engrenages ont des options de suppression définies au moment de leur enregistrement, mais vous pouvez aussi les modifier. Assurez-vous simplement de connaître l'emplacement exact de l'élément à masquer (hud.stamina, par exemple, ou hud.oxygen)"
+    "en-CA": "COG ships with the ability to suppress HUD elements, allowing you to replace them with your own COG elements. This allows us to do some neat things like hiding mod-added elements without the need to edit those mods in any way.\n\nGears have suppression options as a field that's registered when the gear is, but you can also edit it. Just make sure you know the exact location of the element you want to suppress (cog.stamina, for example, or cog.o2)",
+    "fr-CA": "COG peut masquer des éléments du HUD afin de les remplacer par vos propres éléments COG. Cela permet notamment de masquer des éléments ajoutés par des mods sans avoir à modifier ces mods.\n\nLes Engrenages ont des options de suppression définies au moment de leur enregistrement, mais vous pouvez aussi les modifier. Assurez-vous simplement de connaître l'emplacement exact de l'élément à masquer (cog.stamina, par exemple, ou cog.o2)"
   },
   "cog-help-whats-a-suppressor": {
     "en-CA": "What's a Suppressor?",
@@ -811,93 +823,13 @@
     "en-CA": "Marks missing catalog strings with a gold badge (shows the en-CA fallback).",
     "fr-CA": "Marque les chaînes manquantes du catalogue d'un badge doré (affiche le repli en-CA)."
   },
-  "cog-hud-alias-activate": {
-    "en-CA": "Activate / rollover prompt",
-    "fr-CA": "Invite d'activation / survol"
-  },
-  "cog-hud-alias-active-effects": {
-    "en-CA": "SkyUI Active Effects",
-    "fr-CA": "Effets actifs SkyUI"
-  },
-  "cog-hud-alias-ammo": {
-    "en-CA": "Ammo / arrows",
-    "fr-CA": "Munitions / flèches"
-  },
-  "cog-hud-alias-casting": {
-    "en-CA": "Casting Bar (whole menu)",
-    "fr-CA": "Barre d'incantation (menu entier)"
-  },
-  "cog-hud-alias-charge": {
-    "en-CA": "Right / two-hand charge",
-    "fr-CA": "Charge main droite / à deux mains"
-  },
-  "cog-hud-alias-compass": {
-    "en-CA": "Compass / shout meter",
-    "fr-CA": "Boussole / compteur de cri"
-  },
-  "cog-hud-alias-crosshair": {
-    "en-CA": "Crosshair",
-    "fr-CA": "Réticule"
-  },
-  "cog-hud-alias-current-location": {
-    "en-CA": "Current location (LocationLockBase)",
-    "fr-CA": "Lieu actuel (LocationLockBase)"
-  },
-  "cog-hud-alias-enemy-health": {
-    "en-CA": "Enemy health",
-    "fr-CA": "Santé de l'ennemi"
-  },
-  "cog-hud-alias-health": {
-    "en-CA": "Health bar",
-    "fr-CA": "Barre de santé"
-  },
-  "cog-hud-alias-inventory": {
-    "en-CA": "Inventory (TrueHUD Recent Loot)",
-    "fr-CA": "Inventaire (TrueHUD Recent Loot)"
-  },
-  "cog-hud-alias-leftcharge": {
-    "en-CA": "Left-hand charge",
-    "fr-CA": "Charge main gauche"
-  },
-  "cog-hud-alias-magicka": {
-    "en-CA": "Magicka bar",
-    "fr-CA": "Barre de magie"
-  },
-  "cog-hud-alias-notifications": {
-    "en-CA": "Notifications (MessagesBlock)",
-    "fr-CA": "Notifications (MessagesBlock)"
-  },
-  "cog-hud-alias-oxygen": {
-    "en-CA": "Oxygen Meter 2",
-    "fr-CA": "Oxygen Meter 2"
-  },
-  "cog-hud-alias-quest-updates": {
-    "en-CA": "Quest updates",
-    "fr-CA": "Mises à jour de quête"
-  },
-  "cog-hud-alias-stamina": {
-    "en-CA": "Stamina bar",
-    "fr-CA": "Barre de vigueur"
-  },
-  "cog-hud-alias-stealth": {
-    "en-CA": "Stealth eye",
-    "fr-CA": "Œil de furtivité"
-  },
-  "cog-hud-alias-subtitles": {
-    "en-CA": "Subtitles",
-    "fr-CA": "Sous-titres"
-  },
-  "cog-hud-alias-tutorials": {
-    "en-CA": "Tutorial hints",
-    "fr-CA": "Astuces du tutoriel"
-  },
   "cog-hud-key": {
     "en-CA": "HUD key",
     "fr-CA": "Clé HUD"
   },
   "cog-hud-key-placeholder": {
-    "en-CA": "hud.health or Menu|path",
-    "fr-CA": "hud.health ou Menu|chemin"
+    "en-CA": "cog.health or Menu|path",
+    "fr-CA": "cog.health ou Menu|chemin"
   },
   "cog-hud-suppression": {
     "en-CA": "HUD Suppression",
@@ -908,8 +840,8 @@
     "fr-CA": "Cible HUD"
   },
   "cog-hud-target-placeholder": {
-    "en-CA": "hud.casting",
-    "fr-CA": "hud.casting"
+    "en-CA": "cog.casting",
+    "fr-CA": "cog.casting"
   },
   "cog-hud-visible": {
     "en-CA": "HUD Visible",
@@ -1491,6 +1423,18 @@
     "en-CA": "Words to show",
     "fr-CA": "Mots à afficher"
   },
+  "name:Activate": {
+    "en-CA": "Activate",
+    "fr-CA": "Activation"
+  },
+  "name:Active Effects": {
+    "en-CA": "Active Effects",
+    "fr-CA": "Effets actifs"
+  },
+  "name:Ammo": {
+    "en-CA": "Ammo",
+    "fr-CA": "Munitions"
+  },
   "name:Arrows (Equipped)": {
     "en-CA": "Arrows (Equipped)",
     "fr-CA": "Flèches (équipées)"
@@ -1502,6 +1446,10 @@
   "name:Bow Draw": {
     "en-CA": "Bow Draw",
     "fr-CA": "Tension de l'arc"
+  },
+  "name:Casting Bar": {
+    "en-CA": "Casting Bar",
+    "fr-CA": "Barre d'incantation"
   },
   "name:Carry Weight": {
     "en-CA": "Carry Weight",
@@ -1519,6 +1467,18 @@
     "en-CA": "Clock {num}",
     "fr-CA": "Horloge {num}"
   },
+  "name:Compass": {
+    "en-CA": "Compass",
+    "fr-CA": "Boussole"
+  },
+  "name:Crosshair": {
+    "en-CA": "Crosshair",
+    "fr-CA": "Réticule"
+  },
+  "name:Current Location": {
+    "en-CA": "Current Location",
+    "fr-CA": "Lieu actuel"
+  },
   "name:Default Group": {
     "en-CA": "Default Group",
     "fr-CA": "Groupe par défaut"
@@ -1526,6 +1486,10 @@
   "name:Disease Resistance": {
     "en-CA": "Disease Resistance",
     "fr-CA": "Résistance aux maladies"
+  },
+  "name:Enemy Health": {
+    "en-CA": "Enemy Health",
+    "fr-CA": "Santé de l'ennemi"
   },
   "name:Equipment": {
     "en-CA": "Equipment",
@@ -1595,6 +1559,10 @@
     "en-CA": "Mount Stamina",
     "fr-CA": "Vigueur de monture"
   },
+  "name:Notifications": {
+    "en-CA": "Notifications",
+    "fr-CA": "Notifications"
+  },
   "name:Oxygen": {
     "en-CA": "Oxygen",
     "fr-CA": "Oxygène"
@@ -1602,6 +1570,14 @@
   "name:Poison Resistance": {
     "en-CA": "Poison Resistance",
     "fr-CA": "Résistance au poison"
+  },
+  "name:Quest Updates": {
+    "en-CA": "Quest Updates",
+    "fr-CA": "Mises à jour de quête"
+  },
+  "name:Recent Loot": {
+    "en-CA": "Recent Loot",
+    "fr-CA": "Butin récent"
   },
   "name:Resistance": {
     "en-CA": "Resistance",
@@ -1639,6 +1615,10 @@
     "en-CA": "Stamina",
     "fr-CA": "Vigueur"
   },
+  "name:Stealth": {
+    "en-CA": "Stealth",
+    "fr-CA": "Furtivité"
+  },
   "name:Stat": {
     "en-CA": "Stat",
     "fr-CA": "Statistique"
@@ -1646,6 +1626,14 @@
   "name:Stones of Barenziah": {
     "en-CA": "Stones of Barenziah",
     "fr-CA": "Pierres de Barenziah"
+  },
+  "name:Subtitles": {
+    "en-CA": "Subtitles",
+    "fr-CA": "Sous-titres"
+  },
+  "name:Tutorials": {
+    "en-CA": "Tutorials",
+    "fr-CA": "Tutoriels"
   },
   "name:Suppressor": {
     "en-CA": "Suppressor",

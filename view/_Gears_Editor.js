@@ -289,7 +289,7 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 				</select>
 			</label>
 			<label class="pos-field compact hud-suppress-target"><span>HUD Target</span>
-				<input type="text" data-role="hudLinkedElement" spellcheck="false" placeholder="hud.casting">
+				<input type="text" data-role="hudLinkedElement" spellcheck="false" placeholder="cog.casting">
 			</label>
 		</div>
 		<div class="toolbar">
@@ -344,7 +344,7 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 	tagFieldLabel(form.querySelector(".hud-suppress-target"), "cog-hud-target", "HUD Target");
 	const hudLinkInputEarly = form.querySelector('[data-role="hudLinkedElement"]');
 	if (typeof setTranslatedPlaceholder === "function") {
-		setTranslatedPlaceholder(hudLinkInputEarly, "cog-hud-target-placeholder", "hud.casting");
+		setTranslatedPlaceholder(hudLinkInputEarly, "cog-hud-target-placeholder", "cog.casting");
 	}
 	const resetBtn = form.querySelector('[data-role="reset"]');
 	if (typeof setTranslatedText === "function") {
@@ -409,7 +409,7 @@ function renderEditGearForm(host, selectedGearId = editGearId, options = {}) {
 	if (hudRow) {
 		hudRow.appendChild(
 			makeInfoTip(
-				"While this gear is exposed (shown on a visible group or bound to a visible gauge), soft-hide the HUD target. Use an alias (e.g. hud.casting) or a raw menu/path (e.g. HUD Menu|HUDMovieBaseInstance.Health).",
+				"While this gear is exposed (shown on a visible group or bound to a visible gauge), soft-hide the HUD target. Use an alias (e.g. cog.casting) or a raw menu/path (e.g. HUD Menu|HUDMovieBaseInstance.Health).",
 				"cog-gear-hud-suppress-tip"
 			)
 		);

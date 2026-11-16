@@ -220,7 +220,7 @@ namespace
 					const char* text = hudData->text.c_str();
 
 					if (kind == RE::HUD_MESSAGE_TYPE::kLocationDiscovery) {
-						// No suppress key — discovery shares QuestUpdateBaseInstance with hud.questUpdates.
+						// No suppress key — discovery shares QuestUpdateBaseInstance with cog.questUpdates.
 						// Feed Location → Discovery owns divert/enqueue only.
 						if (CogRegistry::Get().HasVisibleFeedDivertingLocationDiscovery()) {
 							if (text && text[0]) {
@@ -229,7 +229,7 @@ namespace
 							return RE::UI_MESSAGE_RESULTS::kIgnore;
 						}
 					} else if (kind == RE::HUD_MESSAGE_TYPE::kShowLocationName) {
-						if (CogHudSuppress::IsKeySuppressed("hud.currentLocation")) {
+						if (CogHudSuppress::IsKeySuppressed("cog.currentLocation")) {
 							if (CogRegistry::Get().HasVisibleFeedDivertingCurrentLocation() && text &&
 								text[0]) {
 								CogFeed::EnqueueLocation(text, "current");
@@ -240,19 +240,19 @@ namespace
 						if (text && text[0]) {
 							const std::string plain = CogFeed::StripHudMarkupForMatch(text);
 							// Inventory-style toasts are still kNotification → MessagesBlock; starve when
-							// Feed Inventory is on (or Notifications + suppressInventory). hud.inventory
+							// Feed Inventory is on (or Notifications + suppressInventory). cog.inventory
 							// is a reserved alias and does not gate this.
 							if (CogFeed::IsInventoryToast(plain) &&
 								CogRegistry::Get().ShouldSuppressInventoryNotifications()) {
 								return RE::UI_MESSAGE_RESULTS::kIgnore;
 							}
-							if (CogHudSuppress::IsKeySuppressed("hud.notifications")) {
+							if (CogHudSuppress::IsKeySuppressed("cog.notifications")) {
 								if (CogRegistry::Get().HasVisibleFeedShowingNotifications()) {
 									CogFeed::EnqueueNotification(text, {}, {});
 								}
 								return RE::UI_MESSAGE_RESULTS::kIgnore;
 							}
-						} else if (CogHudSuppress::IsKeySuppressed("hud.notifications")) {
+						} else if (CogHudSuppress::IsKeySuppressed("cog.notifications")) {
 							return RE::UI_MESSAGE_RESULTS::kIgnore;
 						}
 					} else if (
@@ -284,7 +284,7 @@ namespace
 							return RE::UI_MESSAGE_RESULTS::kIgnore;
 						}
 					} else if (kind == RE::HUD_MESSAGE_TYPE::kSkillIncrease) {
-						// Divert-only — do not soft-hide hud.questUpdates (shared with quest banners).
+						// Divert-only — do not soft-hide cog.questUpdates (shared with quest banners).
 						// Checkboxes only gate Feed enqueue; Level Up Menu is never blocked.
 						if (CogRegistry::Get().HasVisibleFeedShowingSkills()) {
 							if (text && text[0]) {

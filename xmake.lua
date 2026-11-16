@@ -168,6 +168,11 @@ target("COG")
 		if os.isfile(translations_src) then
 			os.cp(translations_src, path.join(cog_data, "translations", "_COG.json"))
 		end
+		os.mkdir(path.join(cog_data, "aliases"))
+		local aliases_src = path.join(cog_dir, "plugin/aliases/_COG.json")
+		if os.isfile(aliases_src) then
+			os.cp(aliases_src, path.join(cog_data, "aliases", "_COG.json"))
+		end
 		-- Per-type translation packs (gizmoTypes/<typeId>/translations/*.json).
 		local gizmo_types_with_i18n = { "cog-clock", "cog-feed", "cog-shout-meter", "cog-suppressor" }
 		for _, type_id in ipairs(gizmo_types_with_i18n) do

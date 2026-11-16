@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "_Core_HudSuppress.h"
+#include "_Core_HudAliases.h"
 #include "_Core_Json.h"
 #include "_Core_Registry.h"
 #include "_Core_Registry_Json.h"
@@ -236,23 +237,16 @@ namespace
 		return !out.menu.empty();
 	}
 
-	/** One alias may map to several Scaleform clips (activate/rollover cluster). */
+	/** Alias pack multi-target expand, else a single normalized Scaleform key. */
 	std::vector<std::string> ExpandHudKeys(std::string_view linked)
 	{
 		auto raw = Trim(std::string{ linked });
 		if (raw.empty()) {
 			return {};
 		}
-		const auto lower = Lower(raw);
-		if (lower == "hud.activate" || lower == "activate" || lower == "hud.rollover" ||
-			lower == "rollover") {
-			const std::string prefix = std::string(RE::HUDMenu::MENU_NAME) + "|HUDMovieBaseInstance.";
-			return {
-				prefix + "RolloverNameInstance",
-				prefix + "RolloverInfoInstance",
-				prefix + "ActivateButton_tf",
-				prefix + "GrayBarInstance",
-			};
+		auto fromPack = CogHudAliases::ExpandAlias(raw);
+		if (!fromPack.empty()) {
+			return fromPack;
 		}
 		auto key = CogHudSuppress::CanonicalKey(raw);
 		if (key.empty()) {
@@ -272,7 +266,7 @@ namespace
 		return movie->SetVariable(varPath.c_str(), value);
 	}
 
-	// Policy alias for Feed hud.activeEffects (CanonicalKey only). Soft-hide executor
+	// Policy alias for Feed cog.activeEffects (CanonicalKey only). Soft-hide executor
 	// materializes this to HUD Menu|WidgetContainer.N[.widget] before apply.
 	constexpr const char* kSkyUiActiveEffectsPath = "__cog_skyui_activeeffects__";
 
@@ -509,79 +503,15 @@ std::string CogHudSuppress::CanonicalKey(std::string_view linked)
 		return {};
 	}
 
+	if (const auto* entry = CogHudAliases::Find(raw)) {
+		return entry->targets.empty() ? std::string{} : entry->targets.front();
+	}
+
 	const auto lower = Lower(raw);
-	if (lower == "hud.health" || lower == "health") {
-		return std::string(RE::HUDMenu::MENU_NAME) + "|HUDMovieBaseInstance.Health";
-	}
-	if (lower == "hud.stamina" || lower == "stamina") {
-		return std::string(RE::HUDMenu::MENU_NAME) + "|HUDMovieBaseInstance.Stamina";
-	}
-	if (lower == "hud.magicka" || lower == "magicka" || lower == "hud.magica") {
-		return std::string(RE::HUDMenu::MENU_NAME) + "|HUDMovieBaseInstance.Magica";
-	}
-	if (lower == "hud.ammo" || lower == "hud.arrows" || lower == "ammo" || lower == "arrowinfo" || lower == "arrowinfoinstance") {
-		return std::string(RE::HUDMenu::MENU_NAME) + "|HUDMovieBaseInstance.ArrowInfoInstance";
-	}
-	if (lower == "hud.oxygen" || lower == "oxygen" || lower == "oxygenmeter2") {
-		return "oxygenMeter2";
-	}
-	if (lower == "hud.casting" || lower == "casting" || lower == "castingbar") {
-		return "CastingBar";
-	}
-	if (lower == "hud.charge" || lower == "hud.weaponcharge" || lower == "hud.rightcharge" ||
-		lower == "rightchargemeteranim") {
-		return std::string(RE::HUDMenu::MENU_NAME) + "|HUDMovieBaseInstance.RightChargeMeterAnim";
-	}
-	if (lower == "hud.leftcharge" || lower == "hud.secondaryweaponcharge" ||
-		lower == "leftchargemeteranim") {
-		return std::string(RE::HUDMenu::MENU_NAME) + "|HUDMovieBaseInstance.LeftChargeMeterAnim";
-	}
-	if (lower == "hud.activeeffects" || lower == "hud.activeeffect" || lower == "activeeffects") {
-		return std::string(RE::HUDMenu::MENU_NAME) + "|" + kSkyUiActiveEffectsPath;
-	}
-	if (lower == "hud.compass" || lower == "compass" || lower == "compassshoutmeterholder") {
-		return std::string(RE::HUDMenu::MENU_NAME) + "|HUDMovieBaseInstance.CompassShoutMeterHolder";
-	}
-	if (lower == "hud.enemyhealth" || lower == "enemyhealth" || lower == "enemyhealth_mc") {
-		return std::string(RE::HUDMenu::MENU_NAME) + "|HUDMovieBaseInstance.EnemyHealth_mc";
-	}
-	if (lower == "hud.stealth" || lower == "stealth" || lower == "stealthmeter" ||
-		lower == "stealthmeterinstance") {
-		return std::string(RE::HUDMenu::MENU_NAME) + "|HUDMovieBaseInstance.StealthMeterInstance";
-	}
-	if (lower == "hud.crosshair" || lower == "crosshair") {
-		return std::string(RE::HUDMenu::MENU_NAME) + "|HUDMovieBaseInstance.Crosshair";
-	}
-	// Activate / rollover cluster — CanonicalKey is the name clip; ExpandHudKeys adds siblings.
-	if (lower == "hud.activate" || lower == "activate" || lower == "hud.rollover" || lower == "rollover") {
-		return std::string(RE::HUDMenu::MENU_NAME) + "|HUDMovieBaseInstance.RolloverNameInstance";
-	}
-	if (lower == "hud.subtitles" || lower == "subtitles" || lower == "subtitletextholder") {
-		return std::string(RE::HUDMenu::MENU_NAME) + "|HUDMovieBaseInstance.SubtitleTextHolder";
-	}
-	if (lower == "hud.tutorials" || lower == "tutorials" || lower == "tutoriallockinstance") {
-		return std::string(RE::HUDMenu::MENU_NAME) + "|HUDMovieBaseInstance.TutorialLockInstance";
-	}
-	if (lower == "hud.questupdates" || lower == "questupdates" || lower == "questupdatebaseinstance") {
-		return std::string(RE::HUDMenu::MENU_NAME) + "|HUDMovieBaseInstance.QuestUpdateBaseInstance";
-	}
-	// Notifications — soft-hide MessagesBlock; Feed Notifications section still diverts via IsKeySuppressed.
-	if (lower == "hud.notifications" || lower == "notifications" || lower == "messagesblock") {
-		return std::string(RE::HUDMenu::MENU_NAME) + "|HUDMovieBaseInstance.MessagesBlock";
-	}
-	// Current location name — soft-hide LocationLockBase; Feed Current Location still diverts via IsKeySuppressed.
-	if (lower == "hud.currentlocation" || lower == "currentlocation" || lower == "locationlockbase") {
-		return std::string(RE::HUDMenu::MENU_NAME) + "|HUDMovieBaseInstance.LocationLockBase";
-	}
-	// Retired aliases — location discovery / Skills divert from QuestUpdateBaseInstance (no soft-hide).
+	// Retired divert-only tokens (no soft-hide alias).
 	if (lower == "hud.locationdiscovery" || lower == "locationdiscovery" || lower == "hud.location" ||
 		lower == "hud.skills" || lower == "skills") {
 		return {};
-	}
-	// hud.inventory → TrueHUD Recent Loot clip (soft dependency).
-	if (lower == "hud.inventory" || lower == "inventory" || lower == "truehud.recentloot" ||
-		lower == "recentloot" || lower == "truehud_recentlootwidget") {
-		return "TrueHUD|TrueHUD.TrueHUD_PartialVisibilityWidgets.TrueHUD_RecentLootWidget";
 	}
 
 	// Explicit "Menu|path" (path may include HUDMovieBaseInstance.…).
@@ -608,34 +538,10 @@ std::string CogHudSuppress::AliasForKey(std::string_view canonicalKey)
 	if (key.empty()) {
 		return {};
 	}
-	static const std::pair<const char*, const char*> kReverse[] = {
-		{ "hud.health", nullptr },
-		{ "hud.stamina", nullptr },
-		{ "hud.magicka", nullptr },
-		{ "hud.ammo", nullptr },
-		{ "hud.oxygen", nullptr },
-		{ "hud.casting", nullptr },
-		{ "hud.charge", nullptr },
-		{ "hud.leftcharge", nullptr },
-		{ "hud.activeEffects", nullptr },
-		{ "hud.compass", nullptr },
-		{ "hud.enemyHealth", nullptr },
-		{ "hud.stealth", nullptr },
-		{ "hud.crosshair", nullptr },
-		{ "hud.activate", nullptr },
-		{ "hud.subtitles", nullptr },
-		{ "hud.tutorials", nullptr },
-		{ "hud.questUpdates", nullptr },
-		{ "hud.notifications", nullptr },
-		{ "hud.currentLocation", nullptr },
-		{ "hud.inventory", nullptr },
-	};
-	for (const auto& entry : kReverse) {
-		if (CanonicalKey(entry.first) == key) {
-			return entry.first;
-		}
+	if (const auto* entry = CogHudAliases::Find(key)) {
+		return entry->alias;
 	}
-	return {};
+	return CogHudAliases::AliasForTarget(key);
 }
 
 std::string CogHudSuppress::LabelForKey(std::string_view canonicalKeyOrAlias)
@@ -644,131 +550,31 @@ std::string CogHudSuppress::LabelForKey(std::string_view canonicalKeyOrAlias)
 	if (raw.empty()) {
 		return {};
 	}
+	auto name = CogHudAliases::NameForAlias(raw);
+	if (!name.empty()) {
+		return name;
+	}
 	auto alias = AliasForKey(raw);
-	if (alias.empty()) {
-		const auto lower = Lower(raw);
-		if (lower.starts_with("hud.")) {
-			alias = raw;
-		} else {
-			alias = AliasForKey(CanonicalKey(raw));
-			if (alias.empty()) {
-				alias = raw;
-			}
+	if (!alias.empty()) {
+		name = CogHudAliases::NameForAlias(alias);
+		if (!name.empty()) {
+			return name;
 		}
+		return alias;
 	}
-	const auto lower = Lower(alias);
-	if (lower == "hud.health") {
-		return "Health bar";
-	}
-	if (lower == "hud.stamina") {
-		return "Stamina bar";
-	}
-	if (lower == "hud.magicka") {
-		return "Magicka bar";
-	}
-	if (lower == "hud.ammo") {
-		return "Ammo / arrows";
-	}
-	if (lower == "hud.oxygen") {
-		return "Oxygen Meter 2";
-	}
-	if (lower == "hud.casting") {
-		return "Casting Bar";
-	}
-	if (lower == "hud.charge") {
-		return "Right / two-hand charge";
-	}
-	if (lower == "hud.leftcharge") {
-		return "Left-hand charge";
-	}
-	if (lower == "hud.notifications") {
-		return "Notifications (MessagesBlock)";
-	}
-	if (lower == "hud.inventory") {
-		return "Inventory (TrueHUD Recent Loot)";
-	}
-	if (lower == "hud.currentlocation") {
-		return "Current location (LocationLockBase)";
-	}
-	if (lower == "hud.activeeffects") {
-		return "SkyUI Active Effects";
-	}
-	if (lower == "hud.compass") {
-		return "Compass / shout meter";
-	}
-	if (lower == "hud.enemyhealth") {
-		return "Enemy health";
-	}
-	if (lower == "hud.stealth") {
-		return "Stealth eye";
-	}
-	if (lower == "hud.crosshair") {
-		return "Crosshair";
-	}
-	if (lower == "hud.activate" || lower == "hud.rollover") {
-		return "Activate / rollover prompt";
-	}
-	if (lower == "hud.subtitles") {
-		return "Subtitles";
-	}
-	if (lower == "hud.tutorials") {
-		return "Tutorial hints";
-	}
-	if (lower == "hud.questupdates") {
-		return "Quest updates";
-	}
-	return alias;
+	return raw;
 }
 
 bool CogHudSuppress::IsSoftHideKey(std::string_view canonicalKeyOrAlias)
 {
 	// All suppress keys with a CanonicalKey soft-hide. Location discovery has no suppress key
-	// (Feed divert only). Skills soft-hides hud.questUpdates. Inventory toast starve is Feed-owned.
+	// (Feed divert only). Skills soft-hides cog.questUpdates. Inventory toast starve is Feed-owned.
 	return !Trim(std::string{ canonicalKeyOrAlias }).empty();
 }
 
 std::string CogHudSuppress::KnownAliasesJson()
 {
-	static constexpr const char* kAliases[][2] = {
-		{ "hud.health", "Health bar" },
-		{ "hud.stamina", "Stamina bar" },
-		{ "hud.magicka", "Magicka bar" },
-		{ "hud.ammo", "Ammo / arrows" },
-		{ "hud.oxygen", "Oxygen Meter 2" },
-		{ "hud.casting", "Casting Bar (whole menu)" },
-		{ "hud.charge", "Right / two-hand charge" },
-		{ "hud.leftcharge", "Left-hand charge" },
-		{ "hud.compass", "Compass / shout meter" },
-		{ "hud.enemyHealth", "Enemy health" },
-		{ "hud.stealth", "Stealth eye" },
-		{ "hud.crosshair", "Crosshair" },
-		{ "hud.activate", "Activate / rollover prompt" },
-		{ "hud.subtitles", "Subtitles" },
-		{ "hud.tutorials", "Tutorial hints" },
-		{ "hud.questUpdates", "Quest updates" },
-		{ "hud.notifications", "Notifications (MessagesBlock)" },
-		{ "hud.inventory", "Inventory (TrueHUD Recent Loot)" },
-		{ "hud.currentLocation", "Current location (LocationLockBase)" },
-		{ "hud.activeEffects", "SkyUI Active Effects" },
-	};
-	std::string out = "[";
-	bool first = true;
-	for (const auto& entry : kAliases) {
-		if (!first) {
-			out += ',';
-		}
-		first = false;
-		const auto key = CanonicalKey(entry[0]);
-		out += "{\"value\":\"";
-		out += entry[0];
-		out += "\",\"label\":\"";
-		out += entry[1];
-		out += "\",\"key\":\"";
-		out += key;
-		out += "\"}";
-	}
-	out += ']';
-	return out;
+	return CogHudAliases::KnownAliasesJson();
 }
 
 void CogHudSuppress::Sync(const std::unordered_set<std::string>& hideKeys)

@@ -76,7 +76,7 @@ function defaultShoutMeterGizmo(n) {
 		id: `gizmo_${Date.now().toString(36)}`,
 		typeId: "cog-shout-meter",
 		visibility: "hud",
-		hudSuppress: ["hud.casting"],
+		hudSuppress: ["cog.casting"],
 		display: {
 			x: DEFAULT_HUD_X,
 			y: DEFAULT_HUD_Y,
@@ -126,8 +126,8 @@ function ensureShoutMeterGizmo(gizmo) {
 				: Array.isArray(gizmo.hudSuppress)
 					? gizmo.hudSuppress.slice()
 					: [];
-		if (!list.some((k) => String(k).toLowerCase() === "hud.casting")) {
-			list.push("hud.casting");
+		if (!list.some((k) => String(k).toLowerCase() === "cog.casting")) {
+			list.push("cog.casting");
 		}
 		gizmo.hudSuppress = list;
 	}

@@ -1,0 +1,96 @@
+{
+  "cog.health": {
+    "name": "Health",
+    "targets": [
+      "HUD Menu|HUDMovieBaseInstance.Health",
+      "TrueHUD|TrueHUD.TrueHUD_MainVisibilityWidgets.TrueHUD_PlayerWidget.Health"
+    ]
+  },
+  "cog.stamina": {
+    "name": "Stamina",
+    "targets": [
+      "HUD Menu|HUDMovieBaseInstance.Stamina",
+      "TrueHUD|TrueHUD.TrueHUD_MainVisibilityWidgets.TrueHUD_PlayerWidget.Stamina"
+    ]
+  },
+  "cog.magicka": {
+    "name": "Magicka",
+    "targets": [
+      "HUD Menu|HUDMovieBaseInstance.Magica",
+      "TrueHUD|TrueHUD.TrueHUD_MainVisibilityWidgets.TrueHUD_PlayerWidget.Magicka"
+    ]
+  },
+  "cog.ammo": {
+    "name": "Ammo",
+    "targets": ["HUD Menu|HUDMovieBaseInstance.ArrowInfoInstance"]
+  },
+  "cog.o2": {
+    "name": "Oxygen",
+    "targets": ["oxygenMeter2"]
+  },
+  "cog.casting": {
+    "name": "Casting Bar",
+    "targets": ["CastingBar"]
+  },
+  "cog.charge": {
+    "name": "Weapon Charge",
+    "targets": ["HUD Menu|HUDMovieBaseInstance.RightChargeMeterAnim"]
+  },
+  "cog.leftcharge": {
+    "name": "Secondary Weapon Charge",
+    "targets": ["HUD Menu|HUDMovieBaseInstance.LeftChargeMeterAnim"]
+  },
+  "cog.activeEffects": {
+    "name": "Active Effects",
+    "targets": ["HUD Menu|__cog_skyui_activeeffects__"]
+  },
+  "cog.compass": {
+    "name": "Compass",
+    "targets": ["HUD Menu|HUDMovieBaseInstance.CompassShoutMeterHolder"]
+  },
+  "cog.enemyHealth": {
+    "name": "Enemy Health",
+    "targets": ["HUD Menu|HUDMovieBaseInstance.EnemyHealth_mc"]
+  },
+  "cog.stealth": {
+    "name": "Stealth",
+    "targets": ["HUD Menu|HUDMovieBaseInstance.StealthMeterInstance"]
+  },
+  "cog.crosshair": {
+    "name": "Crosshair",
+    "targets": ["HUD Menu|HUDMovieBaseInstance.Crosshair"]
+  },
+  "cog.activate": {
+    "name": "Activate",
+    "targets": [
+      "HUD Menu|HUDMovieBaseInstance.RolloverNameInstance",
+      "HUD Menu|HUDMovieBaseInstance.RolloverInfoInstance",
+      "HUD Menu|HUDMovieBaseInstance.ActivateButton_tf",
+      "HUD Menu|HUDMovieBaseInstance.GrayBarInstance"
+    ]
+  },
+  "cog.subtitles": {
+    "name": "Subtitles",
+    "targets": ["HUD Menu|HUDMovieBaseInstance.SubtitleTextHolder"]
+  },
+  "cog.tutorials": {
+    "name": "Tutorials",
+    "targets": ["HUD Menu|HUDMovieBaseInstance.TutorialLockInstance"]
+  },
+  "cog.questUpdates": {
+    "name": "Quest Updates",
+    "targets": ["HUD Menu|HUDMovieBaseInstance.QuestUpdateBaseInstance"]
+  },
+  "cog.notifications": {
+    "name": "Notifications",
+    "targets": ["HUD Menu|HUDMovieBaseInstance.MessagesBlock"]
+  },
+  "cog.currentLocation": {
+    "name": "Current Location",
+    "targets": ["HUD Menu|HUDMovieBaseInstance.LocationLockBase"]
+  },
+  "cog.inventory": {
+    "name": "Recent Loot",
+    "targets": ["TrueHUD|TrueHUD.TrueHUD_PartialVisibilityWidgets.TrueHUD_RecentLootWidget"]
+  }
+}

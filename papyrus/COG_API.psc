@@ -39,9 +39,9 @@ Function EndRegister(String sourceMod) Global Native
 ; barColor: optional bar fill — same hex-or-JSON-stops shape. Empty = General backup bar.
 ; hideAt: optional hide rule. Percent: 0–1 ratio e.g. "<0.3", or explicit percent e.g. ">99%". Count: raw number e.g. "<1". Timer: seconds e.g. "<30". Empty = never hide from this.
 ; HUDLinkedElement: optional Scaleform target to soft-hide while this variable is shown on a visible group or bound to a visible gauge.
-;   Aliases: hud.health, hud.stamina, hud.magicka, hud.ammo (vanilla equipped ammo), hud.oxygen (Oxygen Meter 2), hud.casting (Casting Bar),
-;   hud.charge (right / two-hand enchantment meter), hud.leftcharge (left-hand enchantment meter).
-;   hud.casting is shared by Bow Draw, Spell Casting, and Shout Cooldown — any exposed gear keeps Casting Bar hidden.
+;   Aliases: cog.health, cog.stamina, cog.magicka, cog.ammo (vanilla equipped ammo), cog.o2 (Oxygen Meter 2), cog.casting (Casting Bar),
+;   cog.charge (right / two-hand enchantment meter), cog.leftcharge (left-hand enchantment meter).
+;   cog.casting is shared by Bow Draw, Spell Casting, and Shout Cooldown — any exposed gear keeps Casting Bar hidden.
 ;   Or a menu name (oxygenMeter2, CastingBar), or "HUD Menu|HUDMovieBaseInstance.Health".
 ;   Missing menus/clips are ignored (soft dependency).
 ; HUDHideDuplicate: when true, hide HUDLinkedElement while this source is exposed. Pass every RegisterGear; default false.

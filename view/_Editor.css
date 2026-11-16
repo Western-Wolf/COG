@@ -396,6 +396,14 @@ body.is-focused #editor {
 	font-family: Consolas, "Cascadia Mono", "Segoe UI Mono", monospace;
 	font-size: 0.88em;
 	word-break: break-all;
+	white-space: pre-line;
+	line-height: 1.35;
+}
+
+.suppressions-as-alias {
+	font-family: Consolas, "Cascadia Mono", "Segoe UI Mono", monospace;
+	font-size: 0.92em;
+	word-break: break-all;
 }
 
 .help-doc.suppressions-doc .accordion-body .suppressions-filters {

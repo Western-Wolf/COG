@@ -44,7 +44,7 @@
 		if (typeof window.CogAppendFeedSectionNotes !== "function") return;
 		var host = panel.querySelector('[data-cog-feed-notes="effects"]');
 		if (!host) return;
-		window.CogAppendFeedSectionNotes(host, "hud.activeEffects", storagePath() + "/");
+		window.CogAppendFeedSectionNotes(host, "cog.activeEffects", storagePath() + "/");
 	}
 
 	function onBound() {

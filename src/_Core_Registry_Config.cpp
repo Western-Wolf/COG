@@ -5,6 +5,7 @@
 #include "_Gears_Inventory.h"
 #include "_Gizmo_Storage.h"
 #include "_Core_Translations.h"
+#include "_Core_HudAliases.h"
 #include "_UI_CogUi.h"
 #include "_UI_KeyNames.h"
 #include "_Core_Json.h"
@@ -214,6 +215,7 @@ void CogRegistry::EnsureDirs() const
 	std::filesystem::create_directories(root / "gizmos", ec);
 	std::filesystem::create_directories(root / "gizmoTypes", ec);
 	std::filesystem::create_directories(root / "translations", ec);
+	std::filesystem::create_directories(root / "aliases", ec);
 	// Per-type data roots (Feed icon maps, translations, …) via CogGizmoStorage.
 	CogGizmoStorage::EnsureDir("cog-feed");
 }
@@ -1283,6 +1285,7 @@ void CogRegistry::LoadConfig()
 		_configLoaded = true;
 		MigrateLegacyFeedDataDir();
 		EnsureDirs();
+		CogHudAliases::Load(DataRoot());
 		bool repaired = false;
 		LoadGeneralFile(repaired);
 		ApplyLogLevelUnlocked();

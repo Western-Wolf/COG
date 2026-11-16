@@ -84,7 +84,7 @@ const FEED_BUILTIN_SOURCE_FALLBACK = [
 		id: FEED_SOURCE_EFFECTS,
 		sourceMod: "COG",
 		displayName: "Active Effects",
-		hudSuppress: ["hud.activeEffects"],
+		hudSuppress: ["cog.activeEffects"],
 		colourVars: ["effectsColor"],
 		settingsHtml: ""
 	},
@@ -92,7 +92,7 @@ const FEED_BUILTIN_SOURCE_FALLBACK = [
 		id: FEED_SOURCE_INVENTORY,
 		sourceMod: "COG",
 		displayName: "Inventory",
-		hudSuppress: ["hud.inventory"],
+		hudSuppress: ["cog.inventory"],
 		colourVars: ["addColor", "removeColor", "stolenColor"],
 		settingsHtml: ""
 	},
@@ -100,7 +100,7 @@ const FEED_BUILTIN_SOURCE_FALLBACK = [
 		id: FEED_SOURCE_LOCATION,
 		sourceMod: "COG",
 		displayName: "Location",
-		hudSuppress: ["hud.currentLocation"],
+		hudSuppress: ["cog.currentLocation"],
 		colourVars: ["locationDiscoveryColor", "currentLocationColor"],
 		settingsHtml: ""
 	},
@@ -108,7 +108,7 @@ const FEED_BUILTIN_SOURCE_FALLBACK = [
 		id: FEED_SOURCE_NOTIFICATIONS,
 		sourceMod: "COG",
 		displayName: "Notifications",
-		hudSuppress: ["hud.notifications"],
+		hudSuppress: ["cog.notifications"],
 		colourVars: ["textColor"],
 		settingsHtml: ""
 	},
@@ -318,6 +318,12 @@ function defaultFeedSourceBlocks() {
 
 /** hudSuppress alias → builtin source id (recover enables after a bad flat→nested pass). */
 const FEED_SUPPRESS_ALIAS_TO_SOURCE = {
+	"cog.notifications": FEED_SOURCE_NOTIFICATIONS,
+	"cog.inventory": FEED_SOURCE_INVENTORY,
+	"cog.currentLocation": FEED_SOURCE_LOCATION,
+	"cog.questUpdates": FEED_SOURCE_SKILLS,
+	"cog.activeEffects": FEED_SOURCE_EFFECTS,
+	// Migration: recover enables from layouts saved with retired hud.* suppress keys.
 	"hud.notifications": FEED_SOURCE_NOTIFICATIONS,
 	"hud.inventory": FEED_SOURCE_INVENTORY,
 	"hud.currentLocation": FEED_SOURCE_LOCATION,
@@ -2777,27 +2783,27 @@ const FEED_SECTION_HIDE_NOTES = {
 	default: ["cog-feed-section-hides", "When enabled, this section hides {targets}."],
 	inventory: [
 		"cog-feed-inventory-hide-note",
-		"When enabled, this section tracks inventory changes, soft-hides hud.inventory (TrueHUD Recent Loot), and diverts inventory-style notifications from hud.notifications."
+		"When enabled, this section tracks inventory changes, soft-hides cog.inventory (TrueHUD Recent Loot), and diverts inventory-style notifications from cog.notifications."
 	],
 	locationBoth: [
 		"cog-feed-location-hide-note-both",
-		"When enabled, this section hides hud.currentLocation and diverts location discovery from hud.questUpdates."
+		"When enabled, this section hides cog.currentLocation and diverts location discovery from cog.questUpdates."
 	],
 	locationCurrent: [
 		"cog-feed-location-hide-note-current",
-		"When enabled, this section hides hud.currentLocation."
+		"When enabled, this section hides cog.currentLocation."
 	],
 	locationDiscovery: [
 		"cog-feed-location-hide-note-discovery",
-		"When enabled, this section diverts location discovery from hud.questUpdates."
+		"When enabled, this section diverts location discovery from cog.questUpdates."
 	],
 	skills: [
 		"cog-feed-skills-hide-note",
-		"When enabled, this section diverts skill-up and level-up banners from hud.questUpdates (quest updates share that clip and stay visible). Skill Progress and Level Progress only control what appears in this Feed. Level Up Menu is never blocked."
+		"When enabled, this section diverts skill-up and level-up banners from cog.questUpdates (quest updates share that clip and stay visible). Skill Progress and Level Progress only control what appears in this Feed. Level Up Menu is never blocked."
 	],
 	quests: [
 		"cog-feed-quests-hide-note",
-		"When enabled, Quest Status and Quest Objectives each divert their banners from hud.questUpdates (shared with skill-ups; no soft-hide). Unticked options leave those banners on the vanilla HUD."
+		"When enabled, Quest Status and Quest Objectives each divert their banners from cog.questUpdates (shared with skill-ups; no soft-hide). Unticked options leave those banners on the vanilla HUD."
 	]
 };
 const FEED_SECTION_ICON_NOTES = {

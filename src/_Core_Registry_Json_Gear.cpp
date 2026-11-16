@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "_Core_Registry_Json.h"
+#include "_Core_HudAliases.h"
 #include "_UI_KeyNames.h"
 
 #include <algorithm>
@@ -88,6 +89,15 @@ namespace CogRegistryJson
 		a.barColor = ReadColorRampField(obj, ctx, "barColor", false);
 		a.hideAt = ctx.GetString(obj, "hideAt");
 		a.hudLinkedElement = ctx.GetString(obj, "hudLinkedElement");
+		// Migration Code for Transition from v1.11 or earlier to v1.2:
+		// Legacy hud.* / bare synonyms → cog.* unless the token is a user alias key.
+		{
+			const auto migrated = CogHudAliases::MigrateToken(a.hudLinkedElement);
+			if (migrated != a.hudLinkedElement) {
+				NoteMigration(ctx, std::string(bagLabel) + " hudLinkedElement '" + a.hudLinkedElement + "' → '" + migrated + "'");
+				a.hudLinkedElement = migrated;
+			}
+		}
 		a.hudHideDuplicate = ctx.GetBool(obj, "hudHideDuplicate", false);
 		WarnUnknownKeys(
 			ctx,

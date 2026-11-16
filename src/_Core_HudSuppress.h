@@ -29,12 +29,12 @@ struct CogHudSuppressRow
 
 // Soft-hide Scaleform HUD duplicates when COG layout exposes linked gears / gizmos.
 // Missing menus/clips are ignored (no hard dependency on third-party meters).
-// hud.notifications soft-hides MessagesBlock; hud.currentLocation soft-hides LocationLockBase;
-// hud.inventory soft-hides TrueHUD Recent Loot (soft dependency). Feed Skills and location
-// discovery do not soft-hide QuestUpdateBaseInstance (hud.questUpdates) — they divert their
+// cog.notifications soft-hides MessagesBlock; cog.currentLocation soft-hides LocationLockBase;
+// cog.inventory soft-hides TrueHUD Recent Loot (soft dependency). Feed Skills and location
+// discovery do not soft-hide QuestUpdateBaseInstance (cog.questUpdates) — they divert their
 // message kinds from that shared clip so quest-update banners stay visible.
 // Inventory-style notification toast starve is Feed-owned (ShouldSuppressInventoryNotifications).
-// hud.activeEffects is a policy alias; soft-hide materializes it to WidgetContainer.* clip
+// cog.activeEffects is a policy alias; soft-hide materializes it to WidgetContainer.* clip
 // keys (SkyUI guests), applies on Sync / post-load resolve, skips guest reassert on remount.
 //
 // Boundary inside this module:
@@ -45,15 +45,15 @@ namespace CogHudSuppress
 	// --- Vocabulary / Scaleform (executor) ---
 
 	// Resolve Register HUDLinkedElement tokens to canonical hide keys.
-	// Aliases: hud.health / stamina / magicka / ammo / oxygen / casting / charge / leftcharge /
+	// Aliases: cog.health / stamina / magicka / ammo / o2 / casting / charge / leftcharge /
 	// compass (CompassShoutMeterHolder) / enemyHealth / stealth / crosshair / activate (rollover
 	// cluster) / subtitles / tutorials / questUpdates / notifications (MessagesBlock) /
 	// currentLocation (LocationLockBase) / inventory (TrueHUD Recent Loot) / activeEffects.
-	// Raw menu names or "Menu|path" clip targets. Retired aliases: hud.locationDiscovery / hud.skills
+	// Raw menu names or "Menu|path" clip targets. Retired aliases: hud.*, hud.locationDiscovery / hud.skills
 	// (Skills/location discovery divert from QuestUpdateBaseInstance; do not soft-hide it).
 	[[nodiscard]] std::string CanonicalKey(std::string_view linked);
 
-	// Best-effort reverse map to a short alias (hud.health) or empty if unknown.
+	// Best-effort reverse map to a short alias (cog.health) or empty if unknown.
 	[[nodiscard]] std::string AliasForKey(std::string_view canonicalKey);
 
 	// Human label for known aliases / feed divert keys; falls back to alias or key.
@@ -62,7 +62,7 @@ namespace CogHudSuppress
 	// True for Scaleform soft-hide targets (all known aliases after inventory was wired).
 	[[nodiscard]] bool IsSoftHideKey(std::string_view canonicalKeyOrAlias);
 
-	// JSON array of {value,label} for the suppressor editor datalist.
+	// JSON array of {value,name,key,targets} for the suppressor editor / Help.
 	[[nodiscard]] std::string KnownAliasesJson();
 
 	// Apply desired hide set: hide keys present, restore keys we previously hid that are absent.
