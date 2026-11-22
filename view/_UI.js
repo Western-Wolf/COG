@@ -352,6 +352,34 @@ function stopHeaderToggle(el) {
 }
 
 /**
+ * Exclusive <details.accordion> among direct siblings under parent.
+ * Opening one closes the others at that level only (nested levels stay independent).
+ */
+function bindExclusiveAccordionSiblings(parent, selector) {
+	if (!parent) {
+		return;
+	}
+	const sel = selector || ":scope > details.accordion";
+	const items = [...parent.querySelectorAll(sel)];
+	for (const details of items) {
+		if (details.dataset.exclusiveSiblingBound === "1") {
+			continue;
+		}
+		details.dataset.exclusiveSiblingBound = "1";
+		details.addEventListener("toggle", () => {
+			if (!details.open) {
+				return;
+			}
+			for (const other of parent.querySelectorAll(sel)) {
+				if (other !== details) {
+					other.open = false;
+				}
+			}
+		});
+	}
+}
+
+/**
  * Enter / Escape for accordion rename — same commit-and-blur pattern as bindNumberField
  * and colour hex fields. Capture + stopPropagation so Ultralight does not also toggle
  * the parent <details> on Enter.

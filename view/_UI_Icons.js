@@ -860,14 +860,41 @@ function iconCatalog() {
 	return [...byPath.values()];
 }
 
-/** Icons in a top-level folder under assets/icons/ (e.g. "Pictures", "Frames"). */
+/**
+ * Icon picker folder tree: at most MAX_ICON_ACCORDION_DEPTH accordion levels from
+ * catalog root (assets/icons/). Deeper path segments flatten into the depth-3 node
+ * as direct icon swatches (full path preserved for selection).
+ * Example: 1/2/3/4/5/icon.svg → accordions 1 → 2 → 3, then swatch icon.svg.
+ */
+const MAX_ICON_ACCORDION_DEPTH = 3;
+
+/** Normalize a folder lock / prefix under assets/icons/ (any depth). */
+function normalizeIconFolderPrefix(folder) {
+	return String(folder || "")
+		.trim()
+		.replace(/\\/g, "/")
+		.replace(/^\/+|\/+$/g, "");
+}
+
+/** True when path is inside folder (folder-boundary prefix; Map does not match Mapper/…). */
+function iconPathUnderFolder(path, folder) {
+	const prefix = normalizeIconFolderPrefix(folder).toLowerCase();
+	if (!prefix) {
+		return true;
+	}
+	const lower = String(path || "")
+		.replace(/\\/g, "/")
+		.toLowerCase();
+	return lower.startsWith(prefix + "/");
+}
+
+/** Icons under a folder prefix of any depth (e.g. "Frames", "Map/Cities"). */
 function iconsInFolder(folder) {
-	const name = String(folder || "").trim();
+	const name = normalizeIconFolderPrefix(folder);
 	if (!name) {
 		return iconCatalog();
 	}
-	const lower = name.toLowerCase();
-	return iconCatalog().filter((entry) => String(entry.section || "").toLowerCase() === lower);
+	return iconCatalog().filter((entry) => iconPathUnderFolder(entry.path, name));
 }
 
 function compareIconPaths(a, b) {
@@ -882,29 +909,130 @@ function firstIconInFolder(folder) {
 	return paths[0] || "";
 }
 
-function iconSections(folder) {
-	const locked = String(folder || "").trim();
-	const map = new Map();
-	for (const icon of locked ? iconsInFolder(locked) : iconCatalog()) {
-		const section = locked || icon.section || "General";
-		if (!map.has(section)) {
-			map.set(section, []);
+function titleCaseFolderName(segment) {
+	return String(segment || "")
+		.replace(/[-_]+/g, " ")
+		.split(/\s+/)
+		.filter(Boolean)
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+		.join(" ");
+}
+
+function iconFolderLabel(name, count) {
+	return `${titleCaseFolderName(name)} (${count})`;
+}
+
+function makeIconFolderNode(name, catalogDepth) {
+	return {
+		name: String(name || ""),
+		catalogDepth: catalogDepth | 0,
+		children: new Map(),
+		icons: [],
+		count: 0
+	};
+}
+
+function insertIconUnderFolder(parent, folderSegs, fullPath, parentDepth) {
+	let node = parent;
+	for (let i = 0; i < folderSegs.length; i++) {
+		const depth = parentDepth + i + 1;
+		if (depth > MAX_ICON_ACCORDION_DEPTH) {
+			node.icons.push(fullPath);
+			return;
 		}
-		map.get(section).push(icon.path);
+		const seg = folderSegs[i];
+		const key = String(seg).toLowerCase();
+		if (!node.children.has(key)) {
+			node.children.set(key, makeIconFolderNode(seg, depth));
+		}
+		node = node.children.get(key);
 	}
-	const sections = [...map.keys()].sort((a, b) => {
-		if (a === "General") {
+	node.icons.push(fullPath);
+}
+
+function finalizeIconFolderNode(node) {
+	let n = node.icons.length;
+	for (const child of node.children.values()) {
+		n += finalizeIconFolderNode(child);
+	}
+	node.count = n;
+	return n;
+}
+
+function sortIconFolderNodes(nodes) {
+	return nodes.slice().sort((a, b) => {
+		if (a.name === "General") {
 			return -1;
 		}
-		if (b === "General") {
+		if (b.name === "General") {
 			return 1;
 		}
-		return a.localeCompare(b);
+		return String(a.name).localeCompare(String(b.name), undefined, { sensitivity: "base" });
 	});
-	return sections.map((name) => ({
-		name,
-		paths: map.get(name).slice().sort(compareIconPaths)
-	}));
+}
+
+/**
+ * Build accordion forest from icon paths.
+ * @param {string[]} paths
+ * @param {{ lockPrefix?: string }} [opts] If lockPrefix is set, forest is a single root
+ *   at that folder (any depth); depth budget still counts from catalog root.
+ */
+function buildIconFolderTree(paths, opts) {
+	const lockPrefix = normalizeIconFolderPrefix(opts && opts.lockPrefix);
+	const forest = new Map();
+
+	const ensureGeneral = () => {
+		if (!forest.has("__general__")) {
+			forest.set("__general__", makeIconFolderNode("General", 1));
+		}
+		return forest.get("__general__");
+	};
+
+	for (const raw of paths || []) {
+		const path = String(raw || "").replace(/\\/g, "/");
+		if (!path) {
+			continue;
+		}
+		if (lockPrefix) {
+			if (!iconPathUnderFolder(path, lockPrefix)) {
+				continue;
+			}
+			const lockParts = lockPrefix.split("/").filter(Boolean);
+			const lockDepth = lockParts.length;
+			const lockName = lockParts[lockParts.length - 1];
+			const rootKey = lockPrefix.toLowerCase();
+			if (!forest.has(rootKey)) {
+				forest.set(rootKey, makeIconFolderNode(lockName, lockDepth));
+			}
+			const root = forest.get(rootKey);
+			const rest = path.slice(lockPrefix.length + 1);
+			const restParts = rest.split("/").filter(Boolean);
+			if (restParts.length <= 1) {
+				root.icons.push(path);
+				continue;
+			}
+			insertIconUnderFolder(root, restParts.slice(0, -1), path, lockDepth);
+			continue;
+		}
+		const parts = path.split("/").filter(Boolean);
+		if (parts.length === 1) {
+			ensureGeneral().icons.push(path);
+			continue;
+		}
+		const first = parts[0];
+		const key = first.toLowerCase();
+		if (!forest.has(key)) {
+			forest.set(key, makeIconFolderNode(first, 1));
+		}
+		if (parts.length === 2) {
+			forest.get(key).icons.push(path);
+			continue;
+		}
+		insertIconUnderFolder(forest.get(key), parts.slice(1, -1), path, 1);
+	}
+
+	const roots = [...forest.values()].filter((node) => finalizeIconFolderNode(node) > 0);
+	return sortIconFolderNodes(roots);
 }
 
 function closeIconPicker() {
@@ -992,6 +1120,85 @@ function setIconButtonTip(btn, tip) {
 	btn.removeAttribute("title");
 }
 
+function appendIconPickerGrid(parent, paths, resolvePathHref, selectedValue, onPick) {
+	const list = (paths || []).slice().sort(compareIconPaths);
+	if (!list.length) {
+		return;
+	}
+	const grid = document.createElement("div");
+	grid.className = "cip-grid";
+	for (const path of list) {
+		const cell = document.createElement("button");
+		cell.type = "button";
+		cell.className = "icon-swatch" + (path === selectedValue ? " is-selected" : "");
+		setIconButtonTip(cell, iconDisplayName(path) || path);
+		const img = document.createElement("img");
+		img.src = resolvePathHref(path);
+		img.alt = "";
+		const animated =
+			typeof iconHrefIsAnimated === "function"
+				? iconHrefIsAnimated(img.src)
+				: /\.(gif|webp)(\?|#|$)/i.test(img.src);
+		cell.classList.toggle("is-raster-preview", !!animated);
+		cell.appendChild(img);
+		cell.addEventListener("click", (ev) => {
+			ev.preventDefault();
+			ev.stopPropagation();
+			if (typeof onPick === "function") {
+				onPick(path);
+			}
+		});
+		grid.appendChild(cell);
+	}
+	parent.appendChild(grid);
+}
+
+function renderIconFolderNode(parent, node, renderOpts) {
+	if (!node || !node.count) {
+		return;
+	}
+	const details = document.createElement("details");
+	details.className = "accordion cip-acc" + (node.catalogDepth > 1 ? " nested-acc" : "");
+	if (renderOpts && renderOpts.open) {
+		details.open = true;
+	}
+	const summary = document.createElement("summary");
+	summary.textContent = iconFolderLabel(node.name, node.count);
+	details.appendChild(summary);
+	const body = document.createElement("div");
+	body.className = "accordion-body";
+	const children = sortIconFolderNodes([...node.children.values()]);
+	for (const child of children) {
+		renderIconFolderNode(body, child, { ...renderOpts, open: false });
+	}
+	if (typeof bindExclusiveAccordionSiblings === "function") {
+		bindExclusiveAccordionSiblings(body);
+	}
+	appendIconPickerGrid(
+		body,
+		node.icons,
+		renderOpts.resolvePathHref,
+		renderOpts.selectedValue,
+		renderOpts.onPick
+	);
+	details.appendChild(body);
+	parent.appendChild(details);
+}
+
+function renderIconFolderForest(parent, nodes, renderOpts) {
+	const list = sortIconFolderNodes(nodes || []).filter((node) => node && node.count > 0);
+	for (const node of list) {
+		renderIconFolderNode(parent, node, {
+			...renderOpts,
+			open: !!(renderOpts && renderOpts.openRoot)
+		});
+	}
+	if (typeof bindExclusiveAccordionSiblings === "function") {
+		bindExclusiveAccordionSiblings(parent);
+	}
+	return list.length > 0;
+}
+
 function openIconPicker(anchor, opts) {
 	beginEditorPopup("icon");
 	const paint = () => {
@@ -1000,57 +1207,39 @@ function openIconPicker(anchor, opts) {
 		}
 		const pop = document.createElement("div");
 		pop.className = "cog-icon-picker";
-		// folder locks the drawer to one assets/icons/<folder> section (any folder name).
-		const lockedFolder = String(opts.folder || opts.section || opts.filterToSection || "").trim();
+		// folder locks the drawer to any assets/icons/… prefix (e.g. Frames, Map/Cities).
+		const lockedFolder = normalizeIconFolderPrefix(
+			opts.folder || opts.section || opts.filterToSection || ""
+		);
 		const isFolderLocked = !!lockedFolder;
-		const primarySections = lockedFolder ? iconSections(lockedFolder) : iconSections("");
 		const resolvePathHref = (path) =>
 			/^Endcaps\//i.test(path) || /^Endcaps$/i.test(lockedFolder)
 				? resolveEndcapHref(path)
 				: resolveIconHref(path);
-
-		const appendSection = (parent, section) => {
-			const block = document.createElement("div");
-			block.className = "cip-section";
-			const title = document.createElement("div");
-			title.className = "cip-section-title";
-			title.textContent = section.name;
-			block.appendChild(title);
-			const grid = document.createElement("div");
-			grid.className = "cip-grid";
-			for (const path of section.paths) {
-				const cell = document.createElement("button");
-				cell.type = "button";
-				cell.className = "icon-swatch" + (path === opts.value ? " is-selected" : "");
-				setIconButtonTip(cell, iconDisplayName(path) || path);
-				{
-					const img = document.createElement("img");
-					img.src = resolvePathHref(path);
-					img.alt = "";
-					const animated =
-						typeof iconHrefIsAnimated === "function"
-							? iconHrefIsAnimated(img.src)
-							: /\.(gif|webp)(\?|#|$)/i.test(img.src);
-					cell.classList.toggle("is-raster-preview", !!animated);
-					cell.appendChild(img);
-				}
-				cell.addEventListener("click", (ev) => {
-					ev.preventDefault();
-					ev.stopPropagation();
-					if (typeof opts.onChange === "function") {
-						opts.onChange(path);
-					}
-					closeIconPicker();
-				});
-				grid.appendChild(cell);
+		const onPick = (path) => {
+			if (typeof opts.onChange === "function") {
+				opts.onChange(path);
 			}
-			block.appendChild(grid);
-			parent.appendChild(block);
+			closeIconPicker();
 		};
+		const renderOpts = {
+			resolvePathHref,
+			selectedValue: opts.value,
+			onPick,
+			openRoot: isFolderLocked
+		};
+
+		const primaryPaths = isFolderLocked
+			? iconsInFolder(lockedFolder).map((entry) => entry.path)
+			: iconCatalog().map((entry) => entry.path);
+		const primaryTree = buildIconFolderTree(primaryPaths, {
+			lockPrefix: isFolderLocked ? lockedFolder : ""
+		});
 
 		const body = document.createElement("div");
 		body.className = "cip-body";
-		if (!primarySections.length || !primarySections.some((s) => s.paths && s.paths.length)) {
+		const hasPrimary = renderIconFolderForest(body, primaryTree, renderOpts);
+		if (!hasPrimary) {
 			const empty = document.createElement("p");
 			empty.className = "ccp-empty";
 			if (lockedFolder) {
@@ -1067,10 +1256,6 @@ function openIconPicker(anchor, opts) {
 				empty.textContent = "No icons found under assets/icons.";
 			}
 			body.appendChild(empty);
-		} else {
-			for (const section of primarySections) {
-				appendSection(body, section);
-			}
 		}
 
 		const extrasHost = document.createElement("div");
@@ -1095,9 +1280,16 @@ function openIconPicker(anchor, opts) {
 			seeAllBox.addEventListener("change", () => {
 				extrasHost.hidden = !seeAllBox.checked;
 				if (seeAllBox.checked && !extrasHost.dataset.filled) {
-					const lockedLower = lockedFolder.toLowerCase();
-					const others = iconSections("").filter((s) => String(s.name || "").toLowerCase() !== lockedLower);
-					if (!others.length) {
+					const primarySet = new Set(primaryPaths);
+					const otherPaths = iconCatalog()
+						.map((entry) => entry.path)
+						.filter((path) => path && !primarySet.has(path));
+					const extrasTree = buildIconFolderTree(otherPaths, {});
+					const filled = renderIconFolderForest(extrasHost, extrasTree, {
+						...renderOpts,
+						openRoot: false
+					});
+					if (!filled) {
 						const empty = document.createElement("p");
 						empty.className = "ccp-empty";
 						if (typeof setTranslatedText === "function") {
@@ -1110,10 +1302,6 @@ function openIconPicker(anchor, opts) {
 							empty.textContent = "No other icon folders found.";
 						}
 						extrasHost.appendChild(empty);
-					} else {
-						for (const section of others) {
-							appendSection(extrasHost, section);
-						}
 					}
 					extrasHost.dataset.filled = "1";
 				}
@@ -1180,13 +1368,13 @@ function openIconPicker(anchor, opts) {
 }
 
 function makeIconControl(opts) {
-	const folder = String(opts.folder || opts.section || "").trim();
+	const folder = normalizeIconFolderPrefix(opts.folder || opts.section || "");
 	const isEndcap = /^Endcaps$/i.test(folder);
 	const isFolderLocked = !!folder;
 	const resolveHref = isEndcap ? resolveEndcapHref : resolveIconHref;
 	const field = document.createElement("div");
 	field.className = "icon-field";
-	// Compact named swatch (end art / folder-locked pickers); independent of catalog filter.
+	// Compact named swatch (end art / folder-locked pickers). folder may be any depth under assets/icons/.
 	if (isFolderLocked || opts.endArtPicker) {
 		field.classList.add("is-endcap-picker");
 	}

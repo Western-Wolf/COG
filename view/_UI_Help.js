@@ -149,6 +149,21 @@ async function ensureHelpDocs() {
 
 function bindExclusiveAccordions(root, groupName) {
 	const items = [...root.querySelectorAll(`details.accordion[data-help-group="${groupName}"]`)];
+	if (!items.length) {
+		return;
+	}
+	const parent = items[0].parentElement;
+	if (
+		parent &&
+		typeof bindExclusiveAccordionSiblings === "function" &&
+		items.every((el) => el.parentElement === parent)
+	) {
+		bindExclusiveAccordionSiblings(
+			parent,
+			`:scope > details.accordion[data-help-group="${groupName}"]`
+		);
+		return;
+	}
 	for (const details of items) {
 		details.addEventListener("toggle", () => {
 			if (!details.open) {
