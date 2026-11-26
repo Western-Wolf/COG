@@ -886,56 +886,18 @@ namespace
 		return text ? text : "";
 	}
 
-	bool WordKnown(RE::Actor* player, RE::TESWordOfPower* word, RE::SpellItem* spell)
+	// Magic menu: GetKnown() = taught (wall / TeachWord). formFlags bit 0x10000 = unlocked
+	// (spent soul / UnlockWord). canUnlock = known && !(flags & 0x10000).
+	constexpr std::uint32_t kWordUnlockedFlag = 0x10000;
+
+	bool WordKnown(RE::TESWordOfPower* word)
 	{
-		if (!word) {
-			return false;
-		}
-		if (word->GetKnown()) {
-			return true;
-		}
-		return player && spell && player->HasSpell(spell);
+		return word && word->GetKnown();
 	}
 
-	class SpellLookupVisitor final : public RE::Actor::ForEachSpellVisitor
+	bool WordUnlocked(RE::TESWordOfPower* word)
 	{
-	public:
-		explicit SpellLookupVisitor(RE::SpellItem* a_spell) :
-			target(a_spell)
-		{}
-
-		RE::BSContainer::ForEachResult Visit(RE::SpellItem* a_spell) override
-		{
-			if (a_spell && a_spell == target) {
-				found = true;
-				return RE::BSContainer::ForEachResult::kStop;
-			}
-			return RE::BSContainer::ForEachResult::kContinue;
-		}
-
-		RE::SpellItem* target;
-		bool           found{ false };
-	};
-
-	bool ActorKnowsSpell(RE::Actor* player, RE::SpellItem* spell)
-	{
-		if (!player || !spell) {
-			return false;
-		}
-		if (player->HasSpell(spell)) {
-			return true;
-		}
-		SpellLookupVisitor visitor(spell);
-		player->VisitSpells(visitor);
-		return visitor.found;
-	}
-
-	bool WordUnlocked(RE::Actor* player, RE::TESWordOfPower* word, RE::SpellItem* spell)
-	{
-		if (!word) {
-			return false;
-		}
-		return ActorKnowsSpell(player, spell);
+		return word && (word->GetFormFlags() & kWordUnlockedFlag) != 0;
 	}
 
 	int ShoutVariationIndex(RE::HighProcessData* high)
@@ -1198,15 +1160,14 @@ void CogLive::WriteShoutMeterSnapshotJson(std::ostream& o)
 	int knownCount = 0;
 	for (int i = 0; i < RE::TESShout::VariationID::kTotal; ++i) {
 		auto* word = shout->variations[i].word;
-		auto* spell = shout->variations[i].spell;
 		if (!word) {
 			continue;
 		}
 		++wordCount;
-		if (WordKnown(player, word, spell)) {
+		if (WordKnown(word)) {
 			++knownCount;
 		}
-		if (WordUnlocked(player, word, spell)) {
+		if (WordUnlocked(word)) {
 			++unlockedCount;
 		}
 	}
@@ -1233,7 +1194,6 @@ void CogLive::WriteShoutMeterSnapshotJson(std::ostream& o)
 	bool firstWord = true;
 	for (int i = 0; i < RE::TESShout::VariationID::kTotal; ++i) {
 		auto* word = shout->variations[i].word;
-		auto* spell = shout->variations[i].spell;
 		if (!word) {
 			continue;
 		}
@@ -1247,8 +1207,8 @@ void CogLive::WriteShoutMeterSnapshotJson(std::ostream& o)
 		}
 		const char* translation = word->translation.c_str();
 		const char* editor = word->GetFormEditorID();
-		const bool known = WordKnown(player, word, spell);
-		const bool unlocked = WordUnlocked(player, word, spell);
+		const bool known = WordKnown(word);
+		const bool unlocked = WordUnlocked(word);
 		o << "{\"index\":" << i << ",\"fontText\":\"" << EscapeJsonShout(SafeCString(fontText))
 		  << "\",\"translation\":\"" << EscapeJsonShout(SafeCString(translation))
 		  << "\",\"editor\":\"" << EscapeJsonShout(SafeCString(editor)) << "\",\"known\":" << (known ? "true" : "false")

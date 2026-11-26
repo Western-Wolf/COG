@@ -864,25 +864,87 @@ namespace CogRegistryJson
 
 	std::string NormalizeGizmoVisibility(std::string raw)
 	{
-		std::transform(raw.begin(), raw.end(), raw.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-		if (raw == "none") {
-			return "none";
+		std::transform(raw.begin(), raw.end(), raw.begin(), [](unsigned char c) {
+			return static_cast<char>(std::tolower(c));
+		});
+		// trim
+		auto start = raw.find_first_not_of(" \t\r\n");
+		if (start == std::string::npos) {
+			return "";
+		}
+		auto end = raw.find_last_not_of(" \t\r\n");
+		raw = raw.substr(start, end - start + 1);
+		if (raw.empty() || raw == "none") {
+			return "";
 		}
 		if (raw == "ui") {
-			return "ui";
+			return "hud, menu";
 		}
-		// Default / "hud": HUD Visible — only while the vanilla HUD is shown.
+		if (raw == "hud" || raw == "menu" || raw == "hud, menu") {
+			return raw;
+		}
+		bool hasHud = false;
+		bool hasMenu = false;
+		std::size_t i = 0;
+		while (i < raw.size()) {
+			while (i < raw.size() && (raw[i] == ' ' || raw[i] == '\t' || raw[i] == ',')) {
+				++i;
+			}
+			if (i >= raw.size()) {
+				break;
+			}
+			const std::size_t begin = i;
+			while (i < raw.size() && raw[i] != ',') {
+				++i;
+			}
+			std::size_t tokEnd = i;
+			while (tokEnd > begin && (raw[tokEnd - 1] == ' ' || raw[tokEnd - 1] == '\t')) {
+				--tokEnd;
+			}
+			const std::string_view tok(raw.data() + begin, tokEnd - begin);
+			if (tok == "hud") {
+				hasHud = true;
+			} else if (tok == "menu") {
+				hasMenu = true;
+			}
+		}
+		if (hasHud && hasMenu) {
+			return "hud, menu";
+		}
+		if (hasHud) {
+			return "hud";
+		}
+		if (hasMenu) {
+			return "menu";
+		}
+		// Unknown non-empty tokens → hud (legacy default).
 		return "hud";
 	}
 
+	bool VisibilityIsNone(std::string_view raw)
+	{
+		return NormalizeGizmoVisibility(std::string(raw)).empty();
+	}
+
+	bool VisibilityHasHud(std::string_view raw)
+	{
+		const auto v = NormalizeGizmoVisibility(std::string(raw));
+		return v == "hud" || v == "hud, menu";
+	}
+
+	bool VisibilityHasMenu(std::string_view raw)
+	{
+		const auto v = NormalizeGizmoVisibility(std::string(raw));
+		return v == "menu" || v == "hud, menu";
+	}
 
 	std::string BuiltinDefaultVisibilityForType(std::string_view typeId)
 	{
 		if (typeId == "cog-feed") {
-			return "ui";
+			return "hud, menu";
 		}
 		if (typeId == "cog-suppressor") {
-			return "none";
+			return "";
 		}
 		return "hud";
 	}

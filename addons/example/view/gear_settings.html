@@ -5,10 +5,12 @@
 <p class="lede section-heading">
 	<span data-translation="cog-visibility" data-translation-fallback="Visibility">Visibility</span>
 </p>
-<select data-gizmo-value="cog-visibility">
-	<option value="hud">HUD Visible</option>
-	<option value="ui">UI Visible</option>
-	<option value="none">None</option>
+<!-- Replaced at bind time by appendGizmoVisibilityEditor (HUD/Menu multi-select). -->
+<select data-gizmo-value="cog-visibility" hidden>
+	<option value="hud">HUD</option>
+	<option value="menu">Menu</option>
+	<option value="hud, menu">HUD, Menu</option>
+	<option value="">None</option>
 </select>
 <hr class="editor-rule">
 <p class="lede section-heading">

@@ -167,23 +167,15 @@ function shoutColorGlow(hex, alpha) {
 function filterShoutMeterWords(gizmo, words) {
 	const mode = normalizeShoutWordsMode(gizmo.settings.wordsMode);
 	const list = words || [];
-	const filtered = list.filter((word) => {
+	return list.filter((word) => {
 		if (mode === "all") {
 			return true;
 		}
 		if (mode === "known") {
-			return word.known;
+			return !!word.known;
 		}
-		return word.unlocked;
+		return !!word.unlocked;
 	});
-	// Defensive: if unlocked mode yields nothing but known words exist, show known.
-	if (mode === "unlocked" && filtered.length === 0) {
-		const known = list.filter((word) => word.known);
-		if (known.length) {
-			return known;
-		}
-	}
-	return filtered;
 }
 
 function shoutMeterFadeClipOrigin(origin) {

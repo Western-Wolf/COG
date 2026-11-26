@@ -110,7 +110,7 @@ struct CogGroup
 {
 	std::string id;
 	bool locked = false;
-	// none | hud | ui — same triad as gizmos (groups default hud; no editor control except Default via General).
+	// "" | hud | menu | "hud, menu" — same flags as gizmos (groups default hud; no editor control except Default via General).
 	std::string visibility = "hud";
 	CogDisplay display;
 	CogGroupSettings settings;
@@ -158,7 +158,7 @@ struct CogGauge
 {
 	std::string id;
 	bool locked = false;
-	// none | hud | ui — same triad as gizmos (gauges default hud; not exposed in the gauge editor).
+	// "" | hud | menu | "hud, menu" — same flags as gizmos (gauges default hud; not exposed in the gauge editor).
 	std::string visibility = "hud";
 	CogBoxDisplay display;
 	std::string sourceMod;
@@ -170,10 +170,10 @@ struct CogGizmo
 {
 	std::string id;
 	std::string typeId = "cog-clock";
-	// none | hud (HUD Visible) | ui (UI Visible / menus too)
+	// "" | hud | menu | "hud, menu" (Menu = soft-hide/menus)
 	std::string visibility = "hud";
 	// Soft-hide HUD aliases / paths while this instance exists (root; not settings).
-	// Not gated on visibility — "none" still applies the list (Suppressor-style policy marker OK).
+	// Not gated on visibility — none ("") still applies the list (Suppressor-style policy marker OK).
 	std::vector<std::string> hudSuppress;
 	CogBoxDisplay display{ 0.1f, 0.1f, 0.0f, 275.0f, 40.0f, 100.0f };
 	// Owning mod of the gizmo type (empty for builtin types).
@@ -193,7 +193,7 @@ struct CogGizmoType
 	std::string galleryIcon;
 	float defaultWidth = 240.0f;
 	float defaultHeight = 48.0f;
-	// Instance visibility when the key is omitted on disk / at create (none | hud | ui).
+	// Instance visibility when the key is omitted on disk / at create ("" | hud | menu | "hud, menu").
 	std::string defaultVisibility = "hud";
 	// Empty = builtin JS renderer for typeId. Else path under PrismaUI/views/, e.g. "MyMod/compass.js".
 	std::string viewScript;
@@ -349,6 +349,8 @@ public:
 	void OnViewReady();
 	bool HasVisibleFeedShowingNotifications() const;
 	bool HasVisibleFeedShowingInventory() const;
+	/** Any group/gauge/gizmo with the menu visibility flag (keeps overlay during soft-hide). */
+	bool HasAnyMenuChannelEntity() const;
 	bool HasVisibleFeedDivertingLocationDiscovery() const;
 	bool HasVisibleFeedDivertingCurrentLocation() const;
 	/** Play-visible Feed with Skills section on — diverts kSkillIncrease (no soft-hide). */

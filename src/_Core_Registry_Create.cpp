@@ -555,8 +555,8 @@ void CogRegistry::RegisterBuiltinGizmoTypesUnlocked()
 	};
 	upsert("cog-clock", "Clock", "Actions/wait.svg", 275.0f, 40.0f, "hud");
 	upsert("cog-shout-meter", "Shout Meter", "Actions/shout.svg", 220.0f, 48.0f, "hud");
-	upsert("cog-feed", "Feed", "Scribe/list.svg", 400.0f, 400.0f, "ui");
-	upsert("cog-suppressor", "Suppressor", "Actions/stop.svg", 100.0f, 100.0f, "none");
+	upsert("cog-feed", "Feed", "Scribe/list.svg", 400.0f, 400.0f, "hud, menu");
+	upsert("cog-suppressor", "Suppressor", "Actions/stop.svg", 100.0f, 100.0f, "");
 }
 
 

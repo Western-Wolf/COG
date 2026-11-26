@@ -120,11 +120,11 @@ namespace CogRegistryJson
 		g.id = ctx.GetString(obj, "id");
 		g.locked = ctx.GetBool(obj, "locked", false);
 		// Migration Code for Transition from v1.01 or earlier to v1.1:
-		// Legacy root bool "visible" becomes visibility none|hud|ui (never written back as bool).
+		// Legacy root bool "visible" becomes visibility ""|"hud"|… (never written back as bool).
 		if (ctx.Has(obj, "visibility")) {
 			g.visibility = NormalizeGizmoVisibility(ctx.GetString(obj, "visibility"));
 		} else if (ctx.Has(obj, "visible")) {
-			g.visibility = ctx.GetBool(obj, "visible", true) ? "hud" : "none";
+			g.visibility = ctx.GetBool(obj, "visible", true) ? "hud" : "";
 			NoteMigration(ctx, "visible → visibility");
 		} else {
 			g.visibility = "hud";

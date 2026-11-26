@@ -351,90 +351,158 @@ function feedSourcesBagLooksValid(sources) {
 	return true;
 }
 
-/**
- * Migration / heal: flat show* + colours → settings.sources.<id>.
- * Always rewrites when bag/blocks/flat keys are malformed (not a one-shot flag-only gate).
- */
-function migrateFeedFlatSources(s, gizmo) {
-	if (!s || typeof s !== "object") {
-		return false;
-	}
-	let migrated = false;
-	const movedKeys = [
-		"textColor",
-		"addColor",
-		"removeColor",
-		"stolenColor",
-		"effectsColor",
-		"effectIcon",
-		"notificationIcon",
-		"icon",
-		"showEffectIcons",
-		"showEffectText",
-		"showEffectTimer",
-		"suppressTransformEffects",
-		"showNotificationIcons",
-		"showInventoryIcons",
-		"showLocationIcons",
-		"showSkillIcons",
-		"allowModNotificationIcon",
-		"allowModNotificationColor",
-		"suppressInventory",
-		"showLocationDiscovery",
-		"showCurrentLocation",
-		"locationDiscoveryIcon",
-		"currentLocationIcon",
-		"locationDiscoveryColor",
-		"currentLocationColor",
-		"showSkillProgress",
-		"showLevelProgress",
-		"skillProgressIcon",
-		"levelProgressIcon",
-		"skillProgressColor",
-		"levelProgressColor",
-		"questStatusIcon",
-		"questObjectiveIcon",
-		"questStatusColor",
-		"questObjectiveColor",
-		"showQuestStatus",
-		"showQuestObjectives",
-		"showQuestIcons"
-	];
-	const hadNoSourcesBag = !s.sources || typeof s.sources !== "object" || Array.isArray(s.sources);
-	const legacyShowPresent = Object.values(FEED_SOURCE_LEGACY_SHOW).some((k) =>
-		Object.prototype.hasOwnProperty.call(s, k)
-	);
-	const legacyFlatPresent = movedKeys.some((k) => Object.prototype.hasOwnProperty.call(s, k));
-	const haveVersion = Number(s.feedSourcesVersion);
-	const versionOk = Number.isFinite(haveVersion) && haveVersion >= FEED_SOURCES_VERSION;
-	const bagOk = !hadNoSourcesBag && feedSourcesBagLooksValid(s.sources);
-	const needsHeal = !bagOk || legacyShowPresent || legacyFlatPresent || !versionOk;
-	const needsSuppressRecover =
-		(!versionOk || s.feedSourcesMigrated === true || s.feedSourcesMigrated === 1) &&
-		!legacyShowPresent;
-	if (hadNoSourcesBag) {
-		s.sources = {};
-		migrated = true;
-	}
+/** Flat settings keys that fold into settings.sources.<id> (v1.1 nested bag). */
+const FEED_FLAT_MOVED_KEYS = [
+	"textColor",
+	"addColor",
+	"removeColor",
+	"stolenColor",
+	"effectsColor",
+	"effectIcon",
+	"notificationIcon",
+	"icon",
+	"showEffectIcons",
+	"showEffectText",
+	"showEffectTimer",
+	"suppressTransformEffects",
+	"showNotificationIcons",
+	"showInventoryIcons",
+	"showLocationIcons",
+	"showSkillIcons",
+	"allowModNotificationIcon",
+	"allowModNotificationColor",
+	"suppressInventory",
+	"showLocationDiscovery",
+	"showCurrentLocation",
+	"locationDiscoveryIcon",
+	"currentLocationIcon",
+	"locationDiscoveryColor",
+	"currentLocationColor",
+	"showSkillProgress",
+	"showLevelProgress",
+	"skillProgressIcon",
+	"levelProgressIcon",
+	"skillProgressColor",
+	"levelProgressColor",
+	"questStatusIcon",
+	"questObjectiveIcon",
+	"questStatusColor",
+	"questObjectiveColor",
+	"showQuestStatus",
+	"showQuestObjectives",
+	"showQuestIcons"
+];
+
+function feedSourceIdSet() {
 	const defaults = defaultFeedSourceBlocks();
+	const ids = new Set(Object.keys(defaults));
 	const catalog =
 		typeof window.CogFeedSourceCatalogResolved === "function"
 			? window.CogFeedSourceCatalogResolved()
 			: Array.isArray(window.CogFeedSourceCatalog)
 				? window.CogFeedSourceCatalog
 				: [];
-	const ids = new Set(Object.keys(defaults));
 	for (const entry of catalog) {
 		if (entry && entry.id) {
 			ids.add(String(entry.id));
 		}
 	}
-	// 1) Ensure every available source block exists (builtins + catalog).
+	return { defaults, ids };
+}
+
+/**
+ * Hot-path / catalog push: add missing sources.<id> blocks only (no rematerialize, no flat scans).
+ * @returns {boolean} true if any block was created/fixed
+ */
+function ensureFeedSourceBlocks(s) {
+	if (!s || typeof s !== "object") {
+		return false;
+	}
+	if (!s.sources || typeof s.sources !== "object" || Array.isArray(s.sources)) {
+		s.sources = {};
+	}
+	const { defaults, ids } = feedSourceIdSet();
+	let changed = false;
+	for (const id of ids) {
+		const prev =
+			s.sources[id] && typeof s.sources[id] === "object" && !Array.isArray(s.sources[id])
+				? s.sources[id]
+				: null;
+		if (prev && Object.prototype.hasOwnProperty.call(prev, "enabled")) {
+			continue;
+		}
+		const def = defaults[id] || { enabled: false };
+		const block = { ...def, ...(prev || {}) };
+		if (!Object.prototype.hasOwnProperty.call(block, "enabled")) {
+			block.enabled = false;
+		}
+		s.sources[id] = block;
+		changed = true;
+	}
+	return changed;
+}
+
+/** True when flat→nested remap (or version heal) still needs to run. */
+function feedSourcesNeedLegacyRemap(s) {
+	if (!s || typeof s !== "object") {
+		return false;
+	}
+	const haveVersion = Number(s.feedSourcesVersion);
+	const versionOk = Number.isFinite(haveVersion) && haveVersion >= FEED_SOURCES_VERSION;
+	if (!versionOk) {
+		return true;
+	}
+	if (Object.prototype.hasOwnProperty.call(s, "feedSourcesMigrated")) {
+		return true;
+	}
+	if (!s.sources || typeof s.sources !== "object" || Array.isArray(s.sources)) {
+		return true;
+	}
+	if (!feedSourcesBagLooksValid(s.sources)) {
+		return true;
+	}
+	if (Object.values(FEED_SOURCE_LEGACY_SHOW).some((k) => Object.prototype.hasOwnProperty.call(s, k))) {
+		return true;
+	}
+	if (FEED_FLAT_MOVED_KEYS.some((k) => Object.prototype.hasOwnProperty.call(s, k))) {
+		return true;
+	}
+	return false;
+}
+
+/**
+ * Migration Code for Transition from v1.01 or earlier to v1.1 (one-shot):
+ * Flat show* + colours → settings.sources.<id>. Gated by feedSourcesNeedLegacyRemap;
+ * hot path uses ensureFeedSourceBlocks instead.
+ */
+function migrateFeedFlatSources(s, gizmo) {
+	if (!s || typeof s !== "object") {
+		return false;
+	}
+	if (!feedSourcesNeedLegacyRemap(s)) {
+		return false;
+	}
+	let migrated = false;
+	const legacyShowPresent = Object.values(FEED_SOURCE_LEGACY_SHOW).some((k) =>
+		Object.prototype.hasOwnProperty.call(s, k)
+	);
+	const haveVersion = Number(s.feedSourcesVersion);
+	const versionOk = Number.isFinite(haveVersion) && haveVersion >= FEED_SOURCES_VERSION;
+	const needsSuppressRecover =
+		(!versionOk || s.feedSourcesMigrated === true || s.feedSourcesMigrated === 1) &&
+		!legacyShowPresent;
+	if (!s.sources || typeof s.sources !== "object" || Array.isArray(s.sources)) {
+		s.sources = {};
+		migrated = true;
+	}
+	const { defaults, ids } = feedSourceIdSet();
+	// 1) Materialize every available source block (builtins + catalog), folding flat keys in.
 	for (const id of ids) {
 		const def = defaults[id] || { enabled: false };
-		const prev = s.sources[id] && typeof s.sources[id] === "object" && !Array.isArray(s.sources[id])
-			? s.sources[id]
-			: null;
+		const prev =
+			s.sources[id] && typeof s.sources[id] === "object" && !Array.isArray(s.sources[id])
+				? s.sources[id]
+				: null;
 		if (!prev) {
 			migrated = true;
 		}
@@ -454,24 +522,21 @@ function migrateFeedFlatSources(s, gizmo) {
 		}
 		s.sources[id] = block;
 	}
-	// 2) Flat show* → nested enabled (legacy shape or heal pass).
-	if (needsHeal || legacyShowPresent) {
-		for (const [id, showKey] of Object.entries(FEED_SOURCE_LEGACY_SHOW)) {
-			if (!Object.prototype.hasOwnProperty.call(s, showKey)) {
-				continue;
-			}
-			const block = feedSourceBag(s, id);
-			const next = feedTruthyFlag(s[showKey]);
-			if (block.enabled !== next) {
-				block.enabled = next;
-				migrated = true;
-			}
+	// 2) Flat show* → nested enabled.
+	for (const [id, showKey] of Object.entries(FEED_SOURCE_LEGACY_SHOW)) {
+		if (!Object.prototype.hasOwnProperty.call(s, showKey)) {
+			continue;
+		}
+		const block = feedSourceBag(s, id);
+		const next = feedTruthyFlag(s[showKey]);
+		if (block.enabled !== next) {
+			block.enabled = next;
+			migrated = true;
 		}
 	}
 	const anyEnabled = [...ids].some((id) => feedSourceEnabled(s, id));
 	// Recover enables from soft-hide list when flat show* were already wiped but bag was bad.
 	if (
-		needsHeal &&
 		needsSuppressRecover &&
 		!anyEnabled &&
 		gizmo &&
@@ -495,7 +560,7 @@ function migrateFeedFlatSources(s, gizmo) {
 			migrated = true;
 		}
 	}
-	for (const key of movedKeys) {
+	for (const key of FEED_FLAT_MOVED_KEYS) {
 		if (Object.prototype.hasOwnProperty.call(s, key)) {
 			delete s[key];
 			migrated = true;
@@ -509,7 +574,31 @@ function migrateFeedFlatSources(s, gizmo) {
 		delete s.feedSourcesMigrated;
 		migrated = true;
 	}
-	return migrated || needsHeal;
+	return migrated;
+}
+
+/** Ensure all Feed gizmos have blocks for the current catalog (missing ids only). */
+function ensureFeedSourceBlocksForAllGizmos() {
+	if (typeof snapshot === "undefined" || !snapshot || !Array.isArray(snapshot.gizmos)) {
+		return false;
+	}
+	let changed = false;
+	for (const z of snapshot.gizmos) {
+		if (!z || normalizeGizmoType(z.typeId || z.type) !== "cog-feed") {
+			continue;
+		}
+		const s =
+			z.settings && typeof z.settings === "object" && !Array.isArray(z.settings)
+				? z.settings
+				: null;
+		if (!s) {
+			continue;
+		}
+		if (ensureFeedSourceBlocks(s)) {
+			changed = true;
+		}
+	}
+	return changed;
 }
 
 function scheduleFeedSettingsPersist() {
@@ -653,7 +742,10 @@ function normalizeFeedIconPlacement(value) {
 }
 
 function normalizeFeedIcon(value, fallback) {
-	const iconPath = normalizeIconRelPath(value);
+	const iconPath =
+		typeof normalizeIconAssetPath === "function"
+			? normalizeIconAssetPath(value)
+			: normalizeIconRelPath(value);
 	if (!iconPath) {
 		return fallback;
 	}
@@ -734,7 +826,7 @@ function defaultFeedGizmo(n) {
 	return {
 		id: `gizmo_${Date.now().toString(36)}`,
 		typeId: "cog-feed",
-		visibility: "ui",
+		visibility: "hud, menu",
 		hudSuppress: [],
 		display: {
 			x: DEFAULT_HUD_X,
@@ -891,8 +983,9 @@ function ensureFeedGizmo(gizmo) {
 		)
 	);
 	s.backdropDirection = normalizeFeedBackdropDirection(s.backdropDirection || DEFAULT_FEED_BACKDROP_DIRECTION);
-	// Nested sources bag (flat show* keys / colours migrate in; hudSuppress recovers enables).
+	// One-shot flat→sources remap when needed; then cheap missing-id ensure.
 	const sourcesMigrated = migrateFeedFlatSources(s, gizmo);
+	const sourceBlocksEnsured = ensureFeedSourceBlocks(s);
 	{
 		const n = feedSourceBag(s, FEED_SOURCE_NOTIFICATIONS);
 		n.enabled = feedTruthyFlag(n.enabled);
@@ -978,7 +1071,7 @@ function ensureFeedGizmo(gizmo) {
 	gizmo.hudSuppress = feedHudSuppressKeysFromSettings(s);
 	gizmo.settings = s;
 	gizmo.settingsJson = JSON.stringify(s);
-	if (sourcesMigrated) {
+	if (sourcesMigrated || sourceBlocksEnsured) {
 		scheduleFeedSettingsPersist();
 	}
 	return gizmo;

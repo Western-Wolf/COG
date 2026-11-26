@@ -11,8 +11,16 @@ const missingIconHrefSet = new Set();
 
 /** @type {Map<string, string>} path -> "icons" | "imports/icons" */
 let iconRootByPath = new Map();
+/** @type {Map<string, string>} lowercase path -> catalog casing */
+let iconCanonicalByPath = new Map();
 /** @type {Set<string>} lowercase paths known to live under assets/imports/icons/ */
 let importedIconPathSet = new Set();
+/**
+ * Migration Code for Transition from v1.11 or earlier to v1.2:
+ * One-shot per HUD session once the icon catalog is known — remaps are written
+ * into the snapshot, then never re-run on resolve/paint.
+ */
+let iconPathMigration12Done = false;
 
 let iconPickerState = null;
 
@@ -37,7 +45,77 @@ function stripIconRootPrefixes(rel) {
 	return out;
 }
 
-/** Clean a single icon asset path (rejects empty / traversal / .json pack leftovers). */
+/** True when `rel` is listed in the live icon catalog (case-insensitive). */
+function iconExistsInCatalog(rel) {
+	const key = String(rel || "")
+		.replace(/\\/g, "/")
+		.toLowerCase();
+	return !!key && iconRootByPath.has(key);
+}
+
+/** Prefer catalog casing for a known path (O(1) via rebuildIconRootMap). */
+function catalogCanonicalPath(rel) {
+	const key = String(rel || "")
+		.replace(/\\/g, "/")
+		.toLowerCase();
+	if (!key) {
+		return "";
+	}
+	return iconCanonicalByPath.get(key) || String(rel || "").replace(/\\/g, "/");
+}
+
+/**
+ * Migration Code for Transition from v1.11 or earlier to v1.2 (one-shot only):
+ * Undo Pictures/Artwork/<file> → Pictures/<file>, and
+ * Pictures/Quest Art/<file> → Endcaps/Quest Art/<file>.
+ * Missing paths with no equivalent stay as-is (display uses normal cog fallback).
+ * Do not call from resolve/paint — only from migrateLegacyIconPathsInSnapshot.
+ */
+function remapLegacyIconPath(rel) {
+	const path = String(rel || "").replace(/\\/g, "/");
+	if (!path) {
+		return "";
+	}
+	if (iconExistsInCatalog(path)) {
+		return catalogCanonicalPath(path);
+	}
+	let candidate = "";
+	const artwork = /^Pictures\/Artwork\/([^/]+)$/i.exec(path);
+	if (artwork) {
+		candidate = `Pictures/${artwork[1]}`;
+	} else {
+		const quest =
+			/^Pictures\/(?:Artwork\/)?Quest Art\/([^/]+)$/i.exec(path) ||
+			/^Pictures\/QuestArt\/([^/]+)$/i.exec(path);
+		if (quest) {
+			candidate = `Endcaps/Quest Art/${quest[1]}`;
+		}
+	}
+	if (!candidate || !iconExistsInCatalog(candidate)) {
+		return path;
+	}
+	const next = catalogCanonicalPath(candidate);
+	if (typeof noteMigration12If === "function") {
+		noteMigration12If(path !== next, `icon ${path} → ${next}`);
+	} else if (typeof cogConfigNote === "function" && path !== next) {
+		cogConfigNote(
+			`Migration Code for Transition from v1.11 or earlier to v1.2: icon ${path} → ${next}`
+		);
+	}
+	return next;
+}
+
+/** @deprecated Use remapLegacyIconPath (migration only). */
+function migrateLegacyIconPath(rel) {
+	return remapLegacyIconPath(rel);
+}
+
+/** @deprecated Use remapLegacyIconPath (migration only). */
+function migratePictureIconPath(rel) {
+	return remapLegacyIconPath(rel);
+}
+
+/** Clean a single icon asset path (rejects empty / traversal / .json pack leftovers). No remaps. */
 function normalizeIconAssetPath(raw) {
 	let out = stripIconRootPrefixes(raw);
 	if (!out || out.includes("..") || out.includes(":")) {
@@ -389,6 +467,7 @@ function paintMaskedFace(host, faceClass, { color, href, clear = false } = {}) {
 
 function rebuildIconRootMap() {
 	iconRootByPath = new Map();
+	iconCanonicalByPath = new Map();
 	importedIconPathSet = new Set();
 	// Keep missingIconHrefSet: clearing it made high-frequency painters (clock)
 	// re-apply broken URLs and skip re-probing, so fallback cogs vanished until
@@ -399,9 +478,11 @@ function rebuildIconRootMap() {
 		if (!item || !item.path) {
 			continue;
 		}
-		const key = String(item.path).toLowerCase();
+		const path = String(item.path).replace(/\\/g, "/");
+		const key = path.toLowerCase();
 		const root = String(item.root || "icons");
 		iconRootByPath.set(key, root);
+		iconCanonicalByPath.set(key, path);
 		if (root === "imports/icons") {
 			importedIconPathSet.add(key);
 		}
@@ -418,12 +499,44 @@ function rebuildIconRootMap() {
 		importedIconPathSet.add(key);
 		if (!iconRootByPath.has(key)) {
 			iconRootByPath.set(key, "imports/icons");
+			iconCanonicalByPath.set(key, path);
 		}
 	}
 }
 
-/** Normalize endcap art paths under Endcaps/. */
-function migrateEndCapPath(raw) {
+/**
+ * Migration Code for Transition from v1.11 or earlier to v1.2 (one-shot only):
+ * Rewrite one stored icon field (plain path or icon ramp JSON).
+ */
+function migrateStoredIconField(raw) {
+	if (raw == null || raw === "") {
+		return raw;
+	}
+	const stops = parseIconRamp(raw);
+	if (!stops.length) {
+		return remapLegacyIconPath(normalizeIconAssetPath(raw) || normalizeIconRelPath(raw));
+	}
+	const migrated = stops.map((s) => ({
+		pct: s.pct,
+		path: remapLegacyIconPath(s.path)
+	}));
+	return formatIconRamp(migrated) || migrated[0].path;
+}
+
+/**
+ * v1.1 (and early v1.2) flat Endcaps/<file> → nested Shapes/Knots paths.
+ * Only applied when the old path is missing from the catalog (migration only).
+ */
+const ENDCAP_PATH_ALIASES = {
+	"endcaps/knot.svg": "Endcaps/Knots/trinity-knot.svg",
+	"endcaps/triangle.svg": "Endcaps/Shapes/triangle.svg",
+	"endcaps/circle-half.svg": "Endcaps/Shapes/circle-half.svg",
+	"endcaps/arrow.svg": "Endcaps/Knots/vanilla-map-arrow.svg",
+	"endcaps/compass.svg": "Endcaps/Knots/vanilla-compass.svg"
+};
+
+/** Cheap structural normalize for Endcaps/ paths (safe on paint/resolve). No remaps. */
+function normalizeEndCapPath(raw) {
 	let rel = normalizeIconRelPath(raw);
 	if (!rel) {
 		return "";
@@ -453,6 +566,149 @@ function migrateEndCapPath(raw) {
 		}
 	}
 	return rel;
+}
+
+/**
+ * Migration Code for Transition from v1.11 or earlier to v1.2 (one-shot only):
+ * Remap flat / legacy endcap paths after normalizeEndCapPath.
+ */
+function remapLegacyEndCapPath(raw) {
+	let rel = normalizeEndCapPath(raw);
+	if (!rel) {
+		return "";
+	}
+	if (/^Pictures\//i.test(rel)) {
+		rel = remapLegacyIconPath(rel);
+	}
+	if (iconExistsInCatalog(rel)) {
+		return catalogCanonicalPath(rel);
+	}
+	const alias = ENDCAP_PATH_ALIASES[rel.toLowerCase()];
+	if (alias && iconExistsInCatalog(alias)) {
+		const next = catalogCanonicalPath(alias);
+		if (typeof noteMigration12If === "function") {
+			noteMigration12If(rel !== next, `endcap ${rel} → ${next}`);
+		} else if (typeof cogConfigNote === "function" && rel !== next) {
+			cogConfigNote(
+				`Migration Code for Transition from v1.11 or earlier to v1.2: endcap ${rel} → ${next}`
+			);
+		}
+		return next;
+	}
+	const flat = /^Endcaps\/([^/]+)$/i.exec(rel);
+	if (flat) {
+		const file = flat[1];
+		for (const folder of ["Shapes", "Knots", "Quest Art"]) {
+			const candidate = `Endcaps/${folder}/${file}`;
+			if (iconExistsInCatalog(candidate)) {
+				const next = catalogCanonicalPath(candidate);
+				if (typeof noteMigration12If === "function") {
+					noteMigration12If(true, `endcap ${rel} → ${next}`);
+				} else if (typeof cogConfigNote === "function") {
+					cogConfigNote(
+						`Migration Code for Transition from v1.11 or earlier to v1.2: endcap ${rel} → ${next}`
+					);
+				}
+				return next;
+			}
+		}
+	}
+	return rel;
+}
+
+/**
+ * Hot-path endcap path cleaner (prefix / extension only).
+ * Legacy remaps run once via migrateLegacyIconPathsInSnapshot → remapLegacyEndCapPath.
+ */
+function migrateEndCapPath(raw) {
+	return normalizeEndCapPath(raw);
+}
+
+/**
+ * Migration Code for Transition from v1.11 or earlier to v1.2:
+ * One-shot after the icon catalog is known — rewrite moved icon / endcap paths
+ * into the snapshot (Artwork undo, Quest Art → Endcaps, flat Endcaps → Shapes/Knots).
+ */
+function migrateLegacyIconPathsInSnapshot() {
+	if (typeof snapshot === "undefined" || !snapshot) {
+		return;
+	}
+	if (iconPathMigration12Done) {
+		return;
+	}
+	if (!iconRootByPath.size) {
+		return;
+	}
+	for (const src of snapshot.sources || []) {
+		if (!src || !src.icon) {
+			continue;
+		}
+		src.icon = migrateStoredIconField(src.icon);
+	}
+	for (const gear of snapshot.gears || []) {
+		if (!gear) {
+			continue;
+		}
+		if (gear.defaults && gear.defaults.icon) {
+			gear.defaults.icon = migrateStoredIconField(gear.defaults.icon);
+		}
+		if (gear.settings && gear.settings.icon) {
+			gear.settings.icon = migrateStoredIconField(gear.settings.icon);
+		}
+	}
+	for (const gauge of snapshot.gauges || []) {
+		const bag = gauge && gauge.settings;
+		if (!bag) {
+			continue;
+		}
+		if (bag.pictureIcon) {
+			const cleaned = normalizeIconAssetPath(bag.pictureIcon) || String(bag.pictureIcon || "").trim();
+			const next = remapLegacyIconPath(cleaned);
+			if (next) {
+				bag.pictureIcon = next;
+			}
+		}
+		if (bag.endCap) {
+			const next = remapLegacyEndCapPath(bag.endCap);
+			if (next) {
+				bag.endCap = next;
+			}
+		}
+	}
+	for (const z of snapshot.gizmos || []) {
+		const s = z && z.settings;
+		if (!s || typeof s !== "object") {
+			continue;
+		}
+		if (s.endCap) {
+			const next = remapLegacyEndCapPath(s.endCap);
+			if (next) {
+				s.endCap = next;
+			}
+		}
+		for (const key of Object.keys(s)) {
+			if (!/icon/i.test(key) || typeof s[key] !== "string") {
+				continue;
+			}
+			const raw = String(s[key]).replace(/\\/g, "/");
+			if (!/^(Pictures|Endcaps)\//i.test(raw)) {
+				continue;
+			}
+			const cleaned = normalizeIconAssetPath(s[key]) || normalizeIconRelPath(s[key]);
+			const next = /^Endcaps\//i.test(cleaned)
+				? remapLegacyEndCapPath(cleaned)
+				: remapLegacyIconPath(cleaned);
+			if (next) {
+				s[key] = next;
+			}
+		}
+	}
+	iconPathMigration12Done = true;
+}
+
+/** @deprecated Use migrateLegacyIconPathsInSnapshot. */
+function migratePictureIconPathsInSnapshot() {
+	return migrateLegacyIconPathsInSnapshot();
 }
 
 function normalizeEndCapMode(raw, endCapPath) {

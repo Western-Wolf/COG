@@ -55,15 +55,21 @@ namespace CogRegistryJson
 	 * Migration Code for Transition from v1.01 or earlier to v1.1: legacy root "type" → typeId.
 	 */
 	std::string ResolveGizmoInstanceTypeId(const CogJson::Value& obj, CogJson::ParseContext& ctx);
-	/** hud = HUD Visible, ui = UI Visible (menus too). Unknown/empty → hud. */
+	/**
+	 * Canonical visibility flags: "" | "hud" | "menu" | "hud, menu".
+	 * Legacy: "none"→"", "ui"→"hud, menu". Explicit "" is none (not missing).
+	 */
 	std::string NormalizeGizmoVisibility(std::string raw);
-	/** Universal/builtin visibility when no type record exists (feed→ui, suppressor→none, else hud). */
+	bool VisibilityIsNone(std::string_view raw);
+	bool VisibilityHasHud(std::string_view raw);
+	bool VisibilityHasMenu(std::string_view raw);
+	/** Universal/builtin visibility when no type record exists (feed→hud, menu; suppressor→""; else hud). */
 	std::string BuiltinDefaultVisibilityForType(std::string_view typeId);
 	/** Fill missing settings keys from type schema `default` values. Returns true if any key was added. */
 	bool MergeMissingSettingsFromSchema(CogJson::Value& settings, std::string_view settingsSchemaJson);
 	/** Merge missing settings on an instance from its type schema. Returns true if settingsJson changed. */
 	bool MergeGizmoSettingsFromType(CogGizmo& g, const CogGizmoType* type);
-	// visibility != "none" — instance participates in play (divert / HUD mount rules).
+	// !VisibilityIsNone — instance participates in play (divert / HUD mount rules).
 	bool GizmoIsPlayActive(const CogGizmo& g);
 	bool GizmoSettingsBool(const CogGizmo& g, std::string_view key, bool fallback);
 	std::string GizmoSettingsString(const CogGizmo& g, std::string_view key, std::string_view fallback = "");

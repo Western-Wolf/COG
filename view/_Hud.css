@@ -15,10 +15,10 @@
 }
 
 /* Soft-hide during menus/load — keep nodes mounted so show isn't a full redraw.
-   UI Visible (data-visibility="ui") stays up; HUD Visible / unset hide with the HUD.
+   Menu channel (data-visibility-menu="1") stays up; HUD-only / none hide with the HUD.
    Editor focus keeps preview visible even if hud-hidden races on. */
-body.hud-hidden:not(.is-focused) #hud > *:not([data-visibility="ui"]),
-body.hud-hidden:not(.is-focused) #hud-front > *:not([data-visibility="ui"]) {
+body.hud-hidden:not(.is-focused) #hud > *:not([data-visibility-menu="1"]),
+body.hud-hidden:not(.is-focused) #hud-front > *:not([data-visibility-menu="1"]) {
 	visibility: hidden !important;
 }
 

@@ -928,7 +928,7 @@ void CogHudSuppress::CollectSuppressions(const CogRegistry& reg, std::vector<Cog
 	for (const auto& group : reg._groups) {
 		const bool visible = group.id == kDefaultGroupId
 			? reg._general.showDefaultGroup
-			: CogRegistryJson::NormalizeGizmoVisibility(group.visibility) != "none";
+			: !CogRegistryJson::VisibilityIsNone(group.visibility);
 		for (const auto& gearId : group.settings.gearIds) {
 			const CogGear* gear = nullptr;
 			for (const auto& g : reg._gears) {
@@ -967,7 +967,7 @@ void CogHudSuppress::CollectSuppressions(const CogRegistry& reg, std::vector<Cog
 	}
 
 	for (const auto& gauge : reg._gauges) {
-		const bool gaugeVisible = CogRegistryJson::NormalizeGizmoVisibility(gauge.visibility) != "none";
+		const bool gaugeVisible = !CogRegistryJson::VisibilityIsNone(gauge.visibility);
 		if (gauge.sourceMod.empty() || gauge.varName.empty()) {
 			continue;
 		}
@@ -1028,7 +1028,7 @@ void CogHudSuppress::CollectSuppressions(const CogRegistry& reg, std::vector<Cog
 			continue;
 		}
 		// Universal root hudSuppress (builtins + customs). Instance-gated, not visibility-gated —
-		// keys on the placed gizmo apply even when visibility is "none". Feed/Shout write via cog-hudSuppress.
+		// keys on the placed gizmo apply even when visibility is none (""). Feed/Shout write via cog-hudSuppress.
 		for (const auto& raw : gizmo.hudSuppress) {
 			const auto token = CogRegistryJson::TrimCopy(raw);
 			if (token.empty()) {

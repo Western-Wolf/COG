@@ -21,6 +21,21 @@ function noteMigrationIf(condition, detail) {
 	}
 }
 
+/** Prefixed migration log (v1.11 → v1.2). */
+function noteMigration12(detail) {
+	const text = String(detail || "").trim();
+	if (!text) {
+		return;
+	}
+	cogConfigNote(`Migration Code for Transition from v1.11 or earlier to v1.2: ${text}`);
+}
+
+function noteMigration12If(condition, detail) {
+	if (condition) {
+		noteMigration12(detail);
+	}
+}
+
 /**
  * Log + optionally delete keys not in allowSet (and not in legacySet).
  * @param {object} obj
@@ -57,29 +72,72 @@ const DEFAULT_GAUGE_HEIGHT = 24;
 const MIN_GAUGE_WIDTH = 32;
 const MIN_GAUGE_HEIGHT = 6;
 
-/** Shared none|hud|ui triad for groups, gauges, and gizmos. Unknown/empty → hud. */
+/**
+ * Shared visibility flag string for groups, gauges, and gizmos.
+ * Canonical: "" | "hud" | "menu" | "hud, menu".
+ * Legacy: "none" → "", "ui" → "hud, menu". Unknown-only non-empty → "hud".
+ * Explicit "" means none (preview only) — not missing.
+ */
 function normalizeVisibility(value) {
-	const v = String(value || "")
-		.trim()
-		.toLowerCase();
-	if (v === "none" || v === "ui") {
-		return v;
+	const raw = value == null ? "" : String(value).trim().toLowerCase();
+	if (!raw || raw === "none") {
+		return "";
+	}
+	if (raw === "ui") {
+		return "hud, menu";
+	}
+	if (raw === "hud" || raw === "menu" || raw === "hud, menu") {
+		return raw;
+	}
+	let hasHud = false;
+	let hasMenu = false;
+	for (const part of raw.split(",")) {
+		const t = part.trim();
+		if (t === "hud") {
+			hasHud = true;
+		} else if (t === "menu") {
+			hasMenu = true;
+		}
+	}
+	if (hasHud && hasMenu) {
+		return "hud, menu";
+	}
+	if (hasHud) {
+		return "hud";
+	}
+	if (hasMenu) {
+		return "menu";
 	}
 	return "hud";
 }
 
+function visibilityIsNone(value) {
+	return normalizeVisibility(value) === "";
+}
+
+function visibilityHasHud(value) {
+	const v = normalizeVisibility(value);
+	return v === "hud" || v === "hud, menu";
+}
+
+function visibilityHasMenu(value) {
+	const v = normalizeVisibility(value);
+	return v === "menu" || v === "hud, menu";
+}
+
 /**
  * Migration Code for Transition from v1.01 or earlier to v1.1:
- * Legacy root bool "visible" → visibility none|hud (never kept as bool).
+ * Legacy root bool "visible" → visibility ""|"hud" (never kept as bool).
+ * Explicit "" stays none; only null/undefined get a default.
  */
 function ensureEntityVisibility(entity) {
 	if (!entity || typeof entity !== "object") {
 		return "hud";
 	}
 	const label = entity.id || entity.typeId || "?";
-	if (entity.visibility == null || String(entity.visibility).trim() === "") {
+	if (entity.visibility == null) {
 		if (Object.prototype.hasOwnProperty.call(entity, "visible")) {
-			entity.visibility = entity.visible === false ? "none" : "hud";
+			entity.visibility = entity.visible === false ? "" : "hud";
 			noteMigration(`${label} visible → visibility`);
 		} else {
 			entity.visibility = "hud";
@@ -88,6 +146,56 @@ function ensureEntityVisibility(entity) {
 	entity.visibility = normalizeVisibility(entity.visibility);
 	delete entity.visible;
 	return entity.visibility;
+}
+
+/**
+ * Migration Code for Transition from v1.11 or earlier to v1.2:
+ * One-shot rewrite of legacy visibility tokens on disk-backed entities.
+ */
+let visibilityMigration12Done = false;
+
+function migrateVisibility12InSnapshot() {
+	if (typeof snapshot === "undefined" || !snapshot || visibilityMigration12Done) {
+		return;
+	}
+	const rewrite = (entity, kind) => {
+		if (!entity || entity.visibility == null) {
+			return;
+		}
+		const before = String(entity.visibility);
+		const lower = before.trim().toLowerCase();
+		const next = normalizeVisibility(before);
+		entity.visibility = next;
+		if (lower === "ui" || lower === "none") {
+			noteMigration12(
+				`${kind} ${entity.id || entity.typeId || "?"} visibility ${lower} → ${next === "" ? '""' : next}`
+			);
+		}
+	};
+	for (const g of snapshot.groups || []) {
+		rewrite(g, "group");
+	}
+	for (const g of snapshot.gauges || []) {
+		rewrite(g, "gauge");
+	}
+	for (const z of snapshot.gizmos || []) {
+		rewrite(z, "gizmo");
+	}
+	for (const t of snapshot.gizmoTypes || []) {
+		if (!t || t.defaultVisibility == null) {
+			continue;
+		}
+		const before = String(t.defaultVisibility);
+		const lower = before.trim().toLowerCase();
+		const next = normalizeVisibility(before);
+		t.defaultVisibility = next;
+		if (lower === "ui" || lower === "none") {
+			noteMigration12(
+				`gizmoType ${t.typeId || "?"} defaultVisibility ${lower} → ${next === "" ? '""' : next}`
+			);
+		}
+	}
+	visibilityMigration12Done = true;
 }
 
 let openGaugeId = "";
@@ -511,7 +619,7 @@ function defaultGaugeSettings() {
 		frameShape: "Frames/circle.svg",
 		frameFillColor: "",
 		frameBorderColor: "",
-		frameBorderThickness: 5,
+		frameBorderThickness: DEFAULT_FRAME_BORDER_THICKNESS_PCT,
 		insideSize: 65,
 		displayMode: "gear",
 		neverHide: false,
@@ -833,7 +941,12 @@ function ensureGauge(gauge) {
 	bag.frameBorderThickness = quantizePct(
 		Math.max(
 			0,
-			Math.min(50, Number.isFinite(Number(bag.frameBorderThickness)) ? Number(bag.frameBorderThickness) : 5)
+			Math.min(
+				50,
+				Number.isFinite(Number(bag.frameBorderThickness))
+					? Number(bag.frameBorderThickness)
+					: DEFAULT_FRAME_BORDER_THICKNESS_PCT
+			)
 		)
 	);
 	bag.insideSize = quantizePct(
@@ -859,7 +972,10 @@ function ensureGauge(gauge) {
 	delete gauge.alwaysVisible;
 	bag.barTrough = bag.barTrough === true;
 	bag.numberFormat = normalizeNumberFormat(bag.numberFormat, "barPercent");
-	bag.pictureIcon = String(bag.pictureIcon || "").trim() || defaultPictureIconPath();
+	bag.pictureIcon =
+		(typeof normalizeIconAssetPath === "function"
+			? normalizeIconAssetPath(bag.pictureIcon)
+			: String(bag.pictureIcon || "").trim()) || defaultPictureIconPath();
 	bag.pictureDirection = normalizePictureDirection(bag.pictureDirection);
 	bag.pictureRotation = Number(bag.pictureRotation) || 0;
 	bag.pictureEmpty = optionalHex(bag.pictureEmpty) || "#000000";
@@ -1390,12 +1506,15 @@ function syncHudGauges(root, frontRoot, preview) {
 		const isFront =
 			preview && (activeGaugeId === gauge.id || (activeTab === "gauges" && openGaugeId === gauge.id));
 		const visibility = normalizeVisibility(gauge.visibility);
-		// none: editor preview only; hud: with vanilla HUD; ui: also while soft-hidden (menus).
-		if (visibility === "none" && !preview) {
+		// "": editor preview only; hud: play HUD; menu: soft-hide/menus; "hud, menu": both.
+		if (visibilityIsNone(visibility) && !preview) {
 			return;
 		}
-		// neverHide blocks soft-hide (Hide when + inactive timers); it must not override Gauge Visibility HUD.
-		if (visibility === "hud" && !hudVisible && !preview) {
+		// neverHide blocks soft-hide (Hide when + inactive timers); it must not override Gauge Visibility HUD/Menu.
+		if (!preview && hudVisible && !visibilityHasHud(visibility)) {
+			return;
+		}
+		if (!preview && !hudVisible && !visibilityHasMenu(visibility)) {
 			return;
 		}
 		const neverHide = !!gaugeSettings(gauge).neverHide;
@@ -1451,9 +1570,14 @@ function syncHudGauges(root, frontRoot, preview) {
 			}
 		}
 		el.classList.toggle("is-front", isFront);
-		el.classList.toggle("is-preview", visibility === "none");
-		// CSS soft-hide only keeps data-visibility="ui". neverHide does not promote HUD → ui.
+		el.classList.toggle("is-preview", visibilityIsNone(visibility));
+		// CSS soft-hide keeps data-visibility-menu="1". neverHide does not promote HUD → menu.
 		el.dataset.visibility = visibility;
+		if (visibilityHasMenu(visibility)) {
+			el.dataset.visibilityMenu = "1";
+		} else {
+			delete el.dataset.visibilityMenu;
+		}
 		applyHudFadeClasses(el, fadeKey, preview, now);
 		});
 	}

@@ -1178,7 +1178,7 @@ bool CogRegistry::ApplyStateJson(const std::string& json)
 	RememberGearKeysUnlocked();
 	for (auto& group : _groups) {
 		if (group.id == kDefaultGroupId) {
-			group.visibility = _general.showDefaultGroup ? "hud" : "none";
+			group.visibility = _general.showDefaultGroup ? "hud" : "";
 			group.locked = true;
 			group.settings.displayName = "Default Group";
 		}
@@ -1328,7 +1328,7 @@ void CogRegistry::LoadConfig()
 		RememberGearKeysUnlocked();
 		for (auto& group : _groups) {
 			if (group.id == kDefaultGroupId) {
-				group.visibility = _general.showDefaultGroup ? "hud" : "none";
+				group.visibility = _general.showDefaultGroup ? "hud" : "";
 			}
 		}
 		// First-load Default Group (and any JSON repair) must hit disk so MO2 writes

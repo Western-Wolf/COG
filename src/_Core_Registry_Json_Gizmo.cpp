@@ -345,7 +345,7 @@ namespace CogRegistryJson
 
 	bool GizmoIsPlayActive(const CogGizmo& g)
 	{
-		return NormalizeGizmoVisibility(g.visibility) != "none";
+		return !VisibilityIsNone(g.visibility);
 	}
 
 
@@ -618,8 +618,8 @@ namespace CogRegistryJson
 		w.BeginObject();
 		w.KeyString("id", g.id);
 		w.KeyString("typeId", g.typeId);
-		// Always persist visibility. Omitting "hud" made Feed's JS ensure treat a missing
-		// key as "ui" (new-feed default) and reset HUD Visible on the next snapshot push.
+		// Always persist visibility. Omitting the key made Feed's JS coalesce treat a missing
+		// key as the type default ("hud, menu") and overwrite an intentional HUD-only choice.
 		w.KeyString("visibility", NormalizeGizmoVisibility(g.visibility));
 		w.Key("hudSuppress");
 		w.BeginArray();

@@ -199,10 +199,13 @@ function applyLivePatchToHud() {
 	if (!needsRebuild) {
 		for (const group of snapshot.groups || []) {
 			const vis = typeof groupVisibility === "function" ? groupVisibility(group) : "hud";
-			if (vis === "none" && !preview) {
+			if (visibilityIsNone(vis) && !preview) {
 				continue;
 			}
-			if (vis === "hud" && !hudVisible && !preview) {
+			if (!preview && hudVisible && !visibilityHasHud(vis)) {
+				continue;
+			}
+			if (!preview && !hudVisible && !visibilityHasMenu(vis)) {
 				continue;
 			}
 			for (const gear of gearsInGroup(group.id)) {
@@ -536,25 +539,21 @@ function renderGears() {
 		hudShownAt.clear();
 		hudHideUntil.clear();
 	}
-	if (!hudVisible && !preview) {
-		// Keep HUD DOM mounted; body.hud-hidden hides it via CSS. Destroying here made
-		// quicksave/Loading Menu flash every element as it was rebuilt on show.
-		// Still sync gauges/gizmos so visibility "ui" gauges can mount.
-		syncHudGauges(root, frontRoot, false);
-		syncHudGizmos(root, frontRoot, false);
-		syncHudFrontLayer();
-		return;
-	}
+	// Soft-hide: keep HUD DOM mounted (CSS hides non-menu). Still run full sync so
+	// menu-channel groups/gauges/gizmos can mount; reconcile leaves HUD-only hosts in place.
 	const now = Date.now();
 	const keepGroups = new Set();
 	for (const group of snapshot.groups) {
 		const isFront = preview && activeTab === "groups" && openGroupId === group.id;
 		const visibility = typeof groupVisibility === "function" ? groupVisibility(group) : "hud";
-		// none: editor preview only; hud: with vanilla HUD; ui: also while soft-hidden (menus).
-		if (visibility === "none" && !preview) {
+		// "": editor preview only; hud: play HUD; menu: soft-hide/menus; "hud, menu": both.
+		if (visibilityIsNone(visibility) && !preview) {
 			continue;
 		}
-		if (visibility === "hud" && !hudVisible && !preview) {
+		if (!preview && hudVisible && !visibilityHasHud(visibility)) {
+			continue;
+		}
+		if (!preview && !hudVisible && !visibilityHasMenu(visibility)) {
 			continue;
 		}
 		const dest = isFront && frontRoot ? frontRoot : root;

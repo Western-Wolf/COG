@@ -120,7 +120,7 @@ function defaultSuppressorGizmo(n) {
 	return {
 		id: `gizmo_${Date.now().toString(36)}`,
 		typeId: "cog-suppressor",
-		visibility: "none",
+		visibility: "",
 		display: {
 			x: DEFAULT_HUD_X,
 			y: DEFAULT_HUD_Y,
@@ -154,7 +154,7 @@ function ensureSuppressorGizmo(gizmo) {
 	s.alwaysHide = normalizeSuppressorKeyList(s.alwaysHide);
 	s.neverHide = normalizeSuppressorKeyList(s.neverHide);
 	// Editor marker only — never exposed in HUD / menus.
-	gizmo.visibility = "none";
+	gizmo.visibility = "";
 	gizmo.settings = s;
 	gizmo.settingsJson = JSON.stringify(s);
 	return gizmo;

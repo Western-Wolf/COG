@@ -248,30 +248,31 @@ const GIZMO_SETTINGS_KEYS = new Set([
 ]);
 
 function normalizeGizmoVisibility(value) {
-	// Shared triad lives on normalizeVisibility (_Gauges.js loads first).
+	// Shared flag string lives on normalizeVisibility (_Gauges.js loads first).
 	return typeof normalizeVisibility === "function" ? normalizeVisibility(value) : "hud";
 }
 
 /** Type record defaultVisibility, else universal builtin defaults. */
 function defaultVisibilityForType(typeId) {
 	const typeDef = gizmoTypeDef(typeId);
-	if (typeDef && typeDef.defaultVisibility != null && String(typeDef.defaultVisibility).trim() !== "") {
+	// Explicit "" on the type means none — only treat null/undefined as missing.
+	if (typeDef && typeDef.defaultVisibility != null) {
 		return normalizeGizmoVisibility(typeDef.defaultVisibility);
 	}
 	const t = normalizeGizmoType(typeId);
 	if (t === "cog-feed") {
-		return "ui";
+		return "hud, menu";
 	}
 	if (t === "cog-suppressor") {
-		return "none";
+		return "";
 	}
 	return "hud";
 }
 
-/** Prefer instance visibility; if missing, type default; else universal. */
+/** Prefer instance visibility; if missing (null/undefined), type default; else universal. Explicit "" = none. */
 function coalesceGizmoVisibility(gizmo, typeId) {
 	const raw = gizmo && gizmo.visibility;
-	if (raw != null && String(raw).trim() !== "") {
+	if (raw != null) {
 		return normalizeGizmoVisibility(raw);
 	}
 	return defaultVisibilityForType(typeId || (gizmo && gizmo.typeId));
@@ -608,14 +609,28 @@ function readGizmoSourceSetting(gizmo, sourceId, key) {
 	return undefined;
 }
 
+function visibilitySummaryTag(value) {
+	const v = normalizeGizmoVisibility(value);
+	if (v === "hud, menu") {
+		return ["cog-hud-menu", "HUD, Menu"];
+	}
+	if (v === "hud") {
+		return ["cog-hud", "HUD"];
+	}
+	if (v === "menu") {
+		return ["cog-menu", "Menu"];
+	}
+	return ["cog-none", "None"];
+}
+
 function appendGizmoVisibilityEditor(panel, gizmo, opts) {
 	const gid = gizmo.id;
 	const omitLabel = !!(opts && opts.omitLabel);
 	const tipHost = opts && opts.tipHost ? opts.tipHost : null;
-	const field = document.createElement("label");
+	const field = document.createElement("div");
 	field.className = "pos-field compact";
 	const visibilityTip = makeInfoTip(
-		"HUD Visible: only while the vanilla Heads-Up Display is up (hidden with the HUD in menus). UI Visible: also keep showing while menus hide the HUD (inventory, map, dialogue, etc.). None: editor preview only.",
+		"HUD: only while the vanilla Heads-Up Display is up (hidden with the HUD in menus). Menu: while menus soft-hide the HUD (inventory, map, dialogue, etc.). Both: play HUD and menus. Neither: editor preview only.",
 		"cog-gizmo-visibility-tip"
 	);
 	if (tipHost) {
@@ -636,21 +651,118 @@ function appendGizmoVisibilityEditor(panel, gizmo, opts) {
 		title.appendChild(visibilityTip);
 		field.appendChild(title);
 	}
-	const sel = document.createElement("select");
-	sel.dataset.role = "visibility";
-	sel.innerHTML = `<option value="none">None</option>
-		<option value="hud">HUD Visible</option>
-		<option value="ui">UI Visible</option>`;
-	tagSelectOptions(sel, {
-		none: ["cog-none", "None"],
-		hud: ["cog-hud-visible", "HUD Visible"],
-		ui: ["cog-ui-visible", "UI Visible"]
+	const wrap = document.createElement("div");
+	wrap.className = "cog-select cog-visibility-multi";
+	wrap.dataset.role = "visibility";
+	const btn = document.createElement("button");
+	btn.type = "button";
+	btn.className = "cog-select-trigger";
+	const menu = document.createElement("div");
+	menu.className = "cog-select-menu cog-visibility-menu";
+	menu.hidden = true;
+	wrap._cogMenu = menu;
+
+	const syncSummary = () => {
+		const live = (typeof gizmoFor === "function" ? gizmoFor(gid) : null) || gizmo;
+		const cur = normalizeGizmoVisibility(live && live.visibility);
+		const [tag, fallback] = visibilitySummaryTag(cur);
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(btn, tag, fallback);
+		} else {
+			btn.textContent = fallback;
+		}
+		const hudBox = menu.querySelector('input[data-flag="hud"]');
+		const menuBox = menu.querySelector('input[data-flag="menu"]');
+		if (hudBox) {
+			hudBox.checked = visibilityHasHud(cur);
+		}
+		if (menuBox) {
+			menuBox.checked = visibilityHasMenu(cur);
+		}
+	};
+
+	const commitFlags = () => {
+		const hudBox = menu.querySelector('input[data-flag="hud"]');
+		const menuBox = menu.querySelector('input[data-flag="menu"]');
+		const hudOn = !!(hudBox && hudBox.checked);
+		const menuOn = !!(menuBox && menuBox.checked);
+		let next = "";
+		if (hudOn && menuOn) {
+			next = "hud, menu";
+		} else if (hudOn) {
+			next = "hud";
+		} else if (menuOn) {
+			next = "menu";
+		}
+		patchGizmo(gid, { visibility: next });
+		syncSummary();
+	};
+
+	const addFlagRow = (flag, tag, fallback) => {
+		const row = document.createElement("label");
+		row.className = "cog-visibility-option";
+		const box = document.createElement("input");
+		box.type = "checkbox";
+		box.dataset.flag = flag;
+		box.addEventListener("click", (ev) => ev.stopPropagation());
+		box.addEventListener("change", () => commitFlags());
+		const span = document.createElement("span");
+		if (typeof setTranslatedText === "function") {
+			setTranslatedText(span, tag, fallback);
+		} else {
+			span.textContent = fallback;
+		}
+		row.appendChild(box);
+		row.appendChild(span);
+		row.addEventListener("mousedown", (ev) => ev.preventDefault());
+		menu.appendChild(row);
+	};
+	addFlagRow("hud", "cog-hud", "HUD");
+	addFlagRow("menu", "cog-menu", "Menu");
+	syncSummary();
+
+	btn.addEventListener("click", (ev) => {
+		ev.preventDefault();
+		ev.stopPropagation();
+		const open = menu.hidden;
+		if (!open) {
+			if (typeof closeCogSelectWrap === "function") {
+				closeCogSelectWrap(wrap);
+			}
+			return;
+		}
+		if (typeof beginEditorPopup === "function") {
+			beginEditorPopup("select");
+		}
+		wrap.classList.add("is-open");
+		const place = () => {
+			if (typeof placeAnchoredPopup === "function") {
+				placeAnchoredPopup(menu, btn, {
+					matchAnchorWidth: true,
+					gap: 3,
+					capMaxHeight: 12 * 16
+				});
+			} else {
+				menu.hidden = false;
+			}
+		};
+		if (typeof registerEditorPopup === "function") {
+			wrap._cogPopupId = registerEditorPopup("select", {
+				close: () => {
+					if (typeof closeCogSelectWrap === "function") {
+						closeCogSelectWrap(wrap);
+					}
+				},
+				reposition: place,
+				retain: menu
+			});
+		}
+		place();
 	});
-	sel.value = normalizeGizmoVisibility(gizmo.visibility);
-	sel.addEventListener("change", () => {
-		patchGizmo(gid, { visibility: normalizeGizmoVisibility(sel.value) });
-	});
-	field.appendChild(sel);
+	menu.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+	wrap.appendChild(btn);
+	wrap.appendChild(menu);
+	field.appendChild(wrap);
 	const row = document.createElement("div");
 	row.className = "style-row";
 	row.appendChild(field);
@@ -986,7 +1098,7 @@ function fillHtmlGizmoEditor(panel, gizmo) {
 						}
 						break;
 					}
-					// Section heading owns the title + tip; control row is select only.
+					// Section heading owns the title + tip; control row is the HUD/Menu multi-select.
 					appendGizmoVisibilityEditor(holder, live(), { omitLabel: true, tipHost });
 					visibilityBound = true;
 				} else {
@@ -1794,7 +1906,13 @@ function buildGizmoEl(gizmo, preview) {
 	const el =
 		api && typeof api.build === "function" ? api.build(gizmo, preview) : buildGizmoCustomEl(gizmo, preview);
 	if (el) {
-		el.dataset.visibility = normalizeGizmoVisibility(gizmo.visibility);
+		const visibility = normalizeGizmoVisibility(gizmo.visibility);
+		el.dataset.visibility = visibility;
+		if (visibilityHasMenu(visibility)) {
+			el.dataset.visibilityMenu = "1";
+		} else {
+			delete el.dataset.visibilityMenu;
+		}
 	}
 	return el;
 }
@@ -1892,16 +2010,21 @@ function patchGizmo(id, patch, skipHud, live) {
 		return;
 	}
 	scheduleSave(true);
+	const visibilityOnly =
+		Object.keys(patch).length === 1 && Object.prototype.hasOwnProperty.call(patch, "visibility");
 	if (!skipHud) {
 		// Sync this item immediately so editor typing shows even when a pointer-drag
 		// holds renderGears(), or when lean live patches skip full layout.
 		syncHudGizmo(gizmo);
 		// live === false: colour commit — impacted gizmo only (already synced).
-		if (live !== false && !drag) {
+		// visibility-only: keep the HUD/Menu multi-select open; syncSummary updates chrome.
+		if (live !== false && !drag && !visibilityOnly) {
 			renderGears();
 		}
 	}
-	if (Object.prototype.hasOwnProperty.call(patch, "displayName") || Object.prototype.hasOwnProperty.call(patch, "visibility")) {
+	// displayName: rebuild accordion titles. Do not rebuild for visibility — that closed
+	// the multi-select and pulsed the whole editor on every checkbox toggle.
+	if (Object.prototype.hasOwnProperty.call(patch, "displayName")) {
 		renderEditor(true);
 	}
 }
@@ -1975,7 +2098,15 @@ function syncHudGizmo(gizmo) {
 	if (!el) {
 		return;
 	}
-	el.dataset.visibility = normalizeGizmoVisibility(gizmo.visibility);
+	{
+		const visibility = normalizeGizmoVisibility(gizmo.visibility);
+		el.dataset.visibility = visibility;
+		if (visibilityHasMenu(visibility)) {
+			el.dataset.visibilityMenu = "1";
+		} else {
+			delete el.dataset.visibilityMenu;
+		}
+	}
 	if (api && typeof api.layout === "function") {
 		api.layout(el, gizmo);
 		applyHostMaxAlpha(el, gizmo);
@@ -2130,11 +2261,14 @@ function syncHudGizmos(root, frontRoot, preview) {
 			const isFront =
 				preview && (activeGizmoId === gizmo.id || (activeTab === "gizmos" && openGizmoId === gizmo.id));
 			const visibility = normalizeGizmoVisibility(gizmo.visibility);
-			// none: editor preview only; hud: with vanilla HUD; ui: also while soft-hidden (menus).
-			if (visibility === "none" && !preview) {
+			// "": editor preview only; hud: play HUD; menu: soft-hide/menus; "hud, menu": both.
+			if (visibilityIsNone(visibility) && !preview) {
 				return;
 			}
-			if (visibility === "hud" && !hudVisible && !preview) {
+			if (!preview && hudVisible && !visibilityHasHud(visibility)) {
+				return;
+			}
+			if (!preview && !hudVisible && !visibilityHasMenu(visibility)) {
 				return;
 			}
 			const gizmoType = normalizeGizmoType(gizmo.typeId);
@@ -2199,8 +2333,13 @@ function syncHudGizmos(root, frontRoot, preview) {
 				}
 			}
 			el.dataset.visibility = visibility;
+			if (visibilityHasMenu(visibility)) {
+				el.dataset.visibilityMenu = "1";
+			} else {
+				delete el.dataset.visibilityMenu;
+			}
 			el.classList.toggle("is-front", isFront);
-			el.classList.toggle("is-preview", visibility === "none");
+			el.classList.toggle("is-preview", visibilityIsNone(visibility));
 		});
 	}
 	syncGizmoHandleVisibility();

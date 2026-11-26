@@ -176,19 +176,13 @@ namespace
 		return false;
 	}
 
-	bool KeepOverlayForFeed()
+	/** Keep Prisma visible during soft-hide when any entity has the menu visibility flag. */
+	bool KeepOverlayForMenuChannel()
 	{
-		if (!CogRegistry::Get().HasVisibleFeedShowingInventory()) {
-			return false;
-		}
-		auto* ui = RE::UI::GetSingleton();
-		if (!ui || !ui->IsShowingMenus()) {
-			return false;
-		}
 		if (HardHideOverlayMenusOpen()) {
 			return false;
 		}
-		return true;
+		return CogRegistry::Get().HasAnyMenuChannelEntity();
 	}
 
 	void PushHudVisible(bool visible)
@@ -544,11 +538,11 @@ void CogUi::SyncVisibility()
 		return;
 	}
 	const bool hud = GameHudVisible();
-	const bool keepInventory = KeepOverlayForFeed();
+	const bool keepMenu = KeepOverlayForMenuChannel();
 	// Editor open: keep soft-HUD "on" so preview stays visible even if a hide-menu
 	// (inventory, map, mod hotkeys, etc.) would otherwise soft-hide the overlay.
 	PushHudVisible(g_wantEditorFocus || hud);
-	if (g_wantEditorFocus || hud || keepInventory) {
+	if (g_wantEditorFocus || hud || keepMenu) {
 		if (g_api->IsHidden(g_view)) {
 			g_api->Show(g_view);
 		}

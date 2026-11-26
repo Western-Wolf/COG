@@ -605,6 +605,29 @@ bool CogRegistry::HasVisibleFeedShowingInventory() const
 
 
 
+bool CogRegistry::HasAnyMenuChannelEntity() const
+{
+	std::lock_guard lock(_mutex);
+	for (const auto& group : _groups) {
+		if (CogRegistryJson::VisibilityHasMenu(group.visibility)) {
+			return true;
+		}
+	}
+	for (const auto& gauge : _gauges) {
+		if (CogRegistryJson::VisibilityHasMenu(gauge.visibility)) {
+			return true;
+		}
+	}
+	for (const auto& gizmo : _gizmos) {
+		if (CogRegistryJson::VisibilityHasMenu(gizmo.visibility)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+
+
 bool CogRegistry::HasVisibleFeedDivertingLocationDiscovery() const
 {
 	std::lock_guard lock(_mutex);

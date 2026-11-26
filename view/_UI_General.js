@@ -11,7 +11,7 @@ function renderGeneral(body) {
 		snapshot.general.showDefaultGroup = box.checked;
 		const group = groupFor(DEFAULT_GROUP_ID);
 		if (group) {
-			group.visibility = box.checked ? "hud" : "none";
+			group.visibility = box.checked ? "hud" : "";
 			delete group.visible;
 		}
 		scheduleSave(true);

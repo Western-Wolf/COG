@@ -406,12 +406,12 @@ function appendSuppressionsFilters(host, opts) {
 	if (opts.getVisibility && opts.setVisibility) {
 		const visField = document.createElement("label");
 		visField.className = "pos-field compact";
-		visField.innerHTML = `<span>Visibility</span><select>
+		visField.innerHTML = `<span>Status</span><select>
 			<option value="all">All</option>
 			<option value="hidden">Hidden</option>
 			<option value="visible">Visible</option>
 		</select>`;
-		tagFieldLabel(visField, "cog-visibility", "Visibility");
+		tagFieldLabel(visField, "cog-status", "Status");
 		const visSel = visField.querySelector("select");
 		tagSelectOptions(visSel, {
 			all: ["cog-all", "All"],
@@ -535,7 +535,7 @@ function renderSuppressionsTab(host) {
 		columns: [
 			{ id: "name", tag: ["cog-name", "Name"] },
 			{ id: "asAlias", tag: ["cog-as-alias", "As Alias"] },
-			{ id: "visibility", tag: ["cog-visibility", "Visibility"] },
+			{ id: "visibility", tag: ["cog-status", "Status"] },
 			{ id: "controllers", tag: ["cog-controlling-gadgets", "Controlling Gadget(s)"] }
 		],
 		onSort: (colId) => {

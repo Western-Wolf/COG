@@ -10,7 +10,9 @@ let drag = null;
 const AUTO_FONT_SIZE_SCALE = 0.95;
 const DEFAULT_HUD_X = 0.1;
 const DEFAULT_HUD_Y = 0.1;
-const DEFAULT_BORDER_THICKNESS_PCT = 15;
+const DEFAULT_BORDER_THICKNESS_PCT = 10;
+/** Frame gauge rim — was 5%; scaled with endcap knot thinning (~⅔). */
+const DEFAULT_FRAME_BORDER_THICKNESS_PCT = 3;
 let saveQueued = false;
 let ignoreLayoutUntil = 0;
 let hudVisible = true;
@@ -141,6 +143,10 @@ window.applyFeedSourceCatalog = (jsonStr) => {
 		if (prevSig === nextSig) {
 			return;
 		}
+		// New catalog entries → add missing sources.<id> blocks only (not a full flat remap).
+		if (typeof ensureFeedSourceBlocksForAllGizmos === "function") {
+			ensureFeedSourceBlocksForAllGizmos();
+		}
 		try {
 			window.dispatchEvent(new CustomEvent("cog-feed-source-catalog"));
 		} catch (e2) {
@@ -178,6 +184,15 @@ window.applySnapshot = (jsonStr) => {
 				snapshot.icons = incoming.icons;
 				if (typeof rebuildIconRootMap === "function") {
 					rebuildIconRootMap();
+				}
+				// Migration Code for Transition from v1.11 or earlier to v1.2 (one-shot).
+				if (typeof migrateLegacyIconPathsInSnapshot === "function") {
+					migrateLegacyIconPathsInSnapshot();
+				} else if (typeof migratePictureIconPathsInSnapshot === "function") {
+					migratePictureIconPathsInSnapshot();
+				}
+				if (typeof migrateVisibility12InSnapshot === "function") {
+					migrateVisibility12InSnapshot();
 				}
 			}
 			if (Array.isArray(incoming.fonts)) {
@@ -522,9 +537,6 @@ function normalizeSnapshot() {
 	if (!Array.isArray(snapshot.gauges)) {
 		snapshot.gauges = [];
 	}
-	for (const g of snapshot.gauges) {
-		ensureGauge(g);
-	}
 	if (!Array.isArray(snapshot.gizmos)) {
 		snapshot.gizmos = [];
 	}
@@ -541,6 +553,29 @@ function normalizeSnapshot() {
 	if (!Array.isArray(snapshot.suppressionAliases)) {
 		snapshot.suppressionAliases = [];
 	}
+	if (!Array.isArray(snapshot.icons)) {
+		snapshot.icons = [];
+	}
+	if (!Array.isArray(snapshot.importedIcons)) {
+		snapshot.importedIcons = [];
+	}
+	if (typeof rebuildIconRootMap === "function") {
+		rebuildIconRootMap();
+	}
+	// Migration Code for Transition from v1.11 or earlier to v1.2 (one-shot):
+	// Artwork undo, Quest Art → Endcaps, flat Endcaps → Shapes/Knots — before ensure*.
+	if (typeof migrateLegacyIconPathsInSnapshot === "function") {
+		migrateLegacyIconPathsInSnapshot();
+	} else if (typeof migratePictureIconPathsInSnapshot === "function") {
+		migratePictureIconPathsInSnapshot();
+	}
+	// Visibility none→"" / ui→"hud, menu" — before ensure* coalesce.
+	if (typeof migrateVisibility12InSnapshot === "function") {
+		migrateVisibility12InSnapshot();
+	}
+	for (const g of snapshot.gauges) {
+		ensureGauge(g);
+	}
 	ensureGizmoViewScripts();
 	for (const z of snapshot.gizmos) {
 		if (z && z.livePayload != null && z.livePayloadJson == null) {
@@ -551,15 +586,6 @@ function normalizeSnapshot() {
 			}
 		}
 		ensureGizmo(z);
-	}
-	if (!Array.isArray(snapshot.icons)) {
-		snapshot.icons = [];
-	}
-	if (!Array.isArray(snapshot.importedIcons)) {
-		snapshot.importedIcons = [];
-	}
-	if (typeof rebuildIconRootMap === "function") {
-		rebuildIconRootMap();
 	}
 	for (const src of snapshot.sources || []) {
 		if (!src || typeof src !== "object") {
@@ -687,10 +713,39 @@ function applyHostMaxAlpha(el, entity) {
 	el.style.setProperty("--cog-max-alpha", String(maxAlphaFrac(entity)));
 }
 
+const ENTITY_DISPLAY_FLAT_KEYS = ["x", "y", "rotation", "width", "height", "posAnchor"];
+
+function entityHasLegacyFlatDisplay(entity) {
+	if (!entity || typeof entity !== "object") {
+		return false;
+	}
+	return ENTITY_DISPLAY_FLAT_KEYS.some((k) => Object.prototype.hasOwnProperty.call(entity, k));
+}
+
+/** True when nested display already has the numeric fields ensure* needs. */
+function entityDisplayShapeOk(display, sized) {
+	if (!display || typeof display !== "object" || Array.isArray(display)) {
+		return false;
+	}
+	if (
+		!Number.isFinite(Number(display.x)) ||
+		!Number.isFinite(Number(display.y)) ||
+		!Number.isFinite(Number(display.rotation))
+	) {
+		return false;
+	}
+	if (sized) {
+		if (!Number.isFinite(Number(display.width)) || !Number.isFinite(Number(display.height))) {
+			return false;
+		}
+	}
+	return true;
+}
+
 /**
- * Migration Code for Transition from v1.01 or earlier to v1.1:
- * Legacy flat placement keys x/y/rotation[/width/height] move under nested "display" (never written back flat on save).
- * Legacy posAnchor is ignored (placement is always AABB top-left / tlc).
+ * Migration Code for Transition from v1.01 or earlier to v1.1 (one-shot remap):
+ * Legacy flat placement keys → nested display; drop posAnchor.
+ * Hot path early-outs when already nested with no flat keys and required fields present.
  *
  * @param {object} entity
  * @param {{ x?: number, y?: number, rotation?: number, width?: number, height?: number, maxAlpha?: number, minW?: number, minH?: number, sized?: boolean }} defaults
@@ -699,11 +754,21 @@ function migrateEntityDisplay(entity, defaults = {}) {
 	if (!entity || typeof entity !== "object") {
 		return null;
 	}
+	const sized = !!defaults.sized;
 	const hadNested =
 		entity.display && typeof entity.display === "object" && !Array.isArray(entity.display);
+	const hadFlat = entityHasLegacyFlatDisplay(entity);
+
+	// Hot path: already on nested scheme with usable fields — drop rare leftover posAnchor only.
+	if (hadNested && !hadFlat && entityDisplayShapeOk(entity.display, sized)) {
+		if (Object.prototype.hasOwnProperty.call(entity.display, "posAnchor")) {
+			noteMigrationIf(true, `${entity.id || entity.typeId || "?"} ignored legacy posAnchor`);
+			delete entity.display.posAnchor;
+		}
+		return entity.display;
+	}
+
 	const bag = hadNested ? { ...entity.display } : {};
-	const flatKeys = ["x", "y", "rotation", "width", "height", "posAnchor"];
-	const hadFlat = flatKeys.some((k) => Object.prototype.hasOwnProperty.call(entity, k));
 	const label = entity.id || entity.typeId || "?";
 	noteMigrationIf(!hadNested && hadFlat, `${label} flat placement → nested display`);
 	noteMigrationIf(
@@ -711,7 +776,7 @@ function migrateEntityDisplay(entity, defaults = {}) {
 			Object.prototype.hasOwnProperty.call(bag, "posAnchor"),
 		`${label} ignored legacy posAnchor`
 	);
-	const knownDisplay = defaults.sized
+	const knownDisplay = sized
 		? ["x", "y", "rotation", "width", "height", "maxAlpha"]
 		: ["x", "y", "rotation", "maxAlpha"];
 	stripUnknownKeys(bag, knownDisplay, "display", { id: label, legacySet: ["posAnchor"] });
@@ -730,7 +795,7 @@ function migrateEntityDisplay(entity, defaults = {}) {
 		rotation: pick("rotation", defaults.rotation ?? 0),
 		maxAlpha: quantizePct(Math.max(0, Math.min(100, pick("maxAlpha", defaults.maxAlpha ?? 100))))
 	};
-	if (defaults.sized) {
+	if (sized) {
 		const minW = defaults.minW ?? 0;
 		const minH = defaults.minH ?? 0;
 		display.width = Math.max(minW, pick("width", defaults.width ?? 0));

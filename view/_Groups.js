@@ -265,7 +265,7 @@ function ensureGroup(group) {
 	}
 	ensureGroupSettings(group);
 	// Migration Code for Transition from v1.01 or earlier to v1.1:
-	// Legacy root bool "visible" → visibility none|hud|ui (never kept as bool).
+	// Legacy root bool "visible" → visibility ""|"hud"|… (never kept as bool).
 	if (typeof ensureEntityVisibility === "function") {
 		ensureEntityVisibility(group);
 	} else {
@@ -380,7 +380,7 @@ function ensureDefaultGroup() {
 		snapshot.groups.unshift({
 			id: DEFAULT_GROUP_ID,
 			locked: true,
-			visibility: snapshot.general && snapshot.general.showDefaultGroup ? "hud" : "none",
+			visibility: snapshot.general && snapshot.general.showDefaultGroup ? "hud" : "",
 			display: { x: DEFAULT_HUD_X, y: DEFAULT_HUD_Y, rotation: 0, maxAlpha: 100 },
 			settings
 		});
@@ -388,7 +388,7 @@ function ensureDefaultGroup() {
 	const defaultGroup = snapshot.groups.find((g) => g.id === DEFAULT_GROUP_ID);
 	defaultGroup.locked = true;
 	ensureGroupSettings(defaultGroup).displayName = "Default Group";
-	defaultGroup.visibility = snapshot.general && snapshot.general.showDefaultGroup ? "hud" : "none";
+	defaultGroup.visibility = snapshot.general && snapshot.general.showDefaultGroup ? "hud" : "";
 	delete defaultGroup.visible;
 }
 
@@ -438,13 +438,13 @@ function gearsInGroup(groupId) {
 	return ensureGroupSettings(group).gearIds.map((id) => gearFor(id)).filter((g) => g);
 }
 
-/** Effective none|hud|ui for mount (Default Group follows General checkbox). */
+/** Effective visibility flags for mount (Default Group follows General checkbox). */
 function groupVisibility(group) {
 	if (!group) {
-		return "none";
+		return "";
 	}
 	if (group.id === DEFAULT_GROUP_ID) {
-		return snapshot.general && snapshot.general.showDefaultGroup ? "hud" : "none";
+		return snapshot.general && snapshot.general.showDefaultGroup ? "hud" : "";
 	}
 	return typeof normalizeVisibility === "function"
 		? normalizeVisibility(group.visibility)
@@ -452,7 +452,7 @@ function groupVisibility(group) {
 }
 
 function isGroupVisible(group) {
-	return groupVisibility(group) !== "none";
+	return !visibilityIsNone(groupVisibility(group));
 }
 
 function pixelSize(group) {
@@ -594,9 +594,14 @@ function ensureHudGroupHost(group, dest, visibility, isFront) {
 		dest.appendChild(groupEl);
 		created = true;
 	}
-	groupEl.classList.toggle("is-preview", visibility === "none");
+	groupEl.classList.toggle("is-preview", visibilityIsNone(visibility));
 	groupEl.classList.toggle("is-front", isFront);
 	groupEl.dataset.visibility = visibility;
+	if (visibilityHasMenu(visibility)) {
+		groupEl.dataset.visibilityMenu = "1";
+	} else {
+		delete groupEl.dataset.visibilityMenu;
+	}
 	let slots = groupEl.querySelector(".hud-slots");
 	if (!slots) {
 		slots = document.createElement("div");
@@ -633,6 +638,7 @@ function syncHudGroupEditHandles(groupEl, preview) {
 
 /** Drop stale group hosts and keep root order aligned with snapshot.groups. */
 function reconcileHudGroupHosts(root, frontRoot, keepGroups, preview) {
+	const knownIds = new Set((snapshot.groups || []).map((g) => g.id));
 	for (const host of [root, frontRoot]) {
 		if (!host) {
 			continue;
@@ -640,6 +646,10 @@ function reconcileHudGroupHosts(root, frontRoot, keepGroups, preview) {
 		for (const groupEl of [...host.querySelectorAll(".hud-group")]) {
 			const id = groupEl.dataset.id;
 			if (!keepGroups.has(id)) {
+				// Leave CSS-hidden HUD groups mounted across brief menu/load flashes.
+				if (!hudVisible && !preview && knownIds.has(id)) {
+					continue;
+				}
 				groupEl.remove();
 				continue;
 			}
@@ -766,7 +776,7 @@ function patchGroup(id, patch, skipHud, live) {
 	if (id === DEFAULT_GROUP_ID) {
 		group.locked = true;
 		settings.displayName = "Default Group";
-		group.visibility = snapshot.general.showDefaultGroup ? "hud" : "none";
+		group.visibility = snapshot.general.showDefaultGroup ? "hud" : "";
 		delete group.visible;
 	}
 	if (live === true) {

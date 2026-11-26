@@ -1228,6 +1228,30 @@ button.action:hover,
 	background: #222;
 }
 
+.cog-visibility-menu {
+	padding: 0.25em 0;
+}
+
+.cog-visibility-option {
+	display: flex;
+	align-items: center;
+	gap: 0.45em;
+	padding: 0.35em 0.55em;
+	cursor: pointer;
+	color: #fff;
+	white-space: nowrap;
+	background: #070605;
+}
+
+.cog-visibility-option:hover {
+	background: #222;
+}
+
+.cog-visibility-option input {
+	margin: 0;
+	accent-color: #c4a35a;
+}
+
 .color-row {
 	display: flex;
 	flex-wrap: wrap;

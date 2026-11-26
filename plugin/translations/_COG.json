@@ -540,8 +540,8 @@
     "fr-CA": "Paramètres du gizmo."
   },
   "cog-gizmo-visibility-tip": {
-    "en-CA": "HUD Visible: only while the vanilla Heads-Up Display is up (hidden with the HUD in menus). UI Visible: also keep showing while menus hide the HUD (inventory, map, dialogue, etc.). None: editor preview only.",
-    "fr-CA": "HUD visible : uniquement tant que l'interface de jeu vanilla est affichée (masqué avec le HUD dans les menus). IU visible : reste aussi affiché quand les menus masquent le HUD (inventaire, carte, dialogue, etc.). Aucun : aperçu dans l'éditeur seulement."
+    "en-CA": "HUD: only while the vanilla Heads-Up Display is up (hidden with the HUD in menus). Menu: while menus soft-hide the HUD (inventory, map, dialogue, etc.). Both: play HUD and menus. Neither: editor preview only.",
+    "fr-CA": "HUD : uniquement tant que l'interface de jeu vanilla est affichée (masqué avec le HUD dans les menus). Menu : quand les menus masquent le HUD (inventaire, carte, dialogue, etc.). Les deux : HUD de jeu et menus. Aucun : aperçu dans l'éditeur seulement."
   },
   "cog-gizmos-builtin": {
     "en-CA": "COG Built In Gizmos",
@@ -823,6 +823,10 @@
     "en-CA": "Marks missing catalog strings with a gold badge (shows the en-CA fallback).",
     "fr-CA": "Marque les chaînes manquantes du catalogue d'un badge doré (affiche le repli en-CA)."
   },
+  "cog-hud": {
+    "en-CA": "HUD",
+    "fr-CA": "HUD"
+  },
   "cog-hud-key": {
     "en-CA": "HUD key",
     "fr-CA": "Clé HUD"
@@ -830,6 +834,10 @@
   "cog-hud-key-placeholder": {
     "en-CA": "cog.health or Menu|path",
     "fr-CA": "cog.health ou Menu|chemin"
+  },
+  "cog-hud-menu": {
+    "en-CA": "HUD, Menu",
+    "fr-CA": "HUD, Menu"
   },
   "cog-hud-suppression": {
     "en-CA": "HUD Suppression",
@@ -842,10 +850,6 @@
   "cog-hud-target-placeholder": {
     "en-CA": "cog.casting",
     "fr-CA": "cog.casting"
-  },
-  "cog-hud-visible": {
-    "en-CA": "HUD Visible",
-    "fr-CA": "HUD visible"
   },
   "cog-icon": {
     "en-CA": "Icon",
@@ -938,6 +942,10 @@
   "cog-max-alpha": {
     "en-CA": "Max Alpha",
     "fr-CA": "Alpha max"
+  },
+  "cog-menu": {
+    "en-CA": "Menu",
+    "fr-CA": "Menu"
   },
   "cog-meter": {
     "en-CA": "Meter",
@@ -1239,6 +1247,10 @@
     "en-CA": "Stack",
     "fr-CA": "Empilement"
   },
+  "cog-status": {
+    "en-CA": "Status",
+    "fr-CA": "Statut"
+  },
   "cog-suppressions-lede": {
     "en-CA": "Gears can be registered to suppress default HUD elements while they are displayed, so the same information is not shown twice. Certain Gizmos — especially Feed — also suppress the vanilla notices they replace. The Suppressor gizmo can Always Hide extra targets or Never Hide ones that would otherwise be soft-hidden. Never Hide always wins over hide sources; (winning) marks the primary controller among those that support the current outcome (Suppressor > other Gizmos > Gauges > Groups).",
     "fr-CA": "Les engrenages peuvent être enregistrés pour masquer les éléments HUD par défaut pendant qu'ils sont affichés, afin que la même information ne soit pas montrée deux fois. Certains Gizmos — surtout Flux — masquent aussi les notifications vanilla qu'ils remplacent. Le gizmo Suppresseur peut Toujours masquer des cibles supplémentaires ou Ne jamais masquer celles qui seraient autrement masquées en douceur. Ne jamais masquer l'emporte toujours sur les sources de masquage; (gagnant) marque le contrôleur principal parmi ceux qui appuient le résultat actuel (Suppresseur > autres Gizmos > Jauges > Groupes)."
@@ -1350,10 +1362,6 @@
   "cog-type": {
     "en-CA": "Type",
     "fr-CA": "Type"
-  },
-  "cog-ui-visible": {
-    "en-CA": "UI Visible",
-    "fr-CA": "IU visible"
   },
   "cog-unknown": {
     "en-CA": "Unknown",
